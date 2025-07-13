@@ -5,31 +5,8 @@ import os
 import pandas as pd
 import plotly.express as px
 from utils.auth import login, register, get_current_user
+from utils.database import get_team_members, add_member, remove_member
 
-# Constants
-DATA_PATH = "data/members.json"
-
-# Load all teams/members data
-def load_all_members():
-    if not os.path.exists(DATA_PATH):
-        return {}
-    with open(DATA_PATH, "r") as f:
-        return json.load(f)
-
-# Save all teams/members data
-def save_all_members(all_members):
-    with open(DATA_PATH, "w") as f:
-        json.dump(all_members, f, indent=4)
-
-# Get current user's members
-def load_members(user):
-    all_members = load_all_members()
-    return all_members.get(user, [])
-
-def save_members(user, members):
-    all_members = load_all_members()
-    all_members[user] = members
-    save_all_members(all_members)
 
 # Fetch all members data
 @st.cache_data
@@ -403,8 +380,8 @@ with top_cols[1]:
         st.session_state.selected_user = None
         st.rerun()
 
-# Load member list for current user/team
-members = load_members(user)
+# Load member list for current user/team from database
+members = get_team_members(user)
 if not members:
     st.warning("⚠️ No members found for your team.")
 
@@ -427,10 +404,11 @@ with st.expander("📝 Manage Team Members", expanded=False):
                 with st.spinner("🔍 Verifying LeetCode user..."):
                     user_data = fetch_user_data(new_username)
                     if user_data:
-                        members.append({"name": new_name, "username": new_username})
-                        save_members(user, members)
-                        st.success(f"✅ Member '{new_name}' added successfully!")
-                        st.rerun()
+                        if add_member(user, new_name, new_username):
+                            st.success(f"✅ Member '{new_name}' added successfully!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Failed to add member. They might already exist.")
                     else:
                         st.error("❌ User not found on LeetCode.")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -443,10 +421,11 @@ with st.expander("📝 Manage Team Members", expanded=False):
             selected_name = st.selectbox("Select a member to remove", list(name_to_username.keys()))
             if st.button("🗑️ Remove Member", key="remove_member_btn", use_container_width=True):
                 selected_username = name_to_username[selected_name]
-                members = [m for m in members if m["username"] != selected_username]
-                save_members(user, members)
-                st.success(f"✅ Member '{selected_name}' removed successfully!")
-                st.rerun()
+                if remove_member(user, selected_username):
+                    st.success(f"✅ Member '{selected_name}' removed successfully!")
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to remove member.")
         else:
             st.info("ℹ️ No members to remove.")
         st.markdown('</div>', unsafe_allow_html=True)
