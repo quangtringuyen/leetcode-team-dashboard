@@ -52,13 +52,74 @@ st.set_page_config(
 # Dynamic theme-aware CSS
 st.markdown("""
     <style>
-    /* Use Streamlit theme variables for backgrounds and text */
-    .stApp {
-        background-color: var(--background-color) !important;
-        color: var(--text-color) !important;
+    /* CSS Variables for both themes */
+    :root {
+        --leetcode-orange: #FFA116;
+        --leetcode-green: #34A853;
+        --leetcode-red: #EF4743;
+        --leetcode-blue: #1E88E5;
     }
+    
+    /* Dark theme variables */
+    [data-theme="dark"] {
+        --bg-primary: #0E1117;
+        --bg-secondary: #262730;
+        --bg-card: #1E1E1E;
+        --text-primary: #FAFAFA;
+        --text-secondary: #A0A0A0;
+        --border-color: #333333;
+        --hover-bg: #2A2A2A;
+    }
+    
+    /* Light theme variables */
+    [data-theme="light"] {
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F0F2F6;
+        --bg-card: #FFFFFF;
+        --text-primary: #262730;
+        --text-secondary: #6C757D;
+        --border-color: #E0E0E0;
+        --hover-bg: #F8F9FA;
+    }
+    
+    /* Auto-detect theme based on Streamlit's theme */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-primary: #0E1117;
+            --bg-secondary: #262730;
+            --bg-card: #1E1E1E;
+            --text-primary: #FAFAFA;
+            --text-secondary: #A0A0A0;
+            --border-color: #333333;
+            --hover-bg: #2A2A2A;
+        }
+    }
+    
+    @media (prefers-color-scheme: light) {
+        :root {
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F0F2F6;
+            --bg-card: #FFFFFF;
+            --text-primary: #262730;
+            --text-secondary: #6C757D;
+            --border-color: #E0E0E0;
+            --hover-bg: #F8F9FA;
+        }
+    }
+    
+    /* Override Streamlit's default styles */
+    .stApp {
+        background-color: var(--bg-primary) !important;
+    }
+    
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* Header styling */
     .header-title {
-        color: #FFA116 !important;
+        color: var(--leetcode-orange) !important;
         font-weight: 700;
         font-size: 2.5rem;
         padding-bottom: 0.5rem;
@@ -66,20 +127,32 @@ st.markdown("""
         margin-bottom: 1.5rem;
         text-align: center;
     }
-    .leetcode-card, .profile-header, .stat-card, .login-card {
-        background: var(--secondary-background-color) !important;
-        color: var(--text-color) !important;
+    
+    /* Card styling */
+    .leetcode-card {
+        background: var(--bg-card) !important;
         border-radius: 12px;
-        border: 1px solid var(--block-border-color, #E0E0E0);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    
+    /* Profile header */
     .profile-header {
-        background: linear-gradient(135deg, var(--secondary-background-color) 0%, var(--background-color) 100%);
-        color: var(--text-color) !important;
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
+    
+    /* Badges */
     .rank-badge {
-        background: #FFA116;
-        color: #fff;
+        background: var(--leetcode-orange);
+        color: white;
         border-radius: 20px;
         padding: 4px 12px;
         font-weight: 600;
@@ -87,128 +160,182 @@ st.markdown("""
         font-size: 0.9rem;
     }
     .solved-badge {
-        background: #34A853;
-        color: #fff;
+        background: var(--leetcode-green);
+        color: white;
         border-radius: 20px;
         padding: 4px 12px;
         font-weight: 600;
         display: inline-block;
         font-size: 0.9rem;
     }
+    
+    /* Leaderboard items */
     .leaderboard-item {
         transition: all 0.3s ease;
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 8px;
-        background: var(--secondary-background-color) !important;
-        color: var(--text-color) !important;
-        border: 1px solid var(--block-border-color, #E0E0E0);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
         cursor: pointer;
     }
+    
     .leaderboard-item:hover {
-        background: var(--background-color) !important;
+        background: var(--hover-bg);
         transform: translateX(5px);
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
     .leaderboard-item.selected {
-        background: rgba(255, 161, 22, 0.15) !important;
-        border-left: 4px solid #FFA116;
+        background: rgba(255, 161, 22, 0.15);
+        border-left: 4px solid var(--leetcode-orange);
+    }
+    
+    /* Stats cards */
+    .stats-container {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
     .stat-card {
-        background: var(--secondary-background-color) !important;
-        color: var(--text-color) !important;
+        background: var(--bg-card);
         border-radius: 10px;
         padding: 1.2rem;
         text-align: center;
         flex: 1;
         min-width: 120px;
-        border: 1px solid var(--block-border-color, #E0E0E0);
+        border: 1px solid var(--border-color);
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         transition: transform 0.2s ease;
     }
+    
     .stat-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
+    
     .stat-value {
         font-size: 1.8rem;
         font-weight: 700;
         margin: 0.5rem 0;
-        color: var(--text-color) !important;
+        color: var(--text-primary);
     }
     .stat-label {
-        color: var(--text-color) !important;
+        color: var(--text-secondary);
         font-size: 0.9rem;
         font-weight: 500;
     }
-    .difficulty-easy { color: #34A853 !important; font-weight: 700; }
-    .difficulty-medium { color: #FFA116 !important; font-weight: 700; }
-    .difficulty-hard { color: #EF4743 !important; font-weight: 700; }
-    .stMarkdown, .stText, .welcome-message {
-        color: var(--text-color) !important;
+    
+    /* Difficulty colors */
+    .difficulty-easy { color: var(--leetcode-green) !important; font-weight: 700; }
+    .difficulty-medium { color: var(--leetcode-orange) !important; font-weight: 700; }
+    .difficulty-hard { color: var(--leetcode-red) !important; font-weight: 700; }
+    
+    /* Text colors */
+    .stMarkdown, .stText {
+        color: var(--text-primary) !important;
     }
+    
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Button styling */
     .stButton > button {
-        background-color: #FFA116 !important;
-        color: #fff !important;
+        background-color: var(--leetcode-orange) !important;
+        color: white !important;
         border: none !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
         padding: 8px 16px !important;
         transition: all 0.3s ease !important;
     }
+    
     .stButton > button:hover {
         background-color: #e69115 !important;
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-    .stTextInput > div > div > input,
-    .stSelectbox > div > div > div {
-        background-color: var(--secondary-background-color) !important;
-        color: var(--text-color) !important;
-        border: 1px solid var(--block-border-color, #E0E0E0) !important;
+    
+    /* Input styling */
+    .stTextInput > div > div > input {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
         border-radius: 8px !important;
     }
-    .streamlit-expanderHeader,
+    
+    .stSelectbox > div > div > div {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+    
     .streamlit-expanderContent {
-        background-color: var(--secondary-background-color) !important;
-        color: var(--text-color) !important;
-        border: 1px solid var(--block-border-color, #E0E0E0) !important;
+        background-color: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
     }
+    
+    /* Progress bar */
     .stProgress > div > div > div {
-        background-color: #FFA116 !important;
+        background-color: var(--leetcode-orange) !important;
     }
+    
+    /* Welcome message */
     .welcome-message {
-        color: var(--text-color) !important;
+        color: var(--text-primary) !important;
         font-size: 1.2rem;
         margin-bottom: 1rem;
     }
+    
     .welcome-username {
-        color: #34A853 !important;
+        color: var(--leetcode-green) !important;
         font-weight: 600;
     }
+    
+    /* Login card */
     .login-card {
-        background: var(--secondary-background-color) !important;
-        color: var(--text-color) !important;
+        background: var(--bg-card);
         border-radius: 12px;
-        border: 1px solid var(--block-border-color, #E0E0E0);
+        border: 1px solid var(--border-color);
         padding: 2rem;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
+    
     .login-title {
         text-align: center;
-        color: #FFA116 !important;
+        color: var(--leetcode-orange);
         margin-bottom: 2rem;
         font-size: 1.5rem;
         font-weight: 600;
     }
+    
     /* Hide Streamlit elements */
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* Responsive design */
     @media (max-width: 768px) {
-        .header-title { font-size: 2rem; }
-        .stats-container { flex-direction: column; }
-        .stat-card { min-width: 100%; }
+        .header-title {
+            font-size: 2rem;
+        }
+        
+        .stats-container {
+            flex-direction: column;
+        }
+        
+        .stat-card {
+            min-width: 100%;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -545,7 +672,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("---")
 st.markdown(
     '<div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 1rem 0;">'
-    '🚀 Built with Streamlit  • 💻 Saralaufeyson • 📊 Team Dashboard'
+    '🚀 Built with Streamlit • 💻 LeetCode API • 📊 Team Dashboard'
     '</div>',
     unsafe_allow_html=True
 )
