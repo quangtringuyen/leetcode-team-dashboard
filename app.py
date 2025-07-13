@@ -495,7 +495,7 @@ with left_col:
             # Progress bar for problems solved
             max_problems = max(df['totalSolved'])
             progress = row.totalSolved / max_problems if max_problems > 0 else 0
-            st.progress(progress, text=f"🎯 {row.totalSolved} problems solved")
+            st.progress(progress, text=f"🎯 {row.totalSolved} Submissions")
             
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -514,7 +514,7 @@ with right_col:
                         <h2 style="margin:0; color: var(--text-primary);">{selected_data['name']}</h2>
                         <div style="display:flex; gap:10px; margin-top:8px; flex-wrap: wrap;">
                             <div class="rank-badge">🏅 Rank: {selected_data['ranking']}</div>
-                            <div class="solved-badge">✅ Solved: {selected_data['totalSolved']}</div>
+                            <div class="solved-badge">✅ Total Submissions: {selected_data['totalSolved']}</div>
                         </div>
                     </div>
                 </div>
@@ -538,7 +538,7 @@ with right_col:
         with col1:
             st.markdown(f"""
                 <div class="stat-card">
-                    <div class="stat-label">Total Solved</div>
+                    <div class="stat-label">Total Submissions</div>
                     <div class="stat-value">{selected_data['totalSolved']}</div>
                 </div>
             """, unsafe_allow_html=True)
