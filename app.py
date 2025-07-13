@@ -545,7 +545,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("---")
 st.markdown(
     '<div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 1rem 0;">'
-    '🚀 Built with Streamlit • 💻 LeetCode API • 📊 Team Dashboard'
+    '🚀 Built with Streamlit  • 💻 Saralaufeyson • 📊 Team Dashboard'
     '</div>',
     unsafe_allow_html=True
 )
