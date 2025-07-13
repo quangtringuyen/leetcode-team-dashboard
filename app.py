@@ -294,6 +294,12 @@ if st.session_state.user is None:
 
 user = st.session_state.user
 
+# --- Welcome Message ---
+st.markdown(
+    f"<h3 style='color:#FFA116;'>👋 Welcome, <span style='color:#34A853;'>{user}</span>!</h3>",
+    unsafe_allow_html=True
+)
+
 # --- Logout Button (Top Right) ---
 top_cols = st.columns([8, 1])
 with top_cols[1]:
