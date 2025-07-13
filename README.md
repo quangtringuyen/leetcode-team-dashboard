@@ -60,7 +60,7 @@ Deployed at:
 - For production, use HTTPS and consider a real database for better security.
 
 ## 👩‍💻 Developed By
-
+Its a small scale project do not use it for huge teamsizes
 @saralaufeyson
 
 ## 📄 License
