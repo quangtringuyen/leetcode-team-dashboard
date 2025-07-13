@@ -46,145 +46,153 @@ def fetch_all_data(members):
 st.set_page_config(
     layout="wide",
     page_title="LeetCode Team Dashboard",
-    page_icon=":bar_chart:"
+    page_icon="📊"
 )
 
-# --- LeetCode Dark Theme CSS ---
+# Dynamic theme-aware CSS
 st.markdown("""
     <style>
+    /* CSS Variables for both themes */
     :root {
-        --leetcode-dark: #121212;
-        --leetcode-darker: #0A0A0A;
         --leetcode-orange: #FFA116;
         --leetcode-green: #34A853;
         --leetcode-red: #EF4743;
         --leetcode-blue: #1E88E5;
-        --leetcode-text: #E0E0E0;
-        --leetcode-text-light: #FFFFFF;
-        --leetcode-card: #1E1E1E;
-        --leetcode-card-border: #333333;
     }
     
-    body {
-        background-color: var(--leetcode-dark);
-        color: var(--leetcode-text);
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Dark theme variables */
+    [data-theme="dark"] {
+        --bg-primary: #0E1117;
+        --bg-secondary: #262730;
+        --bg-card: #1E1E1E;
+        --text-primary: #FAFAFA;
+        --text-secondary: #A0A0A0;
+        --border-color: #333333;
+        --hover-bg: #2A2A2A;
     }
     
+    /* Light theme variables */
+    [data-theme="light"] {
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F0F2F6;
+        --bg-card: #FFFFFF;
+        --text-primary: #262730;
+        --text-secondary: #6C757D;
+        --border-color: #E0E0E0;
+        --hover-bg: #F8F9FA;
+    }
+    
+    /* Auto-detect theme based on Streamlit's theme */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-primary: #0E1117;
+            --bg-secondary: #262730;
+            --bg-card: #1E1E1E;
+            --text-primary: #FAFAFA;
+            --text-secondary: #A0A0A0;
+            --border-color: #333333;
+            --hover-bg: #2A2A2A;
+        }
+    }
+    
+    @media (prefers-color-scheme: light) {
+        :root {
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F0F2F6;
+            --bg-card: #FFFFFF;
+            --text-primary: #262730;
+            --text-secondary: #6C757D;
+            --border-color: #E0E0E0;
+            --hover-bg: #F8F9FA;
+        }
+    }
+    
+    /* Override Streamlit's default styles */
     .stApp {
-        background: var(--leetcode-dark);
+        background-color: var(--bg-primary) !important;
     }
     
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* Header styling */
     .header-title {
-        color: var(--leetcode-orange);
+        color: var(--leetcode-orange) !important;
         font-weight: 700;
         font-size: 2.5rem;
         padding-bottom: 0.5rem;
         border-bottom: 3px solid var(--leetcode-orange);
         margin-bottom: 1.5rem;
+        text-align: center;
     }
     
-    .leetcode-btn {
-        background-color: var(--leetcode-orange) !important;
-        color: var(--leetcode-text-light) !important;
-        border: none !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        padding: 8px 16px !important;
-        transition: all 0.3s !important;
-    }
-    
-    .leetcode-btn:hover {
-        background-color: #e69115 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    
+    /* Card styling */
     .leetcode-card {
-        background: var(--leetcode-card);
+        background: var(--bg-card) !important;
         border-radius: 12px;
-        border: 1px solid var(--leetcode-card-border);
+        border: 1px solid var(--border-color);
         padding: 1.5rem;
         margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
+    /* Profile header */
     .profile-header {
-        background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
         border-radius: 12px;
         padding: 1.5rem;
-        color: var(--leetcode-text-light);
+        color: var(--text-primary);
         margin-bottom: 1.5rem;
-        border: 1px solid var(--leetcode-card-border);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     
+    /* Badges */
     .rank-badge {
         background: var(--leetcode-orange);
-        color: var(--leetcode-text-light);
+        color: white;
         border-radius: 20px;
         padding: 4px 12px;
         font-weight: 600;
         display: inline-block;
+        font-size: 0.9rem;
     }
     
     .solved-badge {
         background: var(--leetcode-green);
-        color: var(--leetcode-text-light);
+        color: white;
         border-radius: 20px;
         padding: 4px 12px;
         font-weight: 600;
         display: inline-block;
+        font-size: 0.9rem;
     }
     
-    .leetcode-tag {
-        background: #2A3F54;
-        color: var(--leetcode-blue);
-        border-radius: 4px;
-        padding: 2px 8px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        display: inline-block;
-        margin-right: 6px;
-        margin-bottom: 6px;
-    }
-    
-    .difficulty-easy { color: var(--leetcode-green); font-weight: 700; }
-    .difficulty-medium { color: var(--leetcode-orange); font-weight: 700; }
-    .difficulty-hard { color: var(--leetcode-red); font-weight: 700; }
-    
-    .logout-btn {
-        background: transparent !important;
-        color: var(--leetcode-orange) !important;
-        border: 2px solid var(--leetcode-orange) !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        padding: 6px 12px !important;
-        transition: all 0.3s !important;
-    }
-    
-    .logout-btn:hover {
-        background: rgba(255, 161, 22, 0.1) !important;
-        transform: translateY(-2px);
-    }
-    
+    /* Leaderboard items */
     .leaderboard-item {
-        transition: all 0.3s;
+        transition: all 0.3s ease;
         border-radius: 8px;
-        padding: 10px;
+        padding: 12px;
         margin-bottom: 8px;
-        background: var(--leetcode-card);
-        border: 1px solid var(--leetcode-card-border);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        cursor: pointer;
     }
     
     .leaderboard-item:hover {
-        background: #2A2A2A;
+        background: var(--hover-bg);
         transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
     
     .leaderboard-item.selected {
         background: rgba(255, 161, 22, 0.15);
-        border-left: 3px solid var(--leetcode-orange);
+        border-left: 4px solid var(--leetcode-orange);
     }
     
+    /* Stats cards */
     .stats-container {
         display: flex;
         justify-content: space-between;
@@ -194,63 +202,145 @@ st.markdown("""
     }
     
     .stat-card {
-        background: #252525;
+        background: var(--bg-card);
         border-radius: 10px;
-        padding: 1rem;
+        padding: 1.2rem;
         text-align: center;
         flex: 1;
         min-width: 120px;
-        border: 1px solid var(--leetcode-card-border);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     
     .stat-value {
         font-size: 1.8rem;
         font-weight: 700;
         margin: 0.5rem 0;
-        color: var(--leetcode-text-light);
+        color: var(--text-primary);
     }
     
     .stat-label {
-        color: #A0A0A0;
+        color: var(--text-secondary);
         font-size: 0.9rem;
+        font-weight: 500;
     }
     
-    /* Override Streamlit components */
-    .stTextInput>div>div>input {
-        background: #252525 !important;
-        color: var(--leetcode-text) !important;
-        border: 1px solid #333 !important;
+    /* Difficulty colors */
+    .difficulty-easy { color: var(--leetcode-green) !important; font-weight: 700; }
+    .difficulty-medium { color: var(--leetcode-orange) !important; font-weight: 700; }
+    .difficulty-hard { color: var(--leetcode-red) !important; font-weight: 700; }
+    
+    /* Text colors */
+    .stMarkdown, .stText {
+        color: var(--text-primary) !important;
     }
     
-    .stSelectbox>div>div>div>div {
-        background: #252525 !important;
-        color: var(--leetcode-text) !important;
-        border: 1px solid #333 !important;
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+        color: var(--text-primary) !important;
     }
     
-    .stExpander {
-        background: var(--leetcode-card) !important;
-        border: 1px solid var(--leetcode-card-border) !important;
-    }
-    
-    .stExpander label {
-        color: var(--leetcode-text) !important;
+    /* Button styling */
+    .stButton > button {
+        background-color: var(--leetcode-orange) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
+        padding: 8px 16px !important;
+        transition: all 0.3s ease !important;
     }
     
-    .stMarkdown, .stSubheader, .stText, .stAlert {
-        color: var(--leetcode-text) !important;
+    .stButton > button:hover {
+        background-color: #e69115 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     
-    /* Charts */
-    .stProgress>div>div>div {
+    /* Input styling */
+    .stTextInput > div > div > input {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+    }
+    
+    .stSelectbox > div > div > div {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+    
+    .streamlit-expanderContent {
+        background-color: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div > div {
         background-color: var(--leetcode-orange) !important;
     }
     
-    /* Hide footer and menu */
+    /* Welcome message */
+    .welcome-message {
+        color: var(--text-primary) !important;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .welcome-username {
+        color: var(--leetcode-green) !important;
+        font-weight: 600;
+    }
+    
+    /* Login card */
+    .login-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        padding: 2rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .login-title {
+        text-align: center;
+        color: var(--leetcode-orange);
+        margin-bottom: 2rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    /* Hide Streamlit elements */
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .header-title {
+            font-size: 2rem;
+        }
+        
+        .stats-container {
+            flex-direction: column;
+        }
+        
+        .stat-card {
+            min-width: 100%;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -263,47 +353,56 @@ if "user" not in st.session_state:
 
 if st.session_state.user is None:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown('<h2 style="text-align:center;color:#FFA116;margin-bottom:2rem;">Login or Register</h2>', unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        with st.container():
-            st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            btn_col1, btn_col2 = st.columns([1, 1])
-            login_clicked = btn_col1.button("Login", key="login_btn")
-            register_clicked = btn_col2.button("Register", key="register_btn")
-            
-            if login_clicked:
+        st.markdown('<div class="login-card">', unsafe_allow_html=True)
+        st.markdown('<div class="login-title">🔐 Login or Register</div>', unsafe_allow_html=True)
+        
+        username = st.text_input("Username", placeholder="Enter your username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        
+        btn_col1, btn_col2 = st.columns([1, 1])
+        login_clicked = btn_col1.button("🚀 Login", key="login_btn", use_container_width=True)
+        register_clicked = btn_col2.button("📝 Register", key="register_btn", use_container_width=True)
+        
+        if login_clicked:
+            if username and password:
                 if login(username, password):
                     st.session_state.user = username
-                    st.success("Logged in successfully!")
+                    st.success("✅ Logged in successfully!")
                     st.rerun()
                 else:
-                    st.error("Invalid credentials.")
-                    
-            if register_clicked:
+                    st.error("❌ Invalid credentials.")
+            else:
+                st.warning("⚠️ Please enter both username and password.")
+                
+        if register_clicked:
+            if username and password:
                 if register(username, password):
                     st.session_state.user = username
-                    st.success("Registered and logged in!")
+                    st.success("✅ Registered and logged in!")
                     st.rerun()
                 else:
-                    st.error("Username already exists.")
-            st.markdown('</div>', unsafe_allow_html=True)
+                    st.error("❌ Username already exists.")
+            else:
+                st.warning("⚠️ Please enter both username and password.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 user = st.session_state.user
 
 # --- Welcome Message ---
 st.markdown(
-    f"<h3 style='color:#FFA116;'>👋 Welcome, <span style='color:#34A853;'>{user}</span>!</h3>",
+    f'<div class="welcome-message">👋 Welcome, <span class="welcome-username">{user}</span>!</div>',
     unsafe_allow_html=True
 )
 
 # --- Logout Button (Top Right) ---
 top_cols = st.columns([8, 1])
 with top_cols[1]:
-    if st.button("Logout", key="logout_btn"):
+    if st.button("🚪 Logout", key="logout_btn"):
         st.session_state.user = None
         st.session_state.selected_user = None
         st.rerun()
@@ -311,7 +410,7 @@ with top_cols[1]:
 # Load member list for current user/team
 members = load_members(user)
 if not members:
-    st.warning("No members found for your team.")
+    st.warning("⚠️ No members found for your team.")
 
 # ➕➖ Add / Remove Members
 with st.expander("📝 Manage Team Members", expanded=False):
@@ -320,22 +419,24 @@ with st.expander("📝 Manage Team Members", expanded=False):
     with col1:
         st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
         st.markdown("### ➕ Add Member")
-        new_name = st.text_input("Full Name")
-        new_username = st.text_input("LeetCode Username")
+        new_name = st.text_input("Full Name", placeholder="Enter member's full name")
+        new_username = st.text_input("LeetCode Username", placeholder="Enter LeetCode username")
         
-        if st.button("Add Member", key="add_member_btn"):
+        if st.button("➕ Add Member", key="add_member_btn", use_container_width=True):
             if not new_name or not new_username:
-                st.warning("Please enter both name and username")
+                st.warning("⚠️ Please enter both name and username")
             elif any(m["username"] == new_username for m in members):
-                st.warning("Member already exists.")
+                st.warning("⚠️ Member already exists.")
             else:
-                user_data = fetch_user_data(new_username)
-                if user_data:
-                    members.append({"name": new_name, "username": new_username})
-                    save_members(user, members)
-                    st.success(f"Member '{new_name}' added successfully!")
-                else:
-                    st.error("User not found on LeetCode.")
+                with st.spinner("🔍 Verifying LeetCode user..."):
+                    user_data = fetch_user_data(new_username)
+                    if user_data:
+                        members.append({"name": new_name, "username": new_username})
+                        save_members(user, members)
+                        st.success(f"✅ Member '{new_name}' added successfully!")
+                        st.rerun()
+                    else:
+                        st.error("❌ User not found on LeetCode.")
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
@@ -344,13 +445,14 @@ with st.expander("📝 Manage Team Members", expanded=False):
         name_to_username = {m["name"]: m["username"] for m in members}
         if name_to_username:
             selected_name = st.selectbox("Select a member to remove", list(name_to_username.keys()))
-            if st.button("Remove Member", key="remove_member_btn"):
+            if st.button("🗑️ Remove Member", key="remove_member_btn", use_container_width=True):
                 selected_username = name_to_username[selected_name]
                 members = [m for m in members if m["username"] != selected_username]
                 save_members(user, members)
-                st.success(f"Member '{selected_name}' removed successfully!")
+                st.success(f"✅ Member '{selected_name}' removed successfully!")
+                st.rerun()
         else:
-            st.info("No members to remove.")
+            st.info("ℹ️ No members to remove.")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # Stop if no members
@@ -358,11 +460,11 @@ if not members:
     st.stop()
 
 # Fetch and process team data
-with st.spinner("Fetching team data from LeetCode..."):
+with st.spinner("🔄 Fetching team data from LeetCode..."):
     data = fetch_all_data(members)
     
 if not data:
-    st.error("Failed to fetch data for team members")
+    st.error("❌ Failed to fetch data for team members")
     st.stop()
     
 df = pd.DataFrame(data)
@@ -397,7 +499,7 @@ with left_col:
             # Progress bar for problems solved
             max_problems = max(df['totalSolved'])
             progress = row.totalSolved / max_problems if max_problems > 0 else 0
-            st.progress(progress, text=f"{row.totalSolved} problems solved")
+            st.progress(progress, text=f"🎯 {row.totalSolved} problems solved")
             
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -411,12 +513,12 @@ with right_col:
         st.markdown(f"""
             <div class="profile-header">
                 <div style="display:flex; align-items:center; gap: 20px;">
-                    <img src="{selected_data['avatar']}" width="80" style="border-radius:50%;">
+                    <img src="{selected_data['avatar']}" width="80" style="border-radius:50%; border: 3px solid var(--leetcode-orange);">
                     <div>
-                        <h2 style="margin:0;">{selected_data['name']}</h2>
-                        <div style="display:flex; gap:10px; margin-top:8px;">
-                            <div class="rank-badge">Rank: {selected_data['ranking']}</div>
-                            <div class="solved-badge">Solved: {selected_data['totalSolved']}</div>
+                        <h2 style="margin:0; color: var(--text-primary);">{selected_data['name']}</h2>
+                        <div style="display:flex; gap:10px; margin-top:8px; flex-wrap: wrap;">
+                            <div class="rank-badge">🏅 Rank: {selected_data['ranking']}</div>
+                            <div class="solved-badge">✅ Solved: {selected_data['totalSolved']}</div>
                         </div>
                     </div>
                 </div>
@@ -438,18 +540,18 @@ with right_col:
         st.markdown("### 📊 Problems Solved")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown("""
+            st.markdown(f"""
                 <div class="stat-card">
                     <div class="stat-label">Total Solved</div>
-                    <div class="stat-value">{totalSolved}</div>
+                    <div class="stat-value">{selected_data['totalSolved']}</div>
                 </div>
-            """.format(totalSolved=selected_data['totalSolved']), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
         with col2:
             st.markdown(f"""
                 <div class="stat-card">
                     <div class="stat-label">Easy</div>
-                    <div class="stat-value" style="color:#34A853;">{easy_count}</div>
+                    <div class="stat-value" style="color: var(--leetcode-green);">{easy_count}</div>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -457,7 +559,7 @@ with right_col:
             st.markdown(f"""
                 <div class="stat-card">
                     <div class="stat-label">Medium</div>
-                    <div class="stat-value" style="color:#FFA116;">{medium_count}</div>
+                    <div class="stat-value" style="color: var(--leetcode-orange);">{medium_count}</div>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -465,7 +567,7 @@ with right_col:
             st.markdown(f"""
                 <div class="stat-card">
                     <div class="stat-label">Hard</div>
-                    <div class="stat-value" style="color:#EF4743;">{hard_count}</div>
+                    <div class="stat-value" style="color: var(--leetcode-red);">{hard_count}</div>
                 </div>
             """, unsafe_allow_html=True)
         
@@ -479,45 +581,52 @@ with right_col:
                 {'difficulty': 'Hard', 'count': hard_count}
             ]
             
-            # Create pie chart with LeetCode colors
-            fig = px.pie(
-                diff_data,
-                values='count',
-                names='difficulty',
-                color='difficulty',
-                color_discrete_map={
-                    'Easy': '#34A853',
-                    'Medium': '#FFA116',
-                    'Hard': '#EF4743'
-                },
-                hole=0.4,
-            )
+            # Filter out zero counts
+            diff_data = [d for d in diff_data if d['count'] > 0]
             
-            fig.update_layout(
-                showlegend=True,
-                margin=dict(l=20, r=20, t=30, b=0),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=-0.2,
-                    xanchor="center",
-                    x=0.5
-                ),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#E0E0E0')
-            )
-            
-            fig.update_traces(
-                textposition='inside',
-                textinfo='percent+label',
-                hovertemplate="<b>%{label}</b><br>Solved: %{value}",
-                textfont=dict(color='#FFFFFF')
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+            if diff_data:
+                # Create pie chart with LeetCode colors
+                fig = px.pie(
+                    diff_data,
+                    values='count',
+                    names='difficulty',
+                    color='difficulty',
+                    color_discrete_map={
+                        'Easy': '#34A853',
+                        'Medium': '#FFA116',
+                        'Hard': '#EF4743'
+                    },
+                    hole=0.4,
+                )
+                
+                fig.update_layout(
+                    showlegend=True,
+                    margin=dict(l=20, r=20, t=30, b=0),
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.2,
+                        xanchor="center",
+                        x=0.5,
+                        font=dict(size=12)
+                    ),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(size=12)
+                )
+                
+                fig.update_traces(
+                    textposition='inside',
+                    textinfo='percent+label',
+                    hovertemplate="<b>%{label}</b><br>Solved: %{value}<br>Percentage: %{percent}",
+                    textfont=dict(color='#FFFFFF', size=11)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("📊 No difficulty distribution data available.")
         else:
-            st.info("No problems solved yet!")
+            st.info("🎯 No problems solved yet!")
 
 # Bottom Section
 st.divider()
@@ -532,7 +641,8 @@ fig = px.bar(
     color='totalSolved',
     color_continuous_scale=[(0, "#FFA116"), (1, "#34A853")],
     text='totalSolved',
-    labels={'name': 'Member', 'totalSolved': 'Problems Solved'}
+    labels={'name': 'Team Members', 'totalSolved': 'Problems Solved'},
+    title="Team Members Performance Comparison"
 )
 
 fig.update_layout(
@@ -540,12 +650,15 @@ fig.update_layout(
     yaxis_title="Problems Solved",
     plot_bgcolor='rgba(0,0,0,0)',
     paper_bgcolor='rgba(0,0,0,0)',
-    margin=dict(l=20, r=20, t=30, b=20),
-    xaxis=dict(tickangle=-45, color='#E0E0E0'),
-    yaxis=dict(color='#E0E0E0'),
+    margin=dict(l=20, r=20, t=50, b=20),
+    xaxis=dict(tickangle=-45),
     showlegend=False,
     height=400,
-    font=dict(color='#E0E0E0')
+    title=dict(
+        font=dict(size=16),
+        x=0.5,
+        xanchor='center'
+    )
 )
 
 fig.update_traces(
@@ -553,8 +666,17 @@ fig.update_traces(
     textposition='outside',
     marker_line_color='rgba(0,0,0,0.1)',
     marker_line_width=1,
-    textfont=dict(color='#FFFFFF')
+    textfont=dict(size=12, color='#FFFFFF')
 )
 
 st.plotly_chart(fig, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
+
+# Footer
+st.markdown("---")
+st.markdown(
+    '<div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 1rem 0;">'
+    '🚀 Built with Streamlit • 💻 LeetCode API • 📊 Team Dashboard'
+    '</div>',
+    unsafe_allow_html=True
+)
