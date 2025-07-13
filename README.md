@@ -68,5 +68,7 @@ Its a small scale project do not use it for huge teamsizes
 MIT License
 
 ---
+## Open For collaboration 
+contatct saralaufeysonlaya08@gmail.com or view my github profile for more info 
 
 **Built with [Streamlit](https://streamlit.io/) and the LeetCode API.**
