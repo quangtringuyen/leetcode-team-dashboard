@@ -33,7 +33,7 @@ def fetch_all_data(members):
 
 # Streamlit page setup
 st.set_page_config(layout="wide")
-st.title("🏆 LeetCode Team Dashboard")
+st.title("👨🏼‍💻 LeetCode Stats of team")
 
 # Load member list
 members = load_members()
