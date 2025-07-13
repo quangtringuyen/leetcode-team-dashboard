@@ -1,13 +1,46 @@
 [
-  { "name": "Rohith S D", "username": "Rohith0750" },
-  { "name": "gaurav kesh", "username": "gkrcoder" },
-  { "name": "Aditi Nayanar", "username": "ad_nayanar" },
-  { "name": "janani", "username": "Jan2309jr" },
-  { "name": "Kevin Immanuel M", "username": "kevinimmauel" },
-  { "name": "Priyanshu Singh", "username": "priyanshu5ingh" },
-  { "name": "Pranav Tiwari", "username": "prrrranv" },
-  { "name": "Shankramma Bhagashetti", "username": "Shankramma_Bhagashetti" },
-  { "name": "Ambika M", "username": "ambikam" },
-  {"name": "Layasree","username":"lazyShika"},
-
-  { "name": "Syeda qurrath", "username": "syeda_qurrath" }]
+    {
+        "name": "Rohith S D",
+        "username": "Rohith0750"
+    },
+    {
+        "name": "gaurav kesh",
+        "username": "gkrcoder"
+    },
+    {
+        "name": "Aditi Nayanar",
+        "username": "ad_nayanar"
+    },
+    {
+        "name": "janani",
+        "username": "Jan2309jr"
+    },
+    {
+        "name": "Kevin Immanuel M",
+        "username": "kevinimmauel"
+    },
+    {
+        "name": "Priyanshu Singh",
+        "username": "priyanshu5ingh"
+    },
+    {
+        "name": "Pranav Tiwari",
+        "username": "prrrranv"
+    },
+    {
+        "name": "Shankramma Bhagashetti",
+        "username": "Shankramma_Bhagashetti"
+    },
+    {
+        "name": "Ambika M",
+        "username": "ambikam"
+    },
+    {
+        "name": "Layasree",
+        "username": "lazyShika"
+    },
+    {
+        "name": "Syeda qurrath",
+        "username": "syeda_qurrath"
+    }
+]
