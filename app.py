@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import plotly.express as px
 from utils.auth import login, register, get_current_user
+import time  # <-- added
 
 # Constants
 DATA_PATH = "data/members.json"
@@ -18,6 +19,8 @@ def load_all_members():
 
 # Save all teams/members data
 def save_all_members(all_members):
+    # ensure folder exists
+    os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
     with open(DATA_PATH, "w") as f:
         json.dump(all_members, f, indent=4)
 
@@ -31,9 +34,17 @@ def save_members(user, members):
     all_members[user] = members
     save_all_members(all_members)
 
+# Cache-busting helper
+def bump_cache_buster():
+    st.session_state.cache_buster = time.time()
+
 # Fetch all members data
-@st.cache_data
-def fetch_all_data(members):
+@st.cache_data(show_spinner=False)
+def fetch_all_data(members, cache_key: float = 0.0):
+    """
+    cache_key is unused in logic, but included solely to control Streamlit caching.
+    Change cache_key to force a refetch.
+    """
     data = []
     for member in members:
         user_data = fetch_user_data(member["username"])
@@ -108,14 +119,8 @@ st.markdown("""
     }
     
     /* Override Streamlit's default styles */
-    .stApp {
-        background-color: var(--bg-primary) !important;
-    }
-    
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
+    .stApp { background-color: var(--bg-primary) !important; }
+    .main .block-container { padding-top: 2rem; padding-bottom: 2rem; }
     
     /* Header styling */
     .header-title {
@@ -179,7 +184,6 @@ st.markdown("""
         border: 1px solid var(--border-color);
         cursor: pointer;
     }
-    
     .leaderboard-item:hover {
         background: var(--hover-bg);
         transform: translateX(5px);
@@ -209,23 +213,9 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         transition: transform 0.2s ease;
     }
-    
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-        color: var(--text-primary);
-    }
-    .stat-label {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .stat-value { font-size: 1.8rem; font-weight: 700; margin: 0.5rem 0; color: var(--text-primary); }
+    .stat-label { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
     
     /* Difficulty colors */
     .difficulty-easy { color: var(--leetcode-green) !important; font-weight: 700; }
@@ -233,10 +223,7 @@ st.markdown("""
     .difficulty-hard { color: var(--leetcode-red) !important; font-weight: 700; }
     
     /* Text colors */
-    .stMarkdown, .stText {
-        color: var(--text-primary) !important;
-    }
-    
+    .stMarkdown, .stText { color: var(--text-primary) !important; }
     .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
         color: var(--text-primary) !important;
     }
@@ -251,7 +238,6 @@ st.markdown("""
         padding: 8px 16px !important;
         transition: all 0.3s ease !important;
     }
-    
     .stButton > button:hover {
         background-color: #e69115 !important;
         transform: translateY(-2px);
@@ -265,7 +251,6 @@ st.markdown("""
         border: 1px solid var(--border-color) !important;
         border-radius: 8px !important;
     }
-    
     .stSelectbox > div > div > div {
         background-color: var(--bg-card) !important;
         color: var(--text-primary) !important;
@@ -278,28 +263,17 @@ st.markdown("""
         color: var(--text-primary) !important;
         border: 1px solid var(--border-color) !important;
     }
-    
     .streamlit-expanderContent {
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border-color) !important;
     }
     
     /* Progress bar */
-    .stProgress > div > div > div {
-        background-color: var(--leetcode-orange) !important;
-    }
+    .stProgress > div > div > div { background-color: var(--leetcode-orange) !important; }
     
     /* Welcome message */
-    .welcome-message {
-        color: var(--text-primary) !important;
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .welcome-username {
-        color: var(--leetcode-green) !important;
-        font-weight: 600;
-    }
+    .welcome-message { color: var(--text-primary) !important; font-size: 1.2rem; margin-bottom: 1rem; }
+    .welcome-username { color: var(--leetcode-green) !important; font-weight: 600; }
     
     /* Login card */
     .login-card {
@@ -309,7 +283,6 @@ st.markdown("""
         padding: 2rem;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    
     .login-title {
         text-align: center;
         color: var(--leetcode-orange);
@@ -325,17 +298,9 @@ st.markdown("""
     
     /* Responsive design */
     @media (max-width: 768px) {
-        .header-title {
-            font-size: 2rem;
-        }
-        
-        .stats-container {
-            flex-direction: column;
-        }
-        
-        .stat-card {
-            min-width: 100%;
-        }
+        .header-title { font-size: 2rem; }
+        .stats-container { flex-direction: column; }
+        .stat-card { min-width: 100%; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -346,6 +311,8 @@ st.markdown('<div class="header-title">👨🏼‍💻 LeetCode Team Dashboard</
 # --- Authentication Section ---
 if "user" not in st.session_state:
     st.session_state.user = None
+if "cache_buster" not in st.session_state:
+    st.session_state.cache_buster = 0.0
 
 if st.session_state.user is None:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -366,6 +333,7 @@ if st.session_state.user is None:
             if username and password:
                 if login(username, password):
                     st.session_state.user = username
+                    bump_cache_buster()  # ensure fresh fetch after login
                     st.success("✅ Logged in successfully!")
                     st.rerun()
                 else:
@@ -377,6 +345,7 @@ if st.session_state.user is None:
             if username and password:
                 if register(username, password):
                     st.session_state.user = username
+                    bump_cache_buster()  # ensure fresh fetch after register
                     st.success("✅ Registered and logged in!")
                     st.rerun()
                 else:
@@ -395,9 +364,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- Logout Button (Top Right) ---
-top_cols = st.columns([8, 1])
+# --- Top Right Controls: Refresh & Logout ---
+top_cols = st.columns([7, 1, 1])
 with top_cols[1]:
+    if st.button("🔄 Refresh data", key="refresh_btn"):
+        bump_cache_buster()
+        st.toast("Refreshing team data…")
+        st.rerun()
+with top_cols[2]:
     if st.button("🚪 Logout", key="logout_btn"):
         st.session_state.user = None
         st.session_state.selected_user = None
@@ -429,6 +403,7 @@ with st.expander("📝 Manage Team Members", expanded=False):
                     if user_data:
                         members.append({"name": new_name, "username": new_username})
                         save_members(user, members)
+                        bump_cache_buster()  # ensure fetch after team change
                         st.success(f"✅ Member '{new_name}' added successfully!")
                         st.rerun()
                     else:
@@ -445,6 +420,7 @@ with st.expander("📝 Manage Team Members", expanded=False):
                 selected_username = name_to_username[selected_name]
                 members = [m for m in members if m["username"] != selected_username]
                 save_members(user, members)
+                bump_cache_buster()  # ensure fetch after team change
                 st.success(f"✅ Member '{selected_name}' removed successfully!")
                 st.rerun()
         else:
@@ -457,8 +433,8 @@ if not members:
 
 # Fetch and process team data
 with st.spinner("🔄 Fetching team data from LeetCode..."):
-    data = fetch_all_data(members)
-    
+    data = fetch_all_data(members, cache_key=st.session_state.cache_buster)
+
 if not data:
     st.error("❌ Failed to fetch data for team members")
     st.stop()
