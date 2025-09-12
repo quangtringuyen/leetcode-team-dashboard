@@ -172,10 +172,6 @@ def fetch_all_data(members, cache_key: float = 0.0):
 # =========================================
 # LeetCode Calendar: Daily AC (Accepted) counts
 # =========================================
-# The profile heatmap (calendar) contains daily accepted submission counts
-# in a JSON string mapping unix-day timestamps -> counts.
-# There are small variations in schema names across time; we try both.
-
 CALENDAR_QUERY_A = """
 query userProfileCalendar($username: String!, $year: Int) {
   userProfileCalendar(username: $username, year: $year) {
@@ -210,37 +206,62 @@ def _calendar_request(payload):
     except requests.RequestException:
         return None
 
+# ---- REST fallback + GraphQL for reliability ----
 def fetch_user_submission_calendar(username: str, year: int | None = None) -> dict[date, int]:
     """
-    Returns {date: AC_count} for a given user (for the specified year or all available).
-    If year is None, tries to query without the year param (server returns current/whole calendar).
+    Returns {date: AC_count} for a given user.
+    Tries GraphQL (two schemas), then falls back to public REST endpoint.
     """
     if not username:
         return {}
 
-    # Try schema A
-    payload = {"query": CALENDAR_QUERY_A, "variables": {"username": username}}
-    if year is not None:
-        payload["variables"]["year"] = year
-    data = _calendar_request(payload)
-
-    calendar_str = None
-    if data and data.get("data", {}).get("userProfileCalendar", {}):
-        calendar_str = data["data"]["userProfileCalendar"].get("submissionCalendar")
-
-    # Fallback schema B
-    if not calendar_str:
-        payload_b = {"query": CALENDAR_QUERY_B, "variables": {"username": username}}
+    # 1) Try GraphQL (A then B)
+    def _graphql_try():
+        payload = {"query": CALENDAR_QUERY_A, "variables": {"username": username}}
         if year is not None:
-            payload_b["variables"]["year"] = year
-        data_b = _calendar_request(payload_b)
-        if data_b and data_b.get("data", {}).get("userCalendar", {}):
-            calendar_str = data_b["data"]["userCalendar"].get("submissionCalendar")
+            payload["variables"]["year"] = year
+        data = _calendar_request(payload)
+
+        calendar_str = None
+        if data and data.get("data", {}).get("userProfileCalendar", {}):
+            calendar_str = data["data"]["userProfileCalendar"].get("submissionCalendar")
+
+        if not calendar_str:
+            payload_b = {"query": CALENDAR_QUERY_B, "variables": {"username": username}}
+            if year is not None:
+                payload_b["variables"]["year"] = year
+            data_b = _calendar_request(payload_b)
+            if data_b and data_b.get("data", {}).get("userCalendar", {}):
+                calendar_str = data_b["data"]["userCalendar"].get("submissionCalendar")
+        return calendar_str
+
+    calendar_str = _graphql_try()
+
+    # 2) Fallback: public REST
+    if not calendar_str:
+        try:
+            url = f"https://leetcode.com/api/user-calendar/?username={username}"
+            if year is not None:
+                url += f"&year={year}"
+            r = requests.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0",
+                    "Referer": "https://leetcode.com",
+                    "Accept": "application/json",
+                },
+                timeout=12,
+            )
+            if r.status_code == 200:
+                js = r.json()
+                calendar_str = js.get("submission_calendar") or js.get("submissionCalendar")
+        except requests.RequestException:
+            pass
 
     if not calendar_str:
         return {}
 
-    # calendar_str is a JSON string mapping unix timestamps to counts
+    # Parse the JSON string mapping of unix timestamps -> counts
     try:
         raw_map = json.loads(calendar_str)
     except Exception:
@@ -250,7 +271,7 @@ def fetch_user_submission_calendar(username: str, year: int | None = None) -> di
     for ts_str, cnt in raw_map.items():
         try:
             ts = int(ts_str)
-            d = datetime.utcfromtimestamp(ts).date()  # UTC day boundary is fine for AC counts
+            d = datetime.utcfromtimestamp(ts).date()
             out[d] = int(cnt)
         except Exception:
             continue
@@ -357,7 +378,7 @@ st.markdown("""
 }
 
 .stApp { background-color: var(--bg-primary) !important; }
-.main .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+.main .block-container { padding-top: 1.2rem; padding-bottom: 2rem; }
 
 /* Header */
 .header-title {
@@ -620,7 +641,6 @@ if st.session_state.pop("force_snapshot", False):
 
 # Also fetch Daily AC calendars (for “Solved (AC)” time-series)
 usernames = [m["username"] for m in members]
-# If you want a specific year, pass it; None lets LeetCode decide (often current year)
 calendars_map = fetch_team_daily_ac_calendars(usernames, year=None)  # {username: {date: count}}
 
 # =========================================
@@ -636,22 +656,133 @@ df = pd.DataFrame(data)
 df["__rank_val"] = df["ranking"].apply(_rank_sort_value)
 df_sorted = df.sort_values(by=["__rank_val", "totalSolved"], ascending=[True, False]).drop(columns=["__rank_val"])
 
-# compute weekly delta (cumulative total change vs previous weekly snapshot)
-def compute_weekly_delta_map(owner: str) -> dict[str, int]:
-    hist = load_history().get(owner, {})
+# ---------- WoW helpers & robust computation ----------
+
+def _weekify_date(ts: pd.Timestamp) -> pd.Timestamp:
+    return ts.to_period("W-MON").start_time
+
+def _weekly_totals_from_daily_snaps(history_for_owner: dict) -> dict[str, pd.DataFrame]:
+    """
+    Per user, take DAILY cumulative snapshots and reduce to weekly cumulative
+    by selecting the LAST daily value in each ISO week.
+    Returns { username: DataFrame[week_start, Total] }.
+    """
     out = {}
-    for uname, snaps in hist.items():
-        # Only weekly entries
-        w = [s for s in snaps if s.get("week_start")]
-        if len(w) >= 2:
-            w_sorted = sorted(w, key=lambda x: x["week_start"])
-            delta = int(w_sorted[-1]["totalSolved"]) - int(w_sorted[-2]["totalSolved"])
-        else:
-            delta = 0
-        out[uname] = delta
+    for uname, snaps in history_for_owner.items():
+        rows = [s for s in snaps if s.get("date")]
+        if not rows:
+            continue
+        df_ = pd.DataFrame(rows)
+        if df_.empty:
+            continue
+        df_["date"] = pd.to_datetime(df_["date"], errors="coerce")
+        df_ = df_.dropna(subset=["date"])
+        if df_.empty:
+            continue
+        df_["week_start"] = df_["date"].apply(lambda d: _weekify_date(pd.Timestamp(d)))
+        df_ = df_.sort_values(["week_start", "date"])
+        weekly_last = df_.groupby("week_start", as_index=False).last()[["week_start", "totalSolved"]]
+        out[uname] = weekly_last.rename(columns={"totalSolved": "Total"})
     return out
 
-weekly_delta = compute_weekly_delta_map(user)
+def _weekly_totals_from_calendars(cal_map: dict[str, dict]) -> dict[str, pd.DataFrame]:
+    """
+    From calendar AC data (per-day accepted counts), build per-user weekly sums.
+    Returns { username: DataFrame[week_start, Total] } where 'Total' is weekly AC sum.
+    (Not cumulative; perfect fallback for a WoW delta.)
+    """
+    out = {}
+    for uname, daymap in cal_map.items():
+        if not daymap:
+            continue
+        rows = [{"date": pd.to_datetime(d), "ac": int(c)} for d, c in daymap.items()]
+        df_ = pd.DataFrame(rows)
+        if df_.empty:
+            continue
+        df_["week_start"] = df_["date"].apply(lambda d: _weekify_date(pd.Timestamp(d)))
+        w = df_.groupby("week_start", as_index=False)["ac"].sum().rename(columns={"ac": "Total"})
+        out[uname] = w
+    return out
+
+def compute_weekly_delta_map(owner: str, cal_map: dict[str, dict]) -> tuple[dict[str, int], pd.DataFrame]:
+    """
+    Compute WoW delta per user using the best available source, and return a per-user debug table:
+      1) Weekly snapshots (cumulative totalSolved)
+      2) Derived from DAILY snapshots (last value per week)
+      3) Calendar AC sums per week (non-cumulative)
+    Returns: (delta_map, debug_df)
+    """
+    hist_all = load_history()
+    hist_owner = hist_all.get(owner, {})
+
+    # Fallback precomputations
+    daily_derived = _weekly_totals_from_daily_snaps(hist_owner)
+    cal_weekly = _weekly_totals_from_calendars(cal_map)
+
+    def _delta_from_df(wdf: pd.DataFrame):
+        """
+        Returns (delta, last_two_pairs) where last_two_pairs = [(week1, val1), (week2, val2)]
+        """
+        if wdf is None or wdf.empty:
+            return None, []
+        wdf = wdf.dropna(subset=["week_start", "Total"]).copy()
+        if wdf.empty:
+            return None, []
+        wdf["week_start"] = pd.to_datetime(wdf["week_start"], errors="coerce")
+        wdf = wdf.dropna(subset=["week_start"]).sort_values("week_start")
+        if wdf["week_start"].nunique() < 2:
+            return None, []
+        last_two = wdf.drop_duplicates("week_start", keep="last").tail(2)
+        v1 = int(last_two.iloc[0]["Total"])
+        v2 = int(last_two.iloc[-1]["Total"])
+        return v2 - v1, [(last_two.iloc[0]["week_start"].date(), v1), (last_two.iloc[-1]["week_start"].date(), v2)]
+
+    delta_map: dict[str, int] = {}
+    debug_rows = []
+
+    all_usernames = set(hist_owner.keys()) | set(cal_map.keys())
+
+    for uname in all_usernames:
+        source = None
+        pair_vals = []
+
+        # 1) weekly snapshots (cumulative)
+        weekly_rows = [s for s in hist_owner.get(uname, []) if s.get("week_start")]
+        weekly_df = None
+        if weekly_rows:
+            weekly_df = pd.DataFrame(weekly_rows)[["week_start", "totalSolved"]].rename(columns={"totalSolved": "Total"})
+        delta, pair_vals = _delta_from_df(weekly_df)
+        if delta is not None:
+            source = "weekly_snapshots"
+        else:
+            # 2) derived from daily snapshots
+            delta, pair_vals = _delta_from_df(daily_derived.get(uname))
+            if delta is not None:
+                source = "derived_daily"
+            else:
+                # 3) calendar weekly sums (non-cumulative)
+                delta, pair_vals = _delta_from_df(cal_weekly.get(uname))
+                if delta is not None:
+                    source = "calendar_weekly"
+
+        delta_map[uname] = int(delta) if delta is not None else 0
+
+        if pair_vals:
+            (w1, v1), (w2, v2) = pair_vals
+        else:
+            w1 = w2 = v1 = v2 = None
+        debug_rows.append({
+            "username": uname, "source": source or "none",
+            "week1": w1, "value1": v1,
+            "week2": w2, "value2": v2,
+            "delta": delta_map[uname],
+        })
+
+    debug_df = pd.DataFrame(debug_rows).sort_values(["source", "username"])
+    return delta_map, debug_df
+
+# compute weekly delta (robust) + diagnostics
+weekly_delta, wow_debug_df = compute_weekly_delta_map(user, calendars_map)
 selected_user_un = st.session_state.get("selected_user", df_sorted.iloc[0]["username"])
 
 lc1, lc2 = st.columns([1.1, 1.9])
@@ -662,7 +793,6 @@ with lc1:
 
     max_total = max(df_sorted["totalSolved"]) if len(df_sorted) else 0
     for i, row in enumerate(df_sorted.itertuples(index=False), start=1):
-        # medal classes
         medal_class = ""
         if i == 1: medal_class = "gold"
         elif i == 2: medal_class = "silver"
@@ -672,18 +802,15 @@ with lc1:
         delta_val = weekly_delta.get(row.username, 0)
         delta_text = f"+{delta_val}" if delta_val > 0 else (f"{delta_val}" if delta_val < 0 else "±0")
 
-        # Card layout
         st.markdown('<div class="lb-card">', unsafe_allow_html=True)
         col_a, col_b, col_c = st.columns([0.2, 0.62, 0.18])
         with col_a:
             st.markdown(f'<div class="lb-rank {medal_class}">{i}</div>', unsafe_allow_html=True)
         with col_b:
-            # Name button selects the user
             if st.button(label=f"{row.name}", key=f"lb_btn_{row.username}", use_container_width=True):
                 st.session_state.selected_user = row.username
                 st.rerun()
             st.caption(f"Rank #{rank_label} • {row.username}")
-            # Progress bar
             progress = (row.totalSolved / max_total) if max_total > 0 else 0
             st.progress(progress, text=f"🎯 {row.totalSolved} total")
         with col_c:
@@ -692,6 +819,18 @@ with lc1:
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+# Diagnostics for WoW
+with st.expander("🛠 WoW Diagnostics (why is my WoW zero?)", expanded=False):
+    st.write("""
+    This table shows which data source was used per user to compute **Week-over-Week (WoW)**,
+    and the last two weekly values that were compared.
+    Sources (order): **weekly_snapshots** → **derived_daily** → **calendar_weekly** → none.
+    """)
+    if wow_debug_df is not None and not wow_debug_df.empty:
+        st.dataframe(wow_debug_df, use_container_width=True)
+    else:
+        st.info("No diagnostic data available yet.")
 
 # =========================================
 # Right column: Profile of selected user
@@ -760,12 +899,11 @@ with lc2:
             st.info("🎯 No problems solved yet!")
 
 # =========================================
-# 📅 Progress Over Time (Daily / Weekly)
+# 📅 Progress Over Time (Daily / Weekly) — includes Solved(AC)
 # =========================================
 st.divider()
 st.markdown("### 📅 Progress Over Time (Daily / Weekly)")
 
-# Build calendar-based (AC) time series for all members
 def calendars_to_df(cal_maps: dict[str, dict]) -> pd.DataFrame:
     rows = []
     for uname, daymap in cal_maps.items():
@@ -778,19 +916,18 @@ def calendars_to_df(cal_maps: dict[str, dict]) -> pd.DataFrame:
 
 cal_df = calendars_to_df(calendars_map)  # may be empty for users with no data
 
-# Also load historical cumulative snapshots for “Total/Easy/Medium/Hard” views
+# Load historical cumulative snapshots
 raw_hist = load_history()
 team_hist = raw_hist.get(user, {})
 
-# Flatten historical snapshots
 snap_rows = []
 for uname, snaps in team_hist.items():
     for s in snaps:
         snap_rows.append({
             "username": uname,
             "name": s.get("name", uname),
-            "date": s.get("date"),              # daily cumulative
-            "week_start": s.get("week_start"),  # weekly cumulative
+            "date": s.get("date"),
+            "week_start": s.get("week_start"),
             "Total": int(s.get("totalSolved", 0)),
             "Easy": int(s.get("Easy", 0)),
             "Medium": int(s.get("Medium", 0)),
@@ -810,37 +947,24 @@ ctrl_top = st.columns([2, 2, 5, 3])
 with ctrl_top[0]:
     granularity = st.radio("Granularity", ["Daily", "Weekly"], horizontal=True, index=0)
 with ctrl_top[1]:
-    # You can visualize either cumulative metrics or solved-per-period from calendar
     metric = st.selectbox("Metric", ["Solved (AC)", "Total", "Easy", "Medium", "Hard"], index=0)
 
-# Members selection based on known names (fall back to usernames from calendars)
-all_names = set(m.get("name", m["username"]) for m in members)
-if not all_names and not snap_df.empty:
-    all_names = set(snap_df["name"].dropna().unique().tolist())
-if not all_names and not cal_df.empty:
-    # no names stored, fallback to usernames
-    all_names = set(cal_df["username"].unique().tolist())
-
-all_names = sorted(all_names)
-with ctrl_top[3]:
-    selected_people = st.multiselect("Members", options=all_names, default=all_names)
-
-# Helper to map name->username and username->name
+# Member mappings
 name_to_username = {m.get("name", m["username"]): m["username"] for m in members}
 username_to_name = {v: k for k, v in name_to_username.items()}
 
-# DAILY
+all_names = sorted(set(m.get("name", m["username"]) for m in members))
+with ctrl_top[3]:
+    selected_people = st.multiselect("Members", options=all_names, default=all_names)
+
+# DAILY view
 if granularity == "Daily":
-    # Date range defaults based on availability
-    # For "Solved (AC)": use cal_df; for cumulative metrics: use snap_df with 'date'
     if metric == "Solved (AC)":
         gdf = cal_df.copy()
         if gdf.empty:
             st.info("No daily AC calendar data returned yet. It will accumulate on subsequent fetches.")
         else:
-            # Attach display name
             gdf["name"] = gdf["username"].map(username_to_name).fillna(gdf["username"])
-            # Filter members
             gdf = gdf[gdf["name"].isin(selected_people)]
             if gdf.empty:
                 st.info("No data for the selected members.")
@@ -882,15 +1006,12 @@ if granularity == "Daily":
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # Day-over-Day delta on AC is identical to the value (already per day),
-                    # but we can still show a table for transparency.
                     show_tbl = st.checkbox("Show daily table", value=False)
                     if show_tbl:
                         tbl = fdf.sort_values(["name", "date"])[["date", "name", "SolvedAC"]]
                         tbl["date"] = tbl["date"].dt.date
                         st.dataframe(tbl, use_container_width=True)
     else:
-        # Cumulative daily totals from snapshots
         gdf = snap_df.dropna(subset=["date"]).copy()
         if gdf.empty:
             st.info("No daily cumulative snapshots yet.")
@@ -936,10 +1057,9 @@ if granularity == "Daily":
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-# WEEKLY
+# WEEKLY view
 else:
     if metric == "Solved (AC)":
-        # Aggregate calendar daily AC into ISO weeks
         if cal_df.empty:
             st.info("No calendar data to aggregate yet.")
         else:
@@ -990,7 +1110,6 @@ else:
                         tbl["week_start"] = tbl["week_start"].dt.date
                         st.dataframe(tbl, use_container_width=True)
     else:
-        # Weekly cumulative from snapshots
         gdf = snap_df.dropna(subset=["week_start"]).copy()
         if gdf.empty:
             st.info("No weekly cumulative snapshots yet.")
@@ -1037,7 +1156,92 @@ else:
                     st.plotly_chart(fig, use_container_width=True)
 
 # =========================================
-# 📈 Team Performance (still helpful)
+# ✅ Weekly Progress (Cumulative) — per your spec
+# =========================================
+st.divider()
+st.markdown("### ✅ Weekly Progress (Cumulative)")
+
+# Build a weekly-only frame from snapshots
+weekly_rows = []
+for uname, snaps in team_hist.items():
+    for s in snaps:
+        if s.get("week_start"):
+            weekly_rows.append({
+                "username": uname,
+                "name": s.get("name", uname),
+                "week_start": s.get("week_start"),
+                "Total": int(s.get("totalSolved", 0)),
+                "Easy": int(s.get("Easy", 0)),
+                "Medium": int(s.get("Medium", 0)),
+                "Hard": int(s.get("Hard", 0)),
+            })
+
+weekly_df = pd.DataFrame(weekly_rows)
+if weekly_df.empty:
+    st.info("No weekly snapshots yet. Use **Refresh data** or **Record snapshot now** to create the first one.")
+else:
+    weekly_df["week_start"] = pd.to_datetime(weekly_df["week_start"], errors="coerce")
+    weekly_df.sort_values(["name", "week_start"], inplace=True)
+
+    wc1, wc2, wc3 = st.columns([2, 2, 3])
+    with wc1:
+        wk_metric = st.selectbox("Metric", ["Total", "Easy", "Medium", "Hard"], index=0, key="wk_metric")
+    with wc2:
+        this_year = date.today().year
+        proposed_start = iso_week_start(date(this_year, 9, 1))
+        min_date = weekly_df["week_start"].min().date()
+        max_date = weekly_df["week_start"].max().date()
+
+        def clamp(d: date, lo: date, hi: date) -> date:
+            if d < lo: return lo
+            if d > hi: return hi
+            return d
+        default_start = clamp(proposed_start, min_date, max_date)
+
+        wk_start = st.date_input(
+            "From week starting",
+            value=default_start,
+            min_value=min_date,
+            max_value=max_date,
+            key="wk_start_date"
+        )
+    with wc3:
+        people = sorted(weekly_df["name"].unique().tolist())
+        wk_people = st.multiselect("Members", options=people, default=people, key="wk_people")
+
+    wdf = weekly_df[
+        (weekly_df["name"].isin(wk_people)) &
+        (weekly_df["week_start"] >= pd.Timestamp(wk_start))
+    ]
+    if wdf.empty:
+        st.info("No data for the selected filters.")
+    else:
+        chart_df = wdf[["name", "week_start", wk_metric]].rename(columns={wk_metric: "value"})
+        fig = px.line(
+            chart_df, x="week_start", y="value", color="name", markers=True,
+            labels={"week_start": "Week Start", "value": wk_metric, "name": "Member"},
+            title=f"Weekly {wk_metric} (cumulative)"
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=50, b=20),
+            height=420
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Week-over-week deltas table
+        wdf2 = wdf.sort_values(["name", "week_start"]).copy()
+        wdf2["prev"] = wdf2.groupby("name")[wk_metric].shift(1)
+        wdf2["delta"] = wdf2[wk_metric] - wdf2["prev"]
+        deltas = wdf2.dropna(subset=["delta"]).copy()
+        deltas["week_start"] = deltas["week_start"].dt.date
+        deltas = deltas[["week_start", "name", wk_metric, "prev", "delta"]].sort_values(["week_start", "name"])
+        st.markdown("#### Week-over-Week Changes")
+        st.dataframe(deltas, use_container_width=True)
+
+# =========================================
+# 📈 Team Performance
 # =========================================
 st.divider()
 st.markdown("### 📈 Team Performance")
