@@ -8,11 +8,18 @@ from utils.auth import login, register, get_current_user
 import time
 from datetime import datetime, date, timedelta
 
+# Backup/Import helpers
+import io
+import zipfile
+import shutil
+from pathlib import Path
+
 # -----------------------------
 # Constants & paths
 # -----------------------------
-DATA_PATH = "data/members.json"
-HISTORY_PATH = "data/history.json"  # weekly snapshots
+DATA_DIR = "data"                # folder to back up / restore
+DATA_PATH = f"{DATA_DIR}/members.json"
+HISTORY_PATH = f"{DATA_DIR}/history.json"  # snapshots (daily + weekly entries)
 
 # -----------------------------
 # Persistence: members
@@ -38,7 +45,7 @@ def save_members(user, members):
     save_all_members(all_members)
 
 # -----------------------------
-# Persistence: history (weekly)
+# Persistence: history (daily + weekly)
 # -----------------------------
 def load_history():
     if not os.path.exists(HISTORY_PATH):
@@ -58,14 +65,22 @@ def iso_week_start(d: date) -> date:
     """Return Monday (ISO week start) for a given date."""
     return d - timedelta(days=d.weekday())
 
+def _extract_counts(member: dict):
+    easy = medium = hard = 0
+    for s in member.get("submissions", []):
+        if s.get("difficulty") == "Easy":
+            easy = int(s.get("count", 0))
+        elif s.get("difficulty") == "Medium":
+            medium = int(s.get("count", 0))
+        elif s.get("difficulty") == "Hard":
+            hard = int(s.get("count", 0))
+    total = int(member.get("totalSolved", 0))
+    return total, easy, medium, hard
+
 def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None = None):
     """
     Append a weekly snapshot for each member if not already recorded this week.
-    Snapshot shape (per member):
-      {
-        week_start: 'YYYY-MM-DD', username, name,
-        totalSolved, Easy, Medium, Hard
-      }
+    Entry fields: week_start, username, name, totalSolved, Easy, Medium, Hard
     Stored under history[team_owner] = { username: [snapshots...] }
     """
     history = load_history()
@@ -79,16 +94,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
     for member in team_data:
         username = member["username"]
         name = member.get("name", username)
-        total = int(member.get("totalSolved", 0))
-
-        easy = medium = hard = 0
-        for s in member.get("submissions", []):
-            if s.get("difficulty") == "Easy":
-                easy = int(s.get("count", 0))
-            elif s.get("difficulty") == "Medium":
-                medium = int(s.get("count", 0))
-            elif s.get("difficulty") == "Hard":
-                hard = int(s.get("count", 0))
+        total, easy, medium, hard = _extract_counts(member)
 
         if username not in history[team_owner]:
             history[team_owner][username] = []
@@ -108,7 +114,45 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
 
     if changed:
         save_history(history)
+    return history
 
+def record_daily_snapshots(team_owner: str, team_data: list, when: date | None = None):
+    """
+    Append a daily snapshot for each member if not already recorded for that date.
+    Entry fields: date, username, name, totalSolved, Easy, Medium, Hard
+    Stored under history[team_owner] = { username: [snapshots...] }
+    """
+    history = load_history()
+    if team_owner not in history:
+        history[team_owner] = {}
+
+    the_date = when or date.today()
+    date_str = the_date.isoformat()
+    changed = False
+
+    for member in team_data:
+        username = member["username"]
+        name = member.get("name", username)
+        total, easy, medium, hard = _extract_counts(member)
+
+        if username not in history[team_owner]:
+            history[team_owner][username] = []
+
+        user_hist = history[team_owner][username]
+        if not any(snap.get("date") == date_str for snap in user_hist):
+            user_hist.append({
+                "date": date_str,
+                "username": username,
+                "name": name,
+                "totalSolved": total,
+                "Easy": easy,
+                "Medium": medium,
+                "Hard": hard,
+            })
+            changed = True
+
+    if changed:
+        save_history(history)
     return history
 
 # -----------------------------
@@ -133,6 +177,87 @@ def fetch_all_data(members, cache_key: float = 0.0):
             user_data["name"] = member.get("name", member["username"])
             data.append(user_data)
     return data
+
+# -----------------------------
+# Backup & Import helpers
+# -----------------------------
+def _zip_folder_bytes(folder_path: str) -> bytes:
+    """Create an in-memory ZIP of the entire folder (recursively)."""
+    buf = io.BytesIO()
+    folder = Path(folder_path)
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        if not folder.exists():
+            return buf.getvalue()
+        for p in folder.rglob("*"):
+            if p.is_file():
+                zf.write(p, arcname=p.relative_to(folder))
+    return buf.getvalue()
+
+def _safe_extract_zip(zf: zipfile.ZipFile, dest_dir: Path):
+    """Safely extract a ZIP to dest_dir (prevents zip-slip)."""
+    dest_dir = dest_dir.resolve()
+    for member in zf.infolist():
+        member_path = (dest_dir / member.filename).resolve()
+        if not str(member_path).startswith(str(dest_dir)):
+            raise ValueError("Unsafe path detected in ZIP (zip-slip attempt).")
+        if member.is_dir():
+            member_path.mkdir(parents=True, exist_ok=True)
+        else:
+            member_path.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(member, "r") as src, open(member_path, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+
+def create_backup_zip_bytes() -> tuple[bytes, str]:
+    """Return (zip_bytes, suggested_filename) for download_button."""
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    fn = f"leetcode_dashboard_backup_{ts}.zip"
+    zip_bytes = _zip_folder_bytes(DATA_DIR)
+    return zip_bytes, fn
+
+def restore_from_zip_filelike(file_like, do_backup_existing: bool = True) -> str:
+    """
+    Import a .zip into DATA_DIR.
+    - Validates archive safely (no zip-slip).
+    - Optionally backs up current DATA_DIR before overwrite.
+    - Replaces DATA_DIR contents with the zip contents.
+    Returns a human-readable status string.
+    """
+    target_dir = Path(DATA_DIR)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    backup_msg = ""
+    if do_backup_existing and any(target_dir.iterdir()):
+        backup_bytes, backup_name = create_backup_zip_bytes()
+        backup_path = target_dir / backup_name  # store backup inside data/
+        with open(backup_path, "wb") as f:
+            f.write(backup_bytes)
+        backup_msg = f" (current data backed up to `{backup_path}`)"
+
+    tmp_dir = Path(".tmp_import_data")
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(file_like) as zf:
+            _safe_extract_zip(zf, tmp_dir)
+
+        # Replace DATA_DIR contents with extracted files
+        for item in target_dir.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
+
+        for item in tmp_dir.iterdir():
+            dest = target_dir / item.name
+            shutil.move(str(item), str(dest))
+
+        return "✅ Import completed successfully" + backup_msg
+
+    finally:
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir)
 
 # -----------------------------
 # Streamlit page setup & CSS
@@ -310,11 +435,73 @@ with st.expander("📝 Manage Team Members", expanded=False):
             st.info("ℹ️ No members to remove.")
         st.markdown('</div>', unsafe_allow_html=True)
 
+# --- 📦 Backup & Import ---
+with st.expander("📦 Backup & Import", expanded=False):
+    st.markdown("Create a full backup of the **data/** folder or restore from a backup zip.")
+
+    # Prepare + Download backup
+    col_b1, col_b2 = st.columns([1, 2])
+    with col_b1:
+        if st.button("🧷 Prepare backup (.zip)"):
+            zip_bytes, fname = create_backup_zip_bytes()
+            st.session_state["_backup_zip"] = zip_bytes
+            st.session_state["_backup_name"] = fname
+            st.success("Backup prepared. Click **Download** to save it.")
+    with col_b2:
+        if "_backup_zip" in st.session_state:
+            st.download_button(
+                "⬇️ Download backup",
+                data=st.session_state["_backup_zip"],
+                file_name=st.session_state["_backup_name"],
+                mime="application/zip",
+                use_container_width=True
+            )
+
+    st.divider()
+
+    # Import / Restore
+    uploaded_zip = st.file_uploader(
+        "Upload a backup .zip to restore your data folder",
+        type=["zip"],
+        accept_multiple_files=False,
+        help="This will replace the contents of the data/ folder."
+    )
+    col_i1, col_i2 = st.columns([2, 1])
+    with col_i1:
+        overwrite_ok = st.checkbox(
+            "I understand this will overwrite existing data/",
+            value=False
+        )
+        backup_existing = st.checkbox(
+            "Backup current data/ before import (recommended)",
+            value=True
+        )
+    with col_i2:
+        import_clicked = st.button("♻️ Import backup", use_container_width=True)
+
+    if import_clicked:
+        if uploaded_zip is None:
+            st.error("Please upload a .zip file first.")
+        elif not overwrite_ok:
+            st.warning("Please confirm overwrite by checking the box.")
+        else:
+            try:
+                status = restore_from_zip_filelike(uploaded_zip, do_backup_existing=backup_existing)
+                st.success(status)
+                st.toast("Data restored. Reloading…")
+                st.rerun()
+            except zipfile.BadZipFile:
+                st.error("❌ Not a valid ZIP archive.")
+            except ValueError as e:
+                st.error(f"❌ Import aborted: {e}")
+            except Exception as e:
+                st.error(f"❌ Unexpected error: {e}")
+
 # --- Stop if no members ---
 if not members:
     st.stop()
 
-# --- Fetch & (idempotently) record weekly snapshot ---
+# --- Fetch & record snapshots ---
 with st.spinner("🔄 Fetching team data from LeetCode..."):
     data = fetch_all_data(members, cache_key=st.session_state.cache_buster)
 
@@ -322,36 +509,58 @@ if not data:
     st.error("❌ Failed to fetch data for team members")
     st.stop()
 
+# Always record daily + weekly (idempotent)
+record_daily_snapshots(user, data)
+record_weekly_snapshots(user, data)
+
 force_snapshot = st.session_state.pop("force_snapshot", False) if "force_snapshot" in st.session_state else False
-history = record_weekly_snapshots(user, data)  # idempotent per week
 if force_snapshot:
-    history = record_weekly_snapshots(user, data)  # ensure captured this week
+    record_daily_snapshots(user, data)
+    record_weekly_snapshots(user, data)
 
 # -----------------------------
-# Leaderboard & profile
+# Leaderboard (Rank-based) & profile
 # -----------------------------
+# Sort leaderboard by user Rank (ascending). Non-numeric ranks go last.
+def _rank_sort_value(r):
+    try:
+        # allow "12345" or 12345
+        return int(str(r).replace(",", "").strip())
+    except Exception:
+        # push "N/A" or None to the end
+        return 10**12
+
+# Build DF and order by rank, then by totalSolved desc as tiebreaker
 df = pd.DataFrame(data)
-df_sorted = df.sort_values(by="totalSolved", ascending=False)
+df["__rank_val"] = df["ranking"].apply(_rank_sort_value)
+df_sorted = df.sort_values(by=["__rank_val", "totalSolved"], ascending=[True, False]).drop(columns=["__rank_val"])
 
 left_col, right_col = st.columns([1, 2])
 with left_col:
-    st.markdown("### 🏆 Leaderboard")
+    st.markdown("### 🏆 Leaderboard (by Rank)")
     st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
+
+    # pick default selected user as top by rank
     selected_user_un = st.session_state.get("selected_user", df_sorted.iloc[0]["username"])
+
+    max_total = max(df_sorted["totalSolved"]) if len(df_sorted) else 0
     for i, row in enumerate(df_sorted.itertuples(index=False), start=1):
         is_selected = (row.username == selected_user_un)
         item_class = "leaderboard-item selected" if is_selected else "leaderboard-item"
         st.markdown(f'<div class="{item_class}">', unsafe_allow_html=True)
-        c1, c2 = st.columns([0.2, 0.8])
+        c1, c2 = st.columns([0.22, 0.78])
         with c1:
-            st.image(row.avatar, width=40)
+            st.image(row.avatar, width=42)
         with c2:
-            if st.button(f"#{i} {row.name}", key=f"lb_{row.username}", use_container_width=True):
+            rank_label = f"#{row.ranking}" if str(row.ranking).strip() not in ("", "None", "N/A") else "N/A"
+            if st.button(f"{i}. {row.name}  •  Rank {rank_label}", key=f"lb_{row.username}", use_container_width=True):
                 st.session_state.selected_user = row.username
                 st.rerun()
-            max_problems = max(df['totalSolved'])
-            progress = row.totalSolved / max_problems if max_problems > 0 else 0
+
+            # Progress bar based on totalSolved for quick visual (still useful)
+            progress = (row.totalSolved / max_total) if max_total > 0 else 0
             st.progress(progress, text=f"🎯 {row.totalSolved} Submissions")
+
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -427,106 +636,173 @@ with right_col:
             st.info("🎯 No problems solved yet!")
 
 # -----------------------------
-# 📅 Weekly Progress (since September) with clamped date input
+# 📅 Progress Over Time (Daily / Weekly)
 # -----------------------------
 st.divider()
-st.markdown("### 📅 Weekly Progress (since September)")
+st.markdown("### 📅 Progress Over Time (Daily / Weekly)")
 
 raw_hist = load_history()
 team_hist = raw_hist.get(user, {})
 
 if not team_hist:
-    st.info("No weekly snapshots yet. Use **Refresh data** or **Record snapshot now** to create the first one.")
+    st.info("No snapshots yet. Use **Refresh data** or **Record snapshot now** to create the first one.")
 else:
+    # Flatten all snapshots; support both daily ('date') and weekly ('week_start')
     rows = []
     for uname, snaps in team_hist.items():
         for s in snaps:
             rows.append({
                 "username": uname,
                 "name": s.get("name", uname),
-                "week_start": s.get("week_start"),
+                "date": s.get("date"),                     # may be None for old weekly-only entries
+                "week_start": s.get("week_start"),         # may be None for daily-only entries
                 "Total": int(s.get("totalSolved", 0)),
                 "Easy": int(s.get("Easy", 0)),
                 "Medium": int(s.get("Medium", 0)),
                 "Hard": int(s.get("Hard", 0)),
             })
+
     hist_df = pd.DataFrame(rows)
     if hist_df.empty:
-        st.info("No weekly snapshots yet.")
+        st.info("No snapshots yet.")
     else:
-        hist_df["week_start"] = pd.to_datetime(hist_df["week_start"])
-        hist_df.sort_values(["username", "week_start"], inplace=True)
+        if "date" in hist_df.columns:
+            hist_df["date"] = pd.to_datetime(hist_df["date"], errors="coerce")
+        if "week_start" in hist_df.columns:
+            hist_df["week_start"] = pd.to_datetime(hist_df["week_start"], errors="coerce")
 
-        # Controls (clamp the default value to [min, max])
-        this_year = date.today().year
-        proposed_start = iso_week_start(date(this_year, 9, 1))  # Start from Sept (aligned to Monday)
-
-        min_date = hist_df["week_start"].min().date()
-        max_date = hist_df["week_start"].max().date()
-
-        def clamp(d: date, lo: date, hi: date) -> date:
-            if d < lo:
-                return lo
-            if d > hi:
-                return hi
-            return d
-
-        default_start = clamp(proposed_start, min_date, max_date)
-
-        ctrl_cols = st.columns([2, 2, 2, 2])
-        with ctrl_cols[0]:
+        # Toggle and metric
+        ctrl_cols_top = st.columns([2, 2, 6])
+        with ctrl_cols_top[0]:
+            granularity = st.radio("Granularity", ["Daily", "Weekly"], horizontal=True, index=0)
+        with ctrl_cols_top[1]:
             metric = st.selectbox("Metric", ["Total", "Easy", "Medium", "Hard"], index=0)
-        with ctrl_cols[1]:
-            start_date = st.date_input(
-                "From week starting",
-                value=default_start,
-                min_value=min_date,
-                max_value=max_date,
-            )
-        with ctrl_cols[2]:
-            people = sorted(hist_df["name"].unique().tolist())
-            selected_people = st.multiselect("Members", options=people, default=people)
-        with ctrl_cols[3]:
-            show_deltas = st.checkbox("Show week-over-week delta table", value=True)
 
-        # Filter by selection
-        fdf = hist_df[
-            (hist_df["name"].isin(selected_people)) &
-            (hist_df["week_start"] >= pd.Timestamp(start_date))
-        ]
+        if granularity == "Daily":
+            gdf = hist_df.dropna(subset=["date"]).copy()
+            if gdf.empty:
+                st.info("No daily snapshots yet. They will accumulate after each fetch.")
+            else:
+                gdf.sort_values(["name", "date"], inplace=True)
 
-        if fdf.empty:
-            st.info("No data for the selected filters.")
+                # Clampable date picker defaults
+                this_year = date.today().year
+                proposed_start = date(this_year, 9, 1)
+                min_date = gdf["date"].min().date()
+                max_date = gdf["date"].max().date()
+
+                def clamp(d: date, lo: date, hi: date) -> date:
+                    if d < lo: return lo
+                    if d > hi: return hi
+                    return d
+
+                default_start = clamp(proposed_start, min_date, max_date)
+
+                ctrl_cols = st.columns([2, 2, 3, 2])
+                with ctrl_cols[0]:
+                    start_date = st.date_input(
+                        "From date",
+                        value=default_start,
+                        min_value=min_date,
+                        max_value=max_date,
+                    )
+                with ctrl_cols[1]:
+                    people = sorted(gdf["name"].unique().tolist())
+                    selected_people = st.multiselect("Members", options=people, default=people)
+                with ctrl_cols[2]:
+                    show_deltas = st.checkbox("Show day-over-day delta table", value=True)
+
+                fdf = gdf[(gdf["name"].isin(selected_people)) & (gdf["date"] >= pd.Timestamp(start_date))]
+                if fdf.empty:
+                    st.info("No data for the selected filters.")
+                else:
+                    chart_df = fdf[["name", "date", metric]].rename(columns={metric: "value"})
+                    fig = px.line(
+                        chart_df, x="date", y="value", color="name", markers=True,
+                        labels={"date": "Date", "value": metric, "name": "Member"},
+                        title=f"Daily {metric} Progress"
+                    )
+                    fig.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        margin=dict(l=20, r=20, t=50, b=20),
+                        height=420
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    if show_deltas:
+                        ddf = fdf.sort_values(["name", "date"]).copy()
+                        ddf["prev"] = ddf.groupby("name")[metric].shift(1)
+                        ddf["delta"] = ddf[metric] - ddf["prev"]
+                        deltas = ddf.dropna(subset=["delta"]).copy()
+                        deltas["date"] = deltas["date"].dt.date
+                        deltas = deltas[["date", "name", metric, "prev", "delta"]].sort_values(["date", "name"])
+                        st.markdown("#### Day-over-Day Changes")
+                        st.dataframe(deltas, use_container_width=True)
+
         else:
-            chart_df = fdf[["name", "week_start", metric]].rename(columns={metric: "value"})
-            fig = px.line(
-                chart_df,
-                x="week_start", y="value", color="name",
-                markers=True,
-                labels={"week_start": "Week Start", "value": metric, "name": "Member"},
-                title=f"Weekly {metric} Progress"
-            )
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=20, r=20, t=50, b=20),
-                height=420
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            gdf = hist_df.dropna(subset=["week_start"]).copy()
+            if gdf.empty:
+                st.info("No weekly snapshots yet. They will accumulate after each fetch.")
+            else:
+                gdf.sort_values(["name", "week_start"], inplace=True)
 
-        # WoW deltas
-        if show_deltas and not fdf.empty:
-            fdf = fdf.sort_values(["name", "week_start"])
-            fdf["prev"] = fdf.groupby("name")[metric].shift(1)
-            fdf["delta"] = fdf[metric] - fdf["prev"]
-            deltas = fdf.dropna(subset=["delta"]).copy()
-            deltas["week_start"] = deltas["week_start"].dt.date
-            deltas = deltas[["week_start", "name", metric, "prev", "delta"]].sort_values(["week_start", "name"])
-            st.markdown("#### Week-over-Week Changes")
-            st.dataframe(deltas, use_container_width=True)
+                this_year = date.today().year
+                proposed_start = iso_week_start(date(this_year, 9, 1))  # align to Monday
+                min_date = gdf["week_start"].min().date()
+                max_date = gdf["week_start"].max().date()
+
+                def clamp(d: date, lo: date, hi: date) -> date:
+                    if d < lo: return lo
+                    if d > hi: return hi
+                    return d
+
+                default_start = clamp(proposed_start, min_date, max_date)
+
+                ctrl_cols = st.columns([2, 2, 3, 2])
+                with ctrl_cols[0]:
+                    start_date = st.date_input(
+                        "From week starting",
+                        value=default_start,
+                        min_value=min_date,
+                        max_value=max_date,
+                    )
+                with ctrl_cols[1]:
+                    people = sorted(gdf["name"].unique().tolist())
+                    selected_people = st.multiselect("Members", options=people, default=people)
+                with ctrl_cols[2]:
+                    show_deltas = st.checkbox("Show week-over-week delta table", value=True)
+
+                fdf = gdf[(gdf["name"].isin(selected_people)) & (gdf["week_start"] >= pd.Timestamp(start_date))]
+                if fdf.empty:
+                    st.info("No data for the selected filters.")
+                else:
+                    chart_df = fdf[["name", "week_start", metric]].rename(columns={metric: "value"})
+                    fig = px.line(
+                        chart_df, x="week_start", y="value", color="name", markers=True,
+                        labels={"week_start": "Week Start", "value": metric, "name": "Member"},
+                        title=f"Weekly {metric} Progress"
+                    )
+                    fig.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        margin=dict(l=20, r=20, t=50, b=20),
+                        height=420
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    if show_deltas:
+                        wdf = fdf.sort_values(["name", "week_start"]).copy()
+                        wdf["prev"] = wdf.groupby("name")[metric].shift(1)
+                        wdf["delta"] = wdf[metric] - wdf["prev"]
+                        deltas = wdf.dropna(subset=["delta"]).copy()
+                        deltas["week_start"] = deltas["week_start"].dt.date
+                        deltas = deltas[["week_start", "name", metric, "prev", "delta"]].sort_values(["week_start", "name"])
+                        st.markdown("#### Week-over-Week Changes")
+                        st.dataframe(deltas, use_container_width=True)
 
 # -----------------------------
-# 📈 Team Performance
+# 📈 Team Performance (still handy)
 # -----------------------------
 st.divider()
 st.markdown("### 📈 Team Performance")
