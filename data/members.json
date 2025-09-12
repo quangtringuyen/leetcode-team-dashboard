@@ -1,54 +1,32 @@
 {
-    "Onyx": [
-        {
-            "name": "Rohith S D",
-            "username": "Rohith0750"
-        },
-        {
-            "name": "Gaurav Kesh",
-            "username": "gkrcoder"
-        },
-        {
-            "name": "Aditi Nayanar",
-            "username": "ad_nayanar"
-        },
-        {
-            "name": "Janani",
-            "username": "Jan2309jr"
-        },
-        {
-            "name": "Kevin Immanuel M",
-            "username": "kevinimmauel"
-        },
-        {
-            "name": "Priyanshu Singh",
-            "username": "priyanshu5ingh"
-        },
-        {
-            "name": "Pranav Tiwari",
-            "username": "prrrranv"
-        },
-        {
-            "name": "Shankramma Bhagashetti",
-            "username": "Shankramma_Bhagashetti"
-        },
-        {
-            "name": "Ambika M",
-            "username": "ambikam"
-        },
-        {
-            "name": "Syeda qurrath",
-            "username": "syeda_qurrath"
-        },
-        {
-            "name": "Sara",
-            "username": "lazyShika"
-        }
-    ],
     "leetcodescamp": [
         {
             "name": "Tri Nguyen",
             "username": "quangtringuyen"
+        },
+        {
+            "name": "vutrinh",
+            "username": "vutrinh"
+        },
+        {
+            "name": "huynt",
+            "username": "huynt"
+        },
+        {
+            "name": "qvanphong",
+            "username": "qvanphong"
+        },
+        {
+            "name": "PandaReveluv",
+            "username": "PandaReveluv"
+        },
+        {
+            "name": "dieptung9197",
+            "username": "dieptung9197"
+        },
+        {
+            "name": "FiddlerBB",
+            "username": "FiddlerBB"
         }
     ]
 }
