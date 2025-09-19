@@ -8,13 +8,49 @@ from datetime import date, timedelta, datetime
 import pandas as pd
 import plotly.express as px
 import requests
-import streamlit_authenticator as stauth
+
+# ---- Try authenticator; fall back gracefully if not installed ----
+try:
+    import streamlit_authenticator as stauth
+    ST_AUTH_AVAILABLE = True
+except Exception:
+    ST_AUTH_AVAILABLE = False
 
 from utils.leetcodeapi import fetch_user_data
-from utils.auth import register as auth_register, credentials_for_authenticator
+from utils.auth import (
+    register as auth_register,
+    credentials_for_authenticator,
+    load_users,  # used for fallback path
+)
 
 # ============================================================
-# S3-aware JSON storage adapter (quiet: no UI captions)
+# Auth compatibility wrappers (handle old/new authenticator APIs)
+# ============================================================
+def auth_login_compat(authenticator):
+    """
+    Works with both new and old streamlit-authenticator versions.
+    Returns (name, authentication_status, username).
+    """
+    try:
+        # Newer versions expect keyword 'location'
+        result = authenticator.login(location="main")
+        if isinstance(result, tuple) and len(result) == 3:
+            return result
+        # Some edge builds may return None before render:
+        return (None, None, None) if result is None else result
+    except TypeError:
+        # Older versions: (title, location)
+        return authenticator.login("Login", "main")
+
+def auth_logout_compat(authenticator, where="sidebar"):
+    """Works with both new and old logout signatures."""
+    try:
+        authenticator.logout("🚪 Logout", location=where)
+    except TypeError:
+        authenticator.logout("🚪 Logout", where)
+
+# ============================================================
+# S3-aware JSON storage adapter (quiet: no UI chatter)
 # ============================================================
 def _use_s3() -> bool:
     try:
@@ -139,7 +175,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
                 "week_start": week_start_str,
                 "username": username,
                 "name": name,
-                "totalSolved": total,  # charts use Easy+Medium+Hard but we keep this too
+                "totalSolved": total,  # we keep this too
                 "Easy": easy,
                 "Medium": medium,
                 "Hard": hard,
@@ -289,75 +325,114 @@ st.markdown('<div class="header-title">👨🏼‍💻 LeetCode Team Dashboard</
 st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
 
 # ============================================================
-# Authentication (cookie-based, persistent)
+# Authentication (cookie-based if available; else session fallback)
 # ============================================================
-if "authenticator" not in st.session_state:
-    creds = credentials_for_authenticator()
-    cookie_name = st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth")
-    cookie_key  = st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me")
-    cookie_exp  = int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14))
+user = None
 
-    st.session_state.authenticator = stauth.Authenticate(
-        credentials=creds,
-        cookie_name=cookie_name,
-        key=cookie_key,
-        cookie_expiry_days=cookie_exp,
-    )
+if ST_AUTH_AVAILABLE:
+    if "authenticator" not in st.session_state:
+        creds = credentials_for_authenticator()
+        cookie_name = st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth")
+        cookie_key  = st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me")
+        cookie_exp  = int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14))
+        st.session_state.authenticator = stauth.Authenticate(
+            credentials=creds,
+            cookie_name=cookie_name,
+            key=cookie_key,
+            cookie_expiry_days=cookie_exp,
+        )
+    authenticator = st.session_state.authenticator
+    name, authentication_status, username = auth_login_compat(authenticator)
 
-authenticator: stauth.Authenticate = st.session_state.authenticator
+    if authentication_status is None:
+        st.subheader("🔐 Login")
 
-# ✅ Use keyword for location (API-compatible)
-name, authentication_status, username = authenticator.login(location="main")
-
-# Optional heading above the form
-if authentication_status is None:
-    st.subheader("🔐 Login")
-
-with st.expander("📝 New here? Register", expanded=False):
-    reg_col1, reg_col2 = st.columns(2)
-    with reg_col1:
-        reg_username = st.text_input("Choose a username")
-        reg_name = st.text_input("Your display name (optional)")
-    with reg_col2:
-        reg_email = st.text_input("Email (optional)")
-        reg_password = st.text_input("Choose a password", type="password")
-    if st.button("Create account", type="primary"):
-        if not reg_username or not reg_password:
-            st.warning("Please enter username and password.")
-        else:
-            ok = auth_register(reg_username, reg_password, name=reg_name, email=reg_email)
-            if ok:
-                # Rebuild authenticator with the new user included
-                st.session_state.authenticator = stauth.Authenticate(
-                    credentials=credentials_for_authenticator(),
-                    cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
-                    key=st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me"),
-                    cookie_expiry_days=int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14)),
-                )
-                st.success("Account created. Please log in.")
-                st.rerun()
+    with st.expander("📝 New here? Register", expanded=False):
+        reg_col1, reg_col2 = st.columns(2)
+        with reg_col1:
+            reg_username = st.text_input("Choose a username")
+            reg_name = st.text_input("Your display name (optional)")
+        with reg_col2:
+            reg_email = st.text_input("Email (optional)")
+            reg_password = st.text_input("Choose a password", type="password")
+        if st.button("Create account", type="primary", key="register_btn_auth"):
+            if not reg_username or not reg_password:
+                st.warning("Please enter username and password.")
             else:
-                st.error("Username already exists. Try another.")
+                ok = auth_register(reg_username, reg_password, name=reg_name, email=reg_email)
+                if ok:
+                    # Rebuild authenticator with new user included
+                    st.session_state.authenticator = stauth.Authenticate(
+                        credentials=credentials_for_authenticator(),
+                        cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
+                        key=st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me"),
+                        cookie_expiry_days=int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14)),
+                    )
+                    st.success("Account created. Please log in.")
+                    st.rerun()
+                else:
+                    st.error("Username already exists. Try another.")
 
-if authentication_status is False:
-    st.error("Invalid username or password.")
-    st.stop()
-elif authentication_status is None:
-    st.info("Please log in to continue.")
-    st.stop()
+    if authentication_status is False:
+        st.error("Invalid username or password.")
+        st.stop()
+    elif authentication_status is None:
+        st.info("Please log in to continue.")
+        st.stop()
 
-# Authenticated
-user = username
-st.sidebar.success(f"Logged in as {user}")
-authenticator.logout("🚪 Logout", location="sidebar")
+    user = username
+    st.sidebar.success(f"Logged in as {user}")
+    auth_logout_compat(authenticator, where="sidebar")
 
+else:
+    # Simple non-persistent fallback (session-based)
+    st.info("Running with basic login (install `streamlit-authenticator` for persistent sessions).")
+    if "user" not in st.session_state:
+        st.session_state.user = None
+
+    if st.session_state.user is None:
+        st.subheader("🔐 Login")
+        col1, col2 = st.columns(2)
+        with col1:
+            username_in = st.text_input("Username")
+        with col2:
+            password_in = st.text_input("Password", type="password")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🚀 Login"):
+                db = load_users()
+                rec = db.get("users", {}).get(username_in)
+                if rec:
+                    import bcrypt
+                    if bcrypt.checkpw(password_in.encode("utf-8"), rec["password"].encode("utf-8")):
+                        st.session_state.user = username_in
+                        st.rerun()
+                st.error("Invalid credentials.")
+        with c2:
+            if st.button("📝 Register"):
+                if not username_in or not password_in:
+                    st.warning("Enter username & password.")
+                else:
+                    ok = auth_register(username_in, password_in, name=username_in)
+                    if ok:
+                        st.success("Registered. Click Login.")
+                    else:
+                        st.error("Username already exists.")
+        st.stop()
+    else:
+        user = st.session_state.user
+        st.sidebar.success(f"Logged in as {user}")
+        if st.sidebar.button("🚪 Logout"):
+            st.session_state.user = None
+            st.rerun()
 
 # --- Session utils
 if "cache_buster" not in st.session_state:
     st.session_state.cache_buster = 0.0
 
 # --- Top controls: refresh, snapshot
-tc = st.columns([8, 1.2, 1.2])
+tc = st.columns([8, 1.2, 1.6])
 with tc[1]:
     if st.button("🔄 Refresh data"):
         bump_cache_buster()
@@ -484,7 +559,7 @@ with right_col:
             st.info("🎯 No accepted challenges yet!")
 
 # -----------------------------
-# 📅 Weekly Progress (since September) — full roster & clamped date
+# 📅 Weekly Progress (since September) — full roster & ffill
 # -----------------------------
 st.divider()
 st.markdown("### 📅 Weekly Progress (since September)")
@@ -492,7 +567,7 @@ st.markdown("### 📅 Weekly Progress (since September)")
 raw_hist = load_history()
 team_hist = raw_hist.get(user, {})
 
-# 🔧 If history is empty or a member is missing, initialize/repair now using current fetch
+# If history is empty or a member is missing, initialize/repair now using current fetch
 known_unames = set(team_hist.keys())
 current_unames = {m["username"] for m in load_members(user)}
 if not team_hist or (current_unames - known_unames):
@@ -828,8 +903,8 @@ with colA:
             selected_name_rm = st.selectbox("Select a member to remove", list(name_to_username.keys()), key="rm_select")
             if st.button("🗑️ Remove Member", key="remove_member_btn_bottom", use_container_width=True):
                 selected_username = name_to_username[selected_name_rm]
-                new_members = [m for m in members_now if m["username"] != selected_username]
-                save_members(user, new_members)
+                members_new = [m for m in members_now if m["username"] != selected_username]
+                save_members(user, members_new)
                 bump_cache_buster()
                 st.success(f"✅ Member '{selected_name_rm}' removed successfully!")
                 st.rerun()
@@ -893,7 +968,7 @@ with colB:
             except Exception as e:
                 st.error(f"❌ Restore failed: {e}")
 
-    # ---- Optional: S3 Self-Test (put/get/delete) ----
+    # Optional: S3 self-test
     with st.expander("🧪 S3 Connectivity Test", expanded=False):
         if st.button("Run S3 self-test (put/get/delete)"):
             if not _use_s3():
