@@ -3,16 +3,17 @@ import json
 import os
 import io
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 import pandas as pd
 import plotly.express as px
+import requests
 
 from utils.leetcodeapi import fetch_user_data
 from utils.auth import login, register
 
 # ============================================================
-# S3-aware JSON storage adapter (with debug captions)
+# S3-aware JSON storage adapter (quiet: no UI captions)
 # ============================================================
 def _use_s3() -> bool:
     try:
@@ -43,11 +44,9 @@ def storage_read_json(local_path: str, default):
     if _use_s3():
         try:
             bucket, key = _s3_bucket_key(local_path)
-            st.caption(f"📥 Reading: s3://{bucket}/{key}")
             obj = _s3_client().get_object(Bucket=bucket, Key=key)
             return json.loads(obj["Body"].read().decode("utf-8"))
-        except Exception as e:
-            st.error(f"❌ S3 read failed for {local_path}: {e}")
+        except Exception:
             return default
     else:
         if not os.path.exists(local_path):
@@ -57,19 +56,13 @@ def storage_read_json(local_path: str, default):
 
 def storage_write_json(local_path: str, payload):
     if _use_s3():
-        try:
-            bucket, key = _s3_bucket_key(local_path)
-            st.caption(f"📤 Writing: s3://{bucket}/{key}")
-            buf = io.BytesIO(json.dumps(payload, indent=2).encode("utf-8"))
-            _s3_client().upload_fileobj(buf, bucket, key)
-            st.success(f"✅ Wrote to s3://{bucket}/{key}")
-        except Exception as e:
-            st.error(f"❌ S3 write failed for {local_path}: {e}")
+        bucket, key = _s3_bucket_key(local_path)
+        buf = io.BytesIO(json.dumps(payload, indent=2).encode("utf-8"))
+        _s3_client().upload_fileobj(buf, bucket, key)
     else:
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         with open(local_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
-        st.success(f"💾 Wrote locally: {local_path}")
 
 # -----------------------------
 # Constants & paths
@@ -190,6 +183,65 @@ def sum_accepted_from_submissions(subs):
         return 0
     return sum(int(item.get("count", 0)) for item in subs
                if item.get("difficulty") in ("Easy", "Medium", "Hard"))
+
+# ===== Accepted Trend by Date: LeetCode calendar API =====
+@st.cache_data(show_spinner=False)
+def fetch_submission_calendar(username: str):
+    """
+    Returns {date -> count} for accepted submissions from LeetCode's calendar API.
+    Endpoint: https://leetcode.com/api/user_submission_calendar/?username=<user>
+    The API returns {'submission_calendar': '{"1694304000": 2, ...}'} (JSON string inside JSON).
+    """
+    url = f"https://leetcode.com/api/user_submission_calendar/?username={username}"
+    try:
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
+        payload = r.json()
+        raw = payload.get("submission_calendar", "{}")
+        data = json.loads(raw)
+        by_date = {}
+        for ts_str, cnt in data.items():
+            ts = int(ts_str)  # unix seconds at 00:00:00 UTC
+            day = datetime.utcfromtimestamp(ts).date()
+            by_date[day] = int(cnt)
+        return by_date
+    except Exception:
+        return {}
+
+def calendars_to_frame(members_list):
+    """
+    Build a long DataFrame with columns: name, username, date, accepted (daily).
+    Ensures every member has a continuous date range (missing -> 0).
+    """
+    rows = []
+    min_d, max_d = None, None
+    calendars = {}
+    for m in members_list:
+        uname = m["username"]
+        nm = m.get("name", uname)
+        cal = fetch_submission_calendar(uname)
+        calendars[uname] = {"name": nm, "data": cal}
+        for d in cal.keys():
+            if min_d is None or d < min_d: min_d = d
+            if max_d is None or d > max_d: max_d = d
+
+    if min_d is None or max_d is None:
+        return pd.DataFrame(columns=["name", "username", "date", "accepted"])
+
+    full_days = pd.date_range(start=min_d, end=max_d, freq="D").date
+    for m in members_list:
+        uname = m["username"]
+        nm = m.get("name", uname)
+        cal = calendars.get(uname, {}).get("data", {})
+        for d in full_days:
+            rows.append({
+                "name": nm,
+                "username": uname,
+                "date": pd.to_datetime(d),
+                "accepted": int(cal.get(d, 0)),
+            })
+
+    return pd.DataFrame(rows)
 
 # -----------------------------
 # Streamlit page setup & CSS
@@ -580,6 +632,86 @@ else:
             st.caption("ℹ️ No snapshots yet for: " + ", ".join(missing_hist) + ". They show as a flat 0 line until recorded.")
 
 # -----------------------------
+# 📈 Accepted Trend by Date (Daily/Weekly/Monthly)
+# -----------------------------
+st.divider()
+st.markdown("### 📈 Accepted Trend by Date")
+
+trend_members = load_members(user)
+if not trend_members:
+    st.info("No members to chart.")
+else:
+    with st.spinner("Gathering calendars…"):
+        cal_df = calendars_to_frame(trend_members)
+
+    if cal_df.empty:
+        st.info("No calendar data available yet (LeetCode may return empty until someone has accepted problems).")
+    else:
+        # Controls
+        all_names = sorted(cal_df["name"].unique().tolist())
+        c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
+        with c1:
+            trend_people = st.multiselect("Members", options=all_names, default=all_names, key="trend_people")
+        with c2:
+            freq = st.selectbox("Granularity", ["Daily", "Weekly", "Monthly"], index=1, key="trend_freq")
+        with c3:
+            cumulative = st.checkbox("Cumulative", value=False, key="trend_cum")
+        with c4:
+            mode = st.selectbox("Series", ["Per member", "Team total"], index=0, key="trend_mode")
+
+        if not trend_people:
+            st.info("Select at least one member.")
+        else:
+            df_tr = cal_df[cal_df["name"].isin(trend_people)].copy()
+
+            # Resample by chosen frequency
+            if freq == "Daily":
+                df_tr["bucket"] = df_tr["date"].dt.to_period("D").dt.to_timestamp()
+                freq_code = "D"
+            elif freq == "Weekly":
+                df_tr["bucket"] = (df_tr["date"] - pd.to_timedelta(df_tr["date"].dt.dayofweek, unit="D"))
+                df_tr["bucket"] = pd.to_datetime(df_tr["bucket"].dt.date)
+                freq_code = "W-MON"
+            else:  # Monthly
+                df_tr["bucket"] = df_tr["date"].dt.to_period("M").dt.to_timestamp()
+                freq_code = "MS"
+
+            if mode == "Team total":
+                agg = df_tr.groupby(["bucket"], as_index=False)["accepted"].sum().sort_values("bucket")
+                full_idx = pd.date_range(agg["bucket"].min(), agg["bucket"].max(), freq=freq_code)
+                agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
+                if cumulative:
+                    agg["accepted"] = agg["accepted"].cumsum()
+
+                fig = px.line(
+                    agg, x="bucket", y="accepted", markers=True,
+                    labels={"bucket": "Date", "accepted": "Accepted"},
+                    title=f"{'Cumulative ' if cumulative else ''}Accepted — Team ({freq.lower()})"
+                )
+                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                                  margin=dict(l=20, r=20, t=50, b=20), height=420)
+                st.plotly_chart(fig, use_container_width=True)
+
+            else:
+                agg = df_tr.groupby(["name", "bucket"], as_index=False)["accepted"].sum()
+                min_b, max_b = agg["bucket"].min(), agg["bucket"].max()
+                full_buckets = pd.date_range(min_b, max_b, freq=freq_code)
+                full_index = pd.MultiIndex.from_product([trend_people, full_buckets], names=["name", "bucket"])
+
+                agg_full = agg.set_index(["name", "bucket"]).reindex(full_index, fill_value=0).reset_index()
+                if cumulative:
+                    agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
+
+                fig = px.line(
+                    agg_full, x="bucket", y="accepted", color="name", markers=True,
+                    labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
+                    title=f"{'Cumulative ' if cumulative else ''}Accepted — Per Member ({freq.lower()})"
+                )
+                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                                  margin=dict(l=20, r=20, t=50, b=20), height=420)
+                st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------
 # 📈 Team Performance (Accepted challenges)
 # -----------------------------
 st.divider()
@@ -645,9 +777,9 @@ with colA:
                         user_data = None
                     if user_data:
                         # 1) Save the member
-                        members = load_members(user)  # re-read to be safe
-                        members.append({"name": new_name, "username": new_username})
-                        save_members(user, members)
+                        members_now = load_members(user)  # re-read to be safe
+                        members_now.append({"name": new_name, "username": new_username})
+                        save_members(user, members_now)
                         # 2) Immediately seed a snapshot so charts show them right away
                         try:
                             user_data["name"] = new_name
@@ -734,9 +866,8 @@ with colB:
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ Restore failed: {e}")
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    # ---- S3 Self-Test (put/get/delete) ----
+    # ---- Optional: S3 Self-Test (put/get/delete) ----
     with st.expander("🧪 S3 Connectivity Test", expanded=False):
         if st.button("Run S3 self-test (put/get/delete)"):
             if not _use_s3():
@@ -747,24 +878,15 @@ with colB:
                 bucket, base_key = _s3_bucket_key("data/")
                 test_key = base_key.rstrip("/") + f"/_selftest_{uuid.uuid4().hex}.txt"
                 body = b"hello from app self-test"
-
-                with st.status("Running S3 self-test...", expanded=True) as status:
-                    try:
-                        st.write(f"Putting s3://{bucket}/{test_key}")
-                        client.put_object(Bucket=bucket, Key=test_key, Body=body)
-
-                        st.write("Getting back & verifying…")
-                        obj = client.get_object(Bucket=bucket, Key=test_key)
-                        got = obj["Body"].read()
-                        assert got == body, "Content mismatch"
-
-                        st.write("Deleting test object…")
-                        client.delete_object(Bucket=bucket, Key=test_key)
-
-                        status.update(label="S3 self-test passed ✅", state="complete")
-                    except Exception as e:
-                        status.update(label="S3 self-test failed ❌", state="error")
-                        st.error(e)
+                try:
+                    client.put_object(Bucket=bucket, Key=test_key, Body=body)
+                    obj = client.get_object(Bucket=bucket, Key=test_key)
+                    got = obj["Body"].read()
+                    assert got == body, "Content mismatch"
+                    client.delete_object(Bucket=bucket, Key=test_key)
+                    st.success("S3 self-test passed ✅")
+                except Exception as e:
+                    st.error(f"S3 self-test failed ❌: {e}")
 
 # -----------------------------
 # Footer
