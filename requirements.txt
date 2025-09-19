@@ -3,5 +3,5 @@ pandas
 plotly
 boto3
 requests
-streamlit-authenticator
-bcrypt
+streamlit-authenticator==0.4.1
+bcrypt==4.1.3
