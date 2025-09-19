@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import io
 import time
 from datetime import date, timedelta
 
@@ -9,6 +10,66 @@ import plotly.express as px
 
 from utils.leetcodeapi import fetch_user_data
 from utils.auth import login, register
+
+# ============================================================
+# S3-aware JSON storage adapter (with debug captions)
+# ============================================================
+def _use_s3() -> bool:
+    try:
+        return "aws" in st.secrets and all(
+            k in st.secrets["aws"]
+            for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET", "S3_PREFIX")
+        )
+    except Exception:
+        return False
+
+@st.cache_resource(show_spinner=False)
+def _s3_client():
+    import boto3
+    return boto3.client(
+        "s3",
+        aws_access_key_id=st.secrets["aws"]["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"],
+        region_name=st.secrets["aws"]["AWS_DEFAULT_REGION"],
+    )
+
+def _s3_bucket_key(local_path: str):
+    bucket = st.secrets["aws"]["S3_BUCKET"]
+    prefix = st.secrets["aws"]["S3_PREFIX"].rstrip("/")
+    key = f"{prefix}/{local_path.lstrip('/')}"  # mirror local structure
+    return bucket, key
+
+def storage_read_json(local_path: str, default):
+    if _use_s3():
+        try:
+            bucket, key = _s3_bucket_key(local_path)
+            st.caption(f"📥 Reading: s3://{bucket}/{key}")
+            obj = _s3_client().get_object(Bucket=bucket, Key=key)
+            return json.loads(obj["Body"].read().decode("utf-8"))
+        except Exception as e:
+            st.error(f"❌ S3 read failed for {local_path}: {e}")
+            return default
+    else:
+        if not os.path.exists(local_path):
+            return default
+        with open(local_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+def storage_write_json(local_path: str, payload):
+    if _use_s3():
+        try:
+            bucket, key = _s3_bucket_key(local_path)
+            st.caption(f"📤 Writing: s3://{bucket}/{key}")
+            buf = io.BytesIO(json.dumps(payload, indent=2).encode("utf-8"))
+            _s3_client().upload_fileobj(buf, bucket, key)
+            st.success(f"✅ Wrote to s3://{bucket}/{key}")
+        except Exception as e:
+            st.error(f"❌ S3 write failed for {local_path}: {e}")
+    else:
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        with open(local_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        st.success(f"💾 Wrote locally: {local_path}")
 
 # -----------------------------
 # Constants & paths
@@ -20,15 +81,10 @@ HISTORY_PATH = "data/history.json"  # weekly snapshots
 # Persistence: members
 # -----------------------------
 def load_all_members():
-    if not os.path.exists(DATA_PATH):
-        return {}
-    with open(DATA_PATH, "r") as f:
-        return json.load(f)
+    return storage_read_json(DATA_PATH, default={})
 
 def save_all_members(all_members):
-    os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-    with open(DATA_PATH, "w") as f:
-        json.dump(all_members, f, indent=4)
+    storage_write_json(DATA_PATH, all_members)
 
 def load_members(user):
     all_members = load_all_members()
@@ -43,18 +99,10 @@ def save_members(user, members):
 # Persistence: history (weekly)
 # -----------------------------
 def load_history():
-    if not os.path.exists(HISTORY_PATH):
-        return {}
-    with open(HISTORY_PATH, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
+    return storage_read_json(HISTORY_PATH, default={})
 
 def save_history(history):
-    os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
-    with open(HISTORY_PATH, "w") as f:
-        json.dump(history, f, indent=4)
+    storage_write_json(HISTORY_PATH, history)
 
 def iso_week_start(d: date) -> date:
     """Return Monday (ISO week start) for a given date."""
@@ -78,8 +126,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
     for member in team_data:
         username = member["username"]
         name = member.get("name", username)
-        total = int(member.get("totalSolved", 0))  # total accepted (as reported by API)
-
+        total = int(member.get("totalSolved", 0))  # API "accepted" total (reference)
         easy = medium = hard = 0
         for s in member.get("submissions", []):
             if s.get("difficulty") == "Easy":
@@ -98,7 +145,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
                 "week_start": week_start_str,
                 "username": username,
                 "name": name,
-                "totalSolved": total,  # reference only; charts use E+M+H sum
+                "totalSolved": total,  # charts use Easy+Medium+Hard but we keep this too
                 "Easy": easy,
                 "Medium": medium,
                 "Hard": hard,
@@ -129,8 +176,9 @@ def fetch_all_data(members, cache_key: float = 0.0):
     for member in members:
         user_data = fetch_user_data(member["username"])
         if user_data:
+            # Ensure these are present for snapshot seeding / charts
             user_data["name"] = member.get("name", member["username"])
-            user_data["username"] = member["username"]  # ensure username present
+            user_data["username"] = member["username"]
             data.append(user_data)
     return data
 
@@ -185,6 +233,7 @@ st.markdown("""
 
 # --- Page Header ---
 st.markdown('<div class="header-title">👨🏼‍💻 LeetCode Team Dashboard</div>', unsafe_allow_html=True)
+st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
 
 # --- Authentication & session state ---
 if "user" not in st.session_state:
@@ -365,20 +414,19 @@ st.markdown("### 📅 Weekly Progress (since September)")
 raw_hist = load_history()
 team_hist = raw_hist.get(user, {})
 
-# 🔧 If history is empty or a member is missing, initialize/repair now
+# 🔧 If history is empty or a member is missing, initialize/repair now using current fetch
 known_unames = set(team_hist.keys())
-current_unames = {m["username"] for m in members}
+current_unames = {m["username"] for m in load_members(user)}
 if not team_hist or (current_unames - known_unames):
     try:
-        # 'data' is the current fetch result; ensure usernames/names
         record_weekly_snapshots(user, data)
         raw_hist = load_history()
         team_hist = raw_hist.get(user, {})
     except Exception:
-        pass  # render continues with roster-backed grid anyway
+        pass
 
 # Roster map (ensures people with no history appear)
-member_name_by_username = {m["username"]: m.get("name", m["username"]) for m in members}
+member_name_by_username = {m["username"]: m.get("name", m["username"]) for m in load_members(user)}
 all_member_names = sorted(member_name_by_username.values())
 
 if not team_hist:
@@ -401,7 +449,7 @@ else:
     if hist_df.empty:
         st.info("No weekly snapshots yet for any member. Once you record a snapshot, progress will appear here.")
     else:
-        # Parse & sort, and build Accepted = Easy + Medium + Hard
+        # Parse, sort, build Accepted = Easy + Medium + Hard
         hist_df["week_start"] = pd.to_datetime(hist_df["week_start"])
         hist_df.sort_values(["username", "week_start"], inplace=True)
         hist_df["Accepted"] = hist_df["Easy"] + hist_df["Medium"] + hist_df["Hard"]
@@ -472,10 +520,7 @@ else:
                 ac_df_sorted["pct_change"] = (ac_df_sorted["delta"] / ac_df_sorted["prev_total"].replace(0, pd.NA)) * 100
                 ac_df_sorted["rank_delta"] = ac_df_sorted["prev_rank"] - ac_df_sorted["rank"]
 
-                # Keep only rows where there is a previous week to compare
                 deltas = ac_df_sorted.dropna(subset=["prev_total"]).copy()
-
-                # Pretty columns
                 deltas["week_start"] = pd.to_datetime(deltas["week_start"]).dt.date
 
                 def arrowize(x):
@@ -502,7 +547,6 @@ else:
                     "rank": "Rank",
                     "rank_delta": "Δ Rank"
                 })
-                # Stringify indicators
                 out["Δ Accepted"] = out["Δ Accepted"].apply(arrowize)
                 out["% Change"] = out["% Change"].apply(pctfmt)
                 out["Δ Rank"] = out["Δ Rank"].apply(rankfmt)
@@ -515,7 +559,7 @@ else:
                 latest_week = deltas["week_start"].max()
                 latest = deltas[deltas["week_start"] == latest_week].copy()
                 if not latest.empty:
-                    latest["gain"] = latest["delta"]  # numeric
+                    latest["gain"] = latest["delta"]
                     top = latest.sort_values("gain", ascending=False).head(3).reset_index(drop=True)
 
                     medals = []
@@ -591,7 +635,7 @@ with colA:
         if st.button("➕ Add Member", key="add_member_btn_bottom", use_container_width=True):
             if not new_name or not new_username:
                 st.warning("⚠️ Please enter both name and username")
-            elif any(m["username"] == new_username for m in members):
+            elif any(m["username"] == new_username for m in load_members(user)):
                 st.warning("⚠️ Member already exists.")
             else:
                 with st.spinner("🔍 Verifying LeetCode user..."):
@@ -601,6 +645,7 @@ with colA:
                         user_data = None
                     if user_data:
                         # 1) Save the member
+                        members = load_members(user)  # re-read to be safe
                         members.append({"name": new_name, "username": new_username})
                         save_members(user, members)
                         # 2) Immediately seed a snapshot so charts show them right away
@@ -619,13 +664,14 @@ with colA:
 
         st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
         st.markdown("### ➖ Remove Member")
-        name_to_username = {m["name"]: m["username"] for m in members}
+        members_now = load_members(user)
+        name_to_username = {m["name"]: m["username"] for m in members_now}
         if name_to_username:
             selected_name_rm = st.selectbox("Select a member to remove", list(name_to_username.keys()), key="rm_select")
             if st.button("🗑️ Remove Member", key="remove_member_btn_bottom", use_container_width=True):
                 selected_username = name_to_username[selected_name_rm]
-                members = [m for m in members if m["username"] != selected_username]
-                save_members(user, members)
+                new_members = [m for m in members_now if m["username"] != selected_username]
+                save_members(user, new_members)
                 bump_cache_buster()
                 st.success(f"✅ Member '{selected_name_rm}' removed successfully!")
                 st.rerun()
@@ -638,8 +684,7 @@ with colB:
     with st.expander("🧰 Backup & Restore", expanded=False):
         st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
         st.markdown("### 💾 Backup")
-        # Build per-user payloads
-        members_payload = json.dumps({user: members}, indent=2)
+        members_payload = json.dumps({user: load_members(user)}, indent=2)
         history_payload = json.dumps({user: load_history().get(user, {})}, indent=2)
         st.download_button("⬇️ Download Members JSON", data=members_payload, file_name=f"{user}_members_backup.json", mime="application/json", use_container_width=True)
         st.download_button("⬇️ Download History JSON", data=history_payload, file_name=f"{user}_history_backup.json", mime="application/json", use_container_width=True)
@@ -690,6 +735,36 @@ with colB:
             except Exception as e:
                 st.error(f"❌ Restore failed: {e}")
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---- S3 Self-Test (put/get/delete) ----
+    with st.expander("🧪 S3 Connectivity Test", expanded=False):
+        if st.button("Run S3 self-test (put/get/delete)"):
+            if not _use_s3():
+                st.warning("S3 mode is OFF (using local files). Add [aws] secrets to enable S3.")
+            else:
+                import uuid
+                client = _s3_client()
+                bucket, base_key = _s3_bucket_key("data/")
+                test_key = base_key.rstrip("/") + f"/_selftest_{uuid.uuid4().hex}.txt"
+                body = b"hello from app self-test"
+
+                with st.status("Running S3 self-test...", expanded=True) as status:
+                    try:
+                        st.write(f"Putting s3://{bucket}/{test_key}")
+                        client.put_object(Bucket=bucket, Key=test_key, Body=body)
+
+                        st.write("Getting back & verifying…")
+                        obj = client.get_object(Bucket=bucket, Key=test_key)
+                        got = obj["Body"].read()
+                        assert got == body, "Content mismatch"
+
+                        st.write("Deleting test object…")
+                        client.delete_object(Bucket=bucket, Key=test_key)
+
+                        status.update(label="S3 self-test passed ✅", state="complete")
+                    except Exception as e:
+                        status.update(label="S3 self-test failed ❌", state="error")
+                        st.error(e)
 
 # -----------------------------
 # Footer
