@@ -26,6 +26,51 @@ st.caption(f"Storage: **{'S3' if storage.__class__.__name__=='S3Storage' else 'L
 # Diagnostics block (migrate and view users)
 auth.render_users_diagnostics()
 
+# --- Login Troubleshooter (safe: no hashes printed) ---
+with st.expander("🔎 Login Troubleshooter", expanded=False):
+    from utils.auth import load_users, verify_login, credentials_for_authenticator
+    # Where are we reading from?
+    storage_mode = "S3" if ("aws" in st.secrets) else "Local"
+    st.write(f"Storage mode detected: **{storage_mode}**")
+    try:
+        db = load_users()
+        usernames = sorted(db.get("users", {}).keys())
+        st.write(f"Found **{len(usernames)}** user(s): {', '.join(usernames) if usernames else '(none)'}")
+    except Exception as e:
+        st.error(f"Could not load users.json: {e}")
+
+    # Safe manual check against utils.verify_login()
+    t1, t2 = st.columns(2)
+    with t1:
+        test_user = st.text_input("Test username (exact case)", key="lt_user")
+    with t2:
+        test_pw = st.text_input("Test password", type="password", key="lt_pw")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Run verify_login()"):
+            ok = verify_login(test_user, test_pw)
+            st.success("verify_login: ✅ MATCH") if ok else st.error("verify_login: ❌ NO MATCH")
+    with c2:
+        if st.button("Show usernames in authenticator payload"):
+            creds = credentials_for_authenticator()
+            st.write("Authenticator usernames:", ", ".join(sorted(creds.get("usernames", {}).keys())))
+            st.caption("If your username is missing here, rebuild the authenticator (see below).")
+
+    # Rebuild authenticator (if installed) to reload the latest users.json
+    try:
+        import streamlit_authenticator as stauth  # for rebuild button
+        if st.button("Rebuild authenticator (reload users)"):
+            st.session_state.authenticator = stauth.Authenticate(
+                credentials=credentials_for_authenticator(),
+                cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
+                key=st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me"),
+                cookie_expiry_days=int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14)),
+            )
+            st.success("Authenticator rebuilt. Try logging in again.")
+    except Exception:
+        st.caption("streamlit-authenticator not installed — using session fallback mode.")
+
+
 # Authenticate
 user, ok = auth.authenticate()
 if not ok:
