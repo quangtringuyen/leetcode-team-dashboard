@@ -305,7 +305,13 @@ if "authenticator" not in st.session_state:
     )
 
 authenticator: stauth.Authenticate = st.session_state.authenticator
-name, authentication_status, username = authenticator.login("Login", "main")
+
+# ✅ Use keyword for location (API-compatible)
+name, authentication_status, username = authenticator.login(location="main")
+
+# Optional heading above the form
+if authentication_status is None:
+    st.subheader("🔐 Login")
 
 with st.expander("📝 New here? Register", expanded=False):
     reg_col1, reg_col2 = st.columns(2)
@@ -321,6 +327,7 @@ with st.expander("📝 New here? Register", expanded=False):
         else:
             ok = auth_register(reg_username, reg_password, name=reg_name, email=reg_email)
             if ok:
+                # Rebuild authenticator with the new user included
                 st.session_state.authenticator = stauth.Authenticate(
                     credentials=credentials_for_authenticator(),
                     cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
@@ -342,7 +349,8 @@ elif authentication_status is None:
 # Authenticated
 user = username
 st.sidebar.success(f"Logged in as {user}")
-authenticator.logout("🚪 Logout", "sidebar")
+authenticator.logout("🚪 Logout", location="sidebar")
+
 
 # --- Session utils
 if "cache_buster" not in st.session_state:
