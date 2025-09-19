@@ -21,9 +21,7 @@ from utils.leetcodeapi import fetch_user_data
 from utils.auth import (
     register as auth_register,
     credentials_for_authenticator,
-    load_users,
     verify_login,
-    migrate_plaintext_passwords,
 )
 
 # ===================== Base page & CSS =====================
@@ -239,7 +237,7 @@ def calendars_to_frame(members_list):
             rows.append({"name": nm, "username": uname, "date": pd.to_datetime(d), "accepted": int(cal.get(d, 0))})
     return pd.DataFrame(rows)
 
-# ===================== AUTH SECTION (drop-in) =====================
+# ===================== AUTH SECTION =====================
 def _build_authenticator():
     return stauth.Authenticate(
         credentials=credentials_for_authenticator(),
@@ -259,6 +257,7 @@ def _login_compat(authenticator):
 
 def ensure_authenticated_user():
     """Return username when logged in; otherwise halt UI until login happens."""
+    # Cookie-based sessions (preferred)
     if ST_AUTH_AVAILABLE:
         if "authenticator" not in st.session_state:
             st.session_state.authenticator = _build_authenticator()
@@ -305,8 +304,7 @@ def ensure_authenticated_user():
         st.info("Please log in to continue.")
         st.stop()
 
-    # Fallback mode (no authenticator installed)
-    st.info("Basic session login (install `streamlit-authenticator` for persistent cookies).")
+    # Fallback: simple session login
     if "user" not in st.session_state:
         st.session_state.user = None
 
@@ -323,7 +321,7 @@ def ensure_authenticated_user():
                 if verify_login(u, p):
                     st.session_state.user = u
                     st.success("Logged in!")
-                    st.experimental_rerun()
+                    st.experimental_rerun()  # rerun so the app renders
                 else:
                     st.error("Invalid credentials.")
         with b2:
@@ -341,55 +339,17 @@ def ensure_authenticated_user():
         st.experimental_rerun()
     return st.session_state.user
 
-# ===================== Users Diagnostics & Troubleshooter =====================
-with st.expander("🧩 Users Diagnostics", expanded=False):
-    db = load_users()
-    usernames = sorted(list(db.get("users", {}).keys()))
-    st.write(f"Found **{len(usernames)}** user(s).")
-    if usernames:
-        st.write("Usernames:", ", ".join(usernames))
-    if st.button("Migrate legacy plaintext passwords ➜ bcrypt"):
-        migrated = migrate_plaintext_passwords()
-        if migrated > 0:
-            st.success(f"Migrated {migrated} account(s) to bcrypt.")
-            if ST_AUTH_AVAILABLE:
-                st.session_state.authenticator = _build_authenticator()
-            st.rerun()
-        else:
-            st.info("No legacy plaintext passwords detected.")
-
-with st.expander("🔎 Login Troubleshooter", expanded=False):
-    storage_mode = "S3" if _use_s3() else "Local"
-    st.write(f"Storage mode: **{storage_mode}**")
-    try:
-        db = load_users()
-        usernames = sorted(db.get("users", {}).keys())
-        st.write(f"Found **{len(usernames)}** user(s): {', '.join(usernames) if usernames else '(none)'}")
-    except Exception as e:
-        st.error(f"Could not load users.json: {e}")
-
-    t1, t2 = st.columns(2)
-    with t1:
-        test_user = st.text_input("Test username (exact case)", key="lt_user")
-    with t2:
-        test_pw = st.text_input("Test password", type="password", key="lt_pw")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Run verify_login()"):
-            ok = verify_login(test_user, test_pw)
-            st.success("verify_login: ✅ MATCH") if ok else st.error("verify_login: ❌ NO MATCH")
-    with c2:
-        if ST_AUTH_AVAILABLE and st.button("Rebuild authenticator (reload users)"):
-            st.session_state.authenticator = _build_authenticator()
-            st.success("Authenticator rebuilt. Try logging in again.")
-
 # ===================== Authenticate =====================
 user = ensure_authenticated_user()
+# Subtle status text (no noisy debug)
 st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
 
 # ===================== Top controls =====================
 if "cache_buster" not in st.session_state:
     st.session_state.cache_buster = 0.0
+
+def bump_cache_buster():
+    st.session_state.cache_buster = time.time()
 
 tc = st.columns([8, 1.2, 1.6])
 with tc[1]:
@@ -404,7 +364,13 @@ with tc[2]:
         st.rerun()
 
 # ===================== Load members & fetch data =====================
-members = load_members(user)
+def load_members_safe():
+    try:
+        return load_members(user)
+    except Exception:
+        return []
+
+members = load_members_safe()
 if not members:
     st.warning("⚠️ No members found for your team.")
 
@@ -824,27 +790,6 @@ with colB:
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ Restore failed: {e}")
-
-    # Optional: S3 self-test
-    with st.expander("🧪 S3 Connectivity Test", expanded=False):
-        if st.button("Run S3 self-test (put/get/delete)"):
-            if not _use_s3():
-                st.warning("S3 mode is OFF (using local files). Add [aws] secrets to enable S3.")
-            else:
-                import uuid
-                client = _s3_client()
-                bucket, base_key = _s3_bucket_key("data/")
-                test_key = base_key.rstrip("/") + f"/_selftest_{uuid.uuid4().hex}.txt"
-                body = b"hello from app self-test"
-                try:
-                    client.put_object(Bucket=bucket, Key=test_key, Body=body)
-                    obj = client.get_object(Bucket=bucket, Key=test_key)
-                    got = obj["Body"].read()
-                    assert got == body, "Content mismatch"
-                    client.delete_object(Bucket=bucket, Key=test_key)
-                    st.success("S3 self-test passed ✅")
-                except Exception as e:
-                    st.error(f"S3 self-test failed ❌: {e}")
 
 # ===================== Footer =====================
 st.markdown("---")
