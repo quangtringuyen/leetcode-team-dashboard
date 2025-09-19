@@ -20,7 +20,9 @@ from utils.leetcodeapi import fetch_user_data
 from utils.auth import (
     register as auth_register,
     credentials_for_authenticator,
-    load_users,  # used for fallback path
+    load_users,
+    verify_login,                # NEW
+    migrate_plaintext_passwords  # NEW
 )
 
 # ============================================================
@@ -32,15 +34,12 @@ def auth_login_compat(authenticator):
     Returns (name, authentication_status, username).
     """
     try:
-        # Newer versions expect keyword 'location'
-        result = authenticator.login(location="main")
+        result = authenticator.login(location="main")  # newer API
         if isinstance(result, tuple) and len(result) == 3:
             return result
-        # Some edge builds may return None before render:
         return (None, None, None) if result is None else result
     except TypeError:
-        # Older versions: (title, location)
-        return authenticator.login("Login", "main")
+        return authenticator.login("Login", "main")  # older API
 
 def auth_logout_compat(authenticator, where="sidebar"):
     """Works with both new and old logout signatures."""
@@ -156,7 +155,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
     for member in team_data:
         username = member["username"]
         name = member.get("name", username)
-        total = int(member.get("totalSolved", 0))  # API "accepted" total (reference)
+        total = int(member.get("totalSolved", 0))
         easy = medium = hard = 0
         for s in member.get("submissions", []):
             if s.get("difficulty") == "Easy":
@@ -175,7 +174,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
                 "week_start": week_start_str,
                 "username": username,
                 "name": name,
-                "totalSolved": total,  # we keep this too
+                "totalSolved": total,
                 "Easy": easy,
                 "Medium": medium,
                 "Hard": hard,
@@ -206,7 +205,6 @@ def fetch_all_data(members, cache_key: float = 0.0):
     for member in members:
         user_data = fetch_user_data(member["username"])
         if user_data:
-            # Ensure these are present for snapshot seeding / charts
             user_data["name"] = member.get("name", member["username"])
             user_data["username"] = member["username"]
             data.append(user_data)
@@ -325,6 +323,30 @@ st.markdown('<div class="header-title">👨🏼‍💻 LeetCode Team Dashboard</
 st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
 
 # ============================================================
+# 🧩 Users Diagnostics (migrate plaintext → bcrypt, view users)
+# ============================================================
+with st.expander("🧩 Users Diagnostics", expanded=False):
+    db = load_users()
+    usernames = sorted(list(db.get("users", {}).keys()))
+    st.write(f"Found **{len(usernames)}** user(s).")
+    if usernames:
+        st.write("Usernames:", ", ".join(usernames))
+    if st.button("Migrate legacy plaintext passwords ➜ bcrypt"):
+        migrated = migrate_plaintext_passwords()
+        if migrated > 0:
+            st.success(f"Migrated {migrated} account(s) to bcrypt.")
+            if ST_AUTH_AVAILABLE and "authenticator" in st.session_state:
+                st.session_state.authenticator = stauth.Authenticate(
+                    credentials=credentials_for_authenticator(),
+                    cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
+                    key=st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me"),
+                    cookie_expiry_days=int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14)),
+                )
+            st.rerun()
+        else:
+            st.info("No legacy plaintext passwords detected.")
+
+# ============================================================
 # Authentication (cookie-based if available; else session fallback)
 # ============================================================
 user = None
@@ -361,7 +383,6 @@ if ST_AUTH_AVAILABLE:
             else:
                 ok = auth_register(reg_username, reg_password, name=reg_name, email=reg_email)
                 if ok:
-                    # Rebuild authenticator with new user included
                     st.session_state.authenticator = stauth.Authenticate(
                         credentials=credentials_for_authenticator(),
                         cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
@@ -401,14 +422,11 @@ else:
         c1, c2 = st.columns(2)
         with c1:
             if st.button("🚀 Login"):
-                db = load_users()
-                rec = db.get("users", {}).get(username_in)
-                if rec:
-                    import bcrypt
-                    if bcrypt.checkpw(password_in.encode("utf-8"), rec["password"].encode("utf-8")):
-                        st.session_state.user = username_in
-                        st.rerun()
-                st.error("Invalid credentials.")
+                if verify_login(username_in, password_in):
+                    st.session_state.user = username_in
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials.")
         with c2:
             if st.button("📝 Register"):
                 if not username_in or not password_in:
@@ -567,7 +585,7 @@ st.markdown("### 📅 Weekly Progress (since September)")
 raw_hist = load_history()
 team_hist = raw_hist.get(user, {})
 
-# If history is empty or a member is missing, initialize/repair now using current fetch
+# Initialize/repair missing history
 known_unames = set(team_hist.keys())
 current_unames = {m["username"] for m in load_members(user)}
 if not team_hist or (current_unames - known_unames):
@@ -578,14 +596,12 @@ if not team_hist or (current_unames - known_unames):
     except Exception:
         pass
 
-# Roster map (ensures people with no history appear)
 member_name_by_username = {m["username"]: m.get("name", m["username"]) for m in load_members(user)}
 all_member_names = sorted(member_name_by_username.values())
 
 if not team_hist:
     st.info("No weekly snapshots yet. Use **Refresh data** or **Record snapshot now** to create the first one.")
 else:
-    # Flatten snapshots
     rows = []
     for uname, snaps in team_hist.items():
         for s in snaps:
@@ -600,14 +616,12 @@ else:
     hist_df = pd.DataFrame(rows)
 
     if hist_df.empty:
-        st.info("No weekly snapshots yet for any member. Once you record a snapshot, progress will appear here.")
+        st.info("No weekly snapshots yet for any member.")
     else:
-        # Parse, sort, build Accepted = Easy + Medium + Hard
         hist_df["week_start"] = pd.to_datetime(hist_df["week_start"])
         hist_df.sort_values(["username", "week_start"], inplace=True)
         hist_df["Accepted"] = hist_df["Easy"] + hist_df["Medium"] + hist_df["Hard"]
 
-        # Controls (clamp default date to [min, max])
         this_year = date.today().year
         proposed_start = iso_week_start(date(this_year, 9, 1))
         min_date = hist_df["week_start"].min().date()
@@ -630,18 +644,15 @@ else:
         with cc[3]:
             show_deltas = st.checkbox("Show Week-over-Week Changes (Accepted)", value=True)
 
-        # Filter by start date
         f_hist = hist_df[hist_df["week_start"] >= pd.Timestamp(start_date)].copy()
         if f_hist.empty:
             st.info("No data for the selected start date yet.")
         else:
-            # Build weekly grid (Mon) and full roster projection
             start_monday = pd.Timestamp(start_date) - pd.Timedelta(days=pd.Timestamp(start_date).weekday())
             end_monday = f_hist["week_start"].max()
             weeks = pd.date_range(start=start_monday, end=end_monday, freq="W-MON")
             full_index = pd.MultiIndex.from_product([selected_people, weeks], names=["name", "week_start"])
 
-            # --- Cumulative chart for chosen metric (with ffill & zeros) ---
             chart_df = f_hist[["name", "week_start", metric]].set_index(["name", "week_start"]).sort_index()
             chart_df = chart_df.reindex(full_index)
             chart_df = chart_df.groupby(level=0)[metric].ffill().fillna(0.0).to_frame("value").reset_index()
@@ -655,17 +666,14 @@ else:
                               margin=dict(l=20, r=20, t=50, b=20), height=420)
             st.plotly_chart(fig, use_container_width=True)
 
-            # --- Week-over-Week Changes (ALWAYS on Accepted = E+M+H) ---
             if show_deltas:
                 ac_df = f_hist[["name", "week_start", "Accepted"]].set_index(["name", "week_start"]).sort_index()
                 ac_df = ac_df.reindex(full_index)
                 ac_df = ac_df.groupby(level=0)["Accepted"].ffill().fillna(0.0).to_frame("Accepted").reset_index()
 
-                # Rank by week (1 = best)
                 ac_df_sorted = ac_df.sort_values(["week_start", "Accepted"], ascending=[True, False])
                 ac_df_sorted["rank"] = ac_df_sorted.groupby("week_start")["Accepted"].rank(method="min", ascending=False)
 
-                # Prev week values
                 ac_df_sorted["prev_total"] = ac_df_sorted.groupby("name")["Accepted"].shift(1)
                 ac_df_sorted["prev_rank"] = ac_df_sorted.groupby("name")["rank"].shift(1)
 
@@ -679,12 +687,10 @@ else:
                 def arrowize(x):
                     if pd.isna(x) or x == 0: return "➖ 0"
                     return f"🔼 {int(x)}" if x > 0 else f"🔽 {int(x)}"
-
                 def pctfmt(x):
                     if pd.isna(x): return "—"
                     sign = "+" if x >= 0 else ""
                     return f"{sign}{x:.1f}%"
-
                 def rankfmt(x):
                     if pd.isna(x) or x == 0: return "—"
                     arrow = "⬆️" if x > 0 else "⬇️"
@@ -708,13 +714,11 @@ else:
                 st.markdown("#### Week-over-Week Changes (Accepted challenges)")
                 st.dataframe(out, use_container_width=True)
 
-                # “Top gainers” in the latest completed week
                 latest_week = deltas["week_start"].max()
                 latest = deltas[deltas["week_start"] == latest_week].copy()
                 if not latest.empty:
                     latest["gain"] = latest["delta"]
                     top = latest.sort_values("gain", ascending=False).head(3).reset_index(drop=True)
-
                     medals = []
                     if len(top) >= 1:
                         medals.append(f"🥇 {top.iloc[0]['name']}: +{int(top.iloc[0]['gain'])}")
@@ -722,11 +726,9 @@ else:
                         medals.append(f"🥈 {top.iloc[1]['name']}: +{int(top.iloc[1]['gain'])}")
                     if len(top) >= 3:
                         medals.append(f"🥉 {top.iloc[2]['name']}: +{int(top.iloc[2]['gain'])}")
-
                     if medals:
                         st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
 
-        # Let user know who has no snapshots yet
         names_with_hist = sorted(hist_df["name"].unique().tolist())
         missing_hist = sorted(set(all_member_names) - set(names_with_hist))
         if missing_hist:
@@ -748,7 +750,6 @@ else:
     if cal_df.empty:
         st.info("No calendar data available yet (LeetCode may return empty until someone has accepted problems).")
     else:
-        # Controls
         all_names = sorted(cal_df["name"].unique().tolist())
         c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
         with c1:
@@ -765,7 +766,6 @@ else:
         else:
             df_tr = cal_df[cal_df["name"].isin(trend_people)].copy()
 
-            # Resample by chosen frequency
             if freq == "Daily":
                 df_tr["bucket"] = df_tr["date"].dt.to_period("D").dt.to_timestamp()
                 freq_code = "D"
@@ -773,7 +773,7 @@ else:
                 df_tr["bucket"] = (df_tr["date"] - pd.to_timedelta(df_tr["date"].dt.dayofweek, unit="D"))
                 df_tr["bucket"] = pd.to_datetime(df_tr["bucket"].dt.date)
                 freq_code = "W-MON"
-            else:  # Monthly
+            else:
                 df_tr["bucket"] = df_tr["date"].dt.to_period("M").dt.to_timestamp()
                 freq_code = "MS"
 
@@ -877,11 +877,9 @@ with colA:
                     except Exception:
                         user_data = None
                     if user_data:
-                        # 1) Save the member
-                        members_now = load_members(user)  # re-read to be safe
+                        members_now = load_members(user)
                         members_now.append({"name": new_name, "username": new_username})
                         save_members(user, members_now)
-                        # 2) Immediately seed a snapshot so charts show them right away
                         try:
                             user_data["name"] = new_name
                             user_data["username"] = new_username
@@ -951,7 +949,6 @@ with colB:
                         raise ValueError("History JSON must contain an object under your username.")
                     if merge_mode:
                         cur_user_hist = current_hist.get(user, {})
-                        # merge by username and week_start uniqueness
                         for uname, snaps in incoming.items():
                             cur_user_hist.setdefault(uname, [])
                             existing_weeks = {s["week_start"] for s in cur_user_hist[uname] if "week_start" in s}
