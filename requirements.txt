@@ -1,8 +1,7 @@
 streamlit
 pandas
-requests
 plotly
-matplotlib
 boto3
+requests
 streamlit-authenticator
 bcrypt
