@@ -8,9 +8,10 @@ from datetime import date, timedelta, datetime
 import pandas as pd
 import plotly.express as px
 import requests
+import streamlit_authenticator as stauth
 
 from utils.leetcodeapi import fetch_user_data
-from utils.auth import login, register
+from utils.auth import register as auth_register, credentials_for_authenticator
 
 # ============================================================
 # S3-aware JSON storage adapter (quiet: no UI captions)
@@ -287,46 +288,68 @@ st.markdown("""
 st.markdown('<div class="header-title">👨🏼‍💻 LeetCode Team Dashboard</div>', unsafe_allow_html=True)
 st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
 
-# --- Authentication & session state ---
-if "user" not in st.session_state:
-    st.session_state.user = None
+# ============================================================
+# Authentication (cookie-based, persistent)
+# ============================================================
+if "authenticator" not in st.session_state:
+    creds = credentials_for_authenticator()
+    cookie_name = st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth")
+    cookie_key  = st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me")
+    cookie_exp  = int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14))
+
+    st.session_state.authenticator = stauth.Authenticate(
+        credentials=creds,
+        cookie_name=cookie_name,
+        key=cookie_key,
+        cookie_expiry_days=cookie_exp,
+    )
+
+authenticator: stauth.Authenticate = st.session_state.authenticator
+name, authentication_status, username = authenticator.login("Login", "main")
+
+with st.expander("📝 New here? Register", expanded=False):
+    reg_col1, reg_col2 = st.columns(2)
+    with reg_col1:
+        reg_username = st.text_input("Choose a username")
+        reg_name = st.text_input("Your display name (optional)")
+    with reg_col2:
+        reg_email = st.text_input("Email (optional)")
+        reg_password = st.text_input("Choose a password", type="password")
+    if st.button("Create account", type="primary"):
+        if not reg_username or not reg_password:
+            st.warning("Please enter username and password.")
+        else:
+            ok = auth_register(reg_username, reg_password, name=reg_name, email=reg_email)
+            if ok:
+                st.session_state.authenticator = stauth.Authenticate(
+                    credentials=credentials_for_authenticator(),
+                    cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
+                    key=st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me"),
+                    cookie_expiry_days=int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14)),
+                )
+                st.success("Account created. Please log in.")
+                st.rerun()
+            else:
+                st.error("Username already exists. Try another.")
+
+if authentication_status is False:
+    st.error("Invalid username or password.")
+    st.stop()
+elif authentication_status is None:
+    st.info("Please log in to continue.")
+    st.stop()
+
+# Authenticated
+user = username
+st.sidebar.success(f"Logged in as {user}")
+authenticator.logout("🚪 Logout", "sidebar")
+
+# --- Session utils
 if "cache_buster" not in st.session_state:
     st.session_state.cache_buster = 0.0
 
-if st.session_state.user is None:
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
-        st.markdown('<h3 style="text-align:center;color:#FFA116;margin-top:0">🔐 Login or Register</h3>', unsafe_allow_html=True)
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        b1, b2 = st.columns(2)
-        if b1.button("🚀 Login", use_container_width=True):
-            if username and password and login(username, password):
-                st.session_state.user = username
-                bump_cache_buster()
-                st.success("✅ Logged in successfully!")
-                st.rerun()
-            else:
-                st.error("❌ Invalid credentials or missing input.")
-        if b2.button("📝 Register", use_container_width=True):
-            if username and password and register(username, password):
-                st.session_state.user = username
-                bump_cache_buster()
-                st.success("✅ Registered and logged in!")
-                st.rerun()
-            else:
-                st.error("❌ Username exists or missing input.")
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()
-
-user = st.session_state.user
-
-st.write(f"👋 **Welcome, _{user}_!**")
-
-# --- Top controls: refresh, snapshot, logout ---
-tc = st.columns([6, 1.2, 1.2, 1.2])
+# --- Top controls: refresh, snapshot
+tc = st.columns([8, 1.2, 1.2])
 with tc[1]:
     if st.button("🔄 Refresh data"):
         bump_cache_buster()
@@ -336,11 +359,6 @@ with tc[2]:
     if st.button("🗂️ Record snapshot now"):
         bump_cache_buster()
         st.session_state.force_snapshot = True
-        st.rerun()
-with tc[3]:
-    if st.button("🚪 Logout"):
-        st.session_state.user = None
-        st.session_state.selected_user = None
         st.rerun()
 
 # --- Load members ---
