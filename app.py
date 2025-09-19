@@ -237,7 +237,7 @@ def calendars_to_frame(members_list):
             rows.append({"name": nm, "username": uname, "date": pd.to_datetime(d), "accepted": int(cal.get(d, 0))})
     return pd.DataFrame(rows)
 
-# ===================== AUTH SECTION =====================
+# ===================== AUTH SECTION (fixed: read session_state) =====================
 def _build_authenticator():
     return stauth.Authenticate(
         credentials=credentials_for_authenticator(),
@@ -263,7 +263,21 @@ def ensure_authenticated_user():
             st.session_state.authenticator = _build_authenticator()
         authenticator = st.session_state.authenticator
 
+        # Call the widget (renders UI and sets session_state keys)
         name, auth_status, username = _login_compat(authenticator)
+
+        # ✅ Read final truth from session_state (some versions set it there)
+        ss_status = st.session_state.get("authentication_status", None)
+        ss_user = st.session_state.get("username", None)
+        ss_name = st.session_state.get("name", None)
+
+        # Prefer session_state values if present
+        if ss_status is not None:
+            auth_status = ss_status
+        if ss_user:
+            username = ss_user
+        if ss_name:
+            name = ss_name
 
         # Registration panel when not logged in
         if auth_status is None:
@@ -341,7 +355,6 @@ def ensure_authenticated_user():
 
 # ===================== Authenticate =====================
 user = ensure_authenticated_user()
-# Subtle status text (no noisy debug)
 st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
 
 # ===================== Top controls =====================
@@ -448,7 +461,6 @@ with right_col:
         with c3: st.markdown(f'<div class="stat-card"><div class="stat-label">Medium</div><div class="stat-value" style="color:#FFA116">{med_c}</div></div>', unsafe_allow_html=True)
         with c4: st.markdown(f'<div class="stat-card"><div class="stat-label">Hard</div><div class="stat-value" style="color:#EF4743">{hard_c}</div></div>', unsafe_allow_html=True)
 
-        # Bigger donut
         if sel_accepted > 0:
             fig = px.pie(
                 [{"difficulty":"Easy","count":easy_c},{"difficulty":"Medium","count":med_c},{"difficulty":"Hard","count":hard_c}],
