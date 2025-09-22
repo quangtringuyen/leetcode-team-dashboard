@@ -626,7 +626,8 @@ else:
             labels={"week_start":"Week Start","value":metric,"name":"Member"},
             title=f"Weekly {metric} Progress (Cumulative)"
         )
-        fig.update_traces(mode="lines+markers+text", textposition="top center", textfont=dict(size=11))
+        fig.update_traces(mode="lines+markers+text", textposition="top center", textfont=dict(size=11),
+                          texttemplate="%{text:.0f}")
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                           margin=dict(l=20, r=20, t=50, b=20), height=440)
         st.plotly_chart(fig, use_container_width=True)
@@ -681,7 +682,7 @@ else:
                 if medals:
                     st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
 
-# ===================== Accepted Trend by Date (with snapshot fallback + colors) =====================
+# ===================== Accepted Trend by Date (with snapshot fallback + colors + labels) =====================
 st.divider()
 st.markdown("### 📈 Accepted Trend by Date")
 trend_members = load_members(user)
@@ -725,11 +726,15 @@ else:
                     agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
                     if cumulative:
                         agg["accepted"] = agg["accepted"].cumsum()
+                # 👉 value labels at each point
                 fig = px.line(
-                    agg, x="bucket", y="accepted", markers=True,
+                    agg, x="bucket", y="accepted", markers=True, text="accepted",
                     labels={"bucket": "Date", "accepted": "Accepted"},
                     title=f"{'Cumulative ' if cumulative else ''}Accepted — Team ({freq.lower()})"
                 )
+                fig.update_traces(mode="lines+markers+text", textposition="top center",
+                                  textfont=dict(size=11), texttemplate="%{text:.0f}",
+                                  hovertemplate="Date=%{x}<br>Accepted=%{y}<extra></extra>")
                 fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                                   margin=dict(l=20, r=20, t=50, b=20), height=420)
                 st.plotly_chart(fig, use_container_width=True)
@@ -744,12 +749,16 @@ else:
                         agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
                 else:
                     agg_full = agg
+                # 👉 value labels at each point + member colors
                 fig = px.line(
-                    agg_full, x="bucket", y="accepted", color="name", markers=True,
+                    agg_full, x="bucket", y="accepted", color="name", markers=True, text="accepted",
                     color_discrete_map=MEMBER_COLORS,
                     labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
                     title=f"{'Cumulative ' if cumulative else ''}Accepted — Per Member ({freq.lower()})"
                 )
+                fig.update_traces(mode="lines+markers+text", textposition="top center",
+                                  textfont=dict(size=11), texttemplate="%{text:.0f}",
+                                  hovertemplate="Member=%{legendgroup}<br>Date=%{x}<br>Accepted=%{y}<extra></extra>")
                 fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                                   margin=dict(l=20, r=20, t=50, b=20), height=420)
                 st.plotly_chart(fig, use_container_width=True)
