@@ -214,6 +214,11 @@ def fetch_submission_calendar(username: str):
         return {}
 
 def calendars_to_frame(members_list):
+    """
+    Primary data source: daily calendar API.
+    Returns rows even if some users have empty calendars (we'll fill zeros for the shared date span).
+    If absolutely no calendars have data, returns empty DF (fallback added elsewhere).
+    """
     rows = []
     min_d, max_d = None, None
     calendars = {}
@@ -225,6 +230,7 @@ def calendars_to_frame(members_list):
         for d in cal.keys():
             if min_d is None or d < min_d: min_d = d
             if max_d is None or d > max_d: max_d = d
+
     if min_d is None or max_d is None:
         return pd.DataFrame(columns=["name", "username", "date", "accepted"])
 
@@ -236,6 +242,61 @@ def calendars_to_frame(members_list):
         for d in full_days:
             rows.append({"name": nm, "username": uname, "date": pd.to_datetime(d), "accepted": int(cal.get(d, 0))})
     return pd.DataFrame(rows)
+
+def trend_frame_with_fallback(members_list, owner_username: str):
+    """
+    Build 'Accepted Trend by Date' data with fallback:
+    - Try daily calendars (primary).
+    - If entirely empty (or partially empty per user), use weekly snapshot diffs to synthesize daily points
+      (placing weekly gains on the week's Monday).
+    - Combine both where applicable.
+    """
+    cal_df = calendars_to_frame(members_list)
+    # If we have at least some calendar data, we'll still try to add missing users from history.
+    need_fallback = cal_df.empty
+    if not need_fallback:
+        users_with_calendar = set(cal_df["username"].unique())
+    else:
+        users_with_calendar = set()
+
+    # Build synthetic daily points from weekly snapshots
+    history = load_history().get(owner_username, {})
+    rows = []
+    for m in members_list:
+        uname = m["username"]
+        nm = m.get("name", uname)
+        snaps = history.get(uname, [])
+        if not snaps:
+            continue
+        h = pd.DataFrame(snaps)
+        if h.empty or "week_start" not in h:
+            continue
+        h["week_start"] = pd.to_datetime(h["week_start"])
+        h = h.sort_values("week_start")
+        h["Accepted"] = h[["Easy","Medium","Hard"]].fillna(0).astype(int).sum(axis=1)
+        h["prev"] = h["Accepted"].shift(1)
+        h["gain"] = (h["Accepted"] - h["prev"]).fillna(h["Accepted"]).astype(int)
+        # Put the weekly gain on the Monday (week_start) as a "daily" point
+        h["date"] = h["week_start"].dt.date
+        for r in h.itertuples(index=False):
+            rows.append({"name": nm, "username": uname, "date": pd.to_datetime(r.date), "accepted": int(r.gain)})
+
+    hist_daily = pd.DataFrame(rows)
+
+    if need_fallback:
+        # Only snapshots available → use them
+        return hist_daily
+
+    # Merge: calendar data + add-only for users missing from calendar
+    if not hist_daily.empty:
+        if users_with_calendar:
+            missing_users = set(u["username"] for u in members_list) - users_with_calendar
+            add_from_hist = hist_daily[hist_daily["username"].isin(missing_users)]
+            cal_df = pd.concat([cal_df, add_from_hist], ignore_index=True)
+        else:
+            cal_df = pd.concat([cal_df, hist_daily], ignore_index=True)
+
+    return cal_df
 
 # ===================== AUTH SECTION (fixed: read session_state) =====================
 def _build_authenticator():
@@ -479,9 +540,9 @@ with right_col:
         else:
             st.info("🎯 No accepted challenges yet!")
 
-# ===================== Weekly Progress (full roster + ffill) =====================
+# ===================== Weekly Progress (full roster + ffill + point labels) =====================
 st.divider()
-st.markdown("### 📅 Weekly Progress (since September)")
+st.markdown("### 📅 Weekly Accepted Progress (Cumulative)")
 
 raw_hist = load_history()
 team_hist = raw_hist.get(user, {})
@@ -546,11 +607,14 @@ else:
         chart_df = chart_df.reindex(full_index)
         chart_df = chart_df.groupby(level=0)[metric].ffill().fillna(0.0).to_frame("value").reset_index()
 
+        # 👉 Show data labels at each weekly point
         fig = px.line(chart_df, x="week_start", y="value", color="name", markers=True,
+                      text="value",
                       labels={"week_start":"Week Start","value":metric,"name":"Member"},
                       title=f"Weekly {metric} Progress (Cumulative)")
+        fig.update_traces(mode="lines+markers+text", textposition="top center", textfont=dict(size=11))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                          margin=dict(l=20, r=20, t=50, b=20), height=420)
+                          margin=dict(l=20, r=20, t=50, b=20), height=440)
         st.plotly_chart(fig, use_container_width=True)
 
         if show_deltas:
@@ -603,7 +667,7 @@ else:
                 if medals:
                     st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
 
-# ===================== Accepted Trend by Date =====================
+# ===================== Accepted Trend by Date (with snapshot fallback) =====================
 st.divider()
 st.markdown("### 📈 Accepted Trend by Date")
 trend_members = load_members(user)
@@ -611,9 +675,11 @@ if not trend_members:
     st.info("No members to chart.")
 else:
     with st.spinner("Gathering calendars…"):
-        cal_df = calendars_to_frame(trend_members)
+        # 👉 Use fallback builder that merges calendar + weekly-snapshot diffs if needed
+        cal_df = trend_frame_with_fallback(trend_members, user)
+
     if cal_df.empty:
-        st.info("No calendar data available yet (LeetCode may return empty until someone has accepted problems).")
+        st.info("No trend data is available yet. Record a snapshot after someone accepts challenges.")
     else:
         all_names = sorted(cal_df["name"].unique().tolist())
         c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
@@ -641,10 +707,11 @@ else:
 
             if mode == "Team total":
                 agg = df_tr.groupby(["bucket"], as_index=False)["accepted"].sum().sort_values("bucket")
-                full_idx = pd.date_range(agg["bucket"].min(), agg["bucket"].max(), freq=freq_code)
-                agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
-                if cumulative:
-                    agg["accepted"] = agg["accepted"].cumsum()
+                if not agg.empty:
+                    full_idx = pd.date_range(agg["bucket"].min(), agg["bucket"].max(), freq=freq_code)
+                    agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
+                    if cumulative:
+                        agg["accepted"] = agg["accepted"].cumsum()
                 fig = px.line(agg, x="bucket", y="accepted", markers=True,
                               labels={"bucket": "Date", "accepted": "Accepted"},
                               title=f"{'Cumulative ' if cumulative else ''}Accepted — Team ({freq.lower()})")
@@ -653,12 +720,15 @@ else:
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 agg = df_tr.groupby(["name", "bucket"], as_index=False)["accepted"].sum()
-                min_b, max_b = agg["bucket"].min(), agg["bucket"].max()
-                full_buckets = pd.date_range(min_b, max_b, freq=freq_code)
-                full_index = pd.MultiIndex.from_product([trend_people, full_buckets], names=["name", "bucket"])
-                agg_full = agg.set_index(["name", "bucket"]).reindex(full_index, fill_value=0).reset_index()
-                if cumulative:
-                    agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
+                if not agg.empty:
+                    min_b, max_b = agg["bucket"].min(), agg["bucket"].max()
+                    full_buckets = pd.date_range(min_b, max_b, freq=freq_code)
+                    full_index = pd.MultiIndex.from_product([trend_people, full_buckets], names=["name", "bucket"])
+                    agg_full = agg.set_index(["name", "bucket"]).reindex(full_index, fill_value=0).reset_index()
+                    if cumulative:
+                        agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
+                else:
+                    agg_full = agg
                 fig = px.line(agg_full, x="bucket", y="accepted", color="name", markers=True,
                               labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
                               title=f"{'Cumulative ' if cumulative else ''}Accepted — Per Member ({freq.lower()})")
@@ -699,6 +769,7 @@ colA, colB = st.columns([1, 1])
 with colA:
     with st.expander("📝 Manage Team Members", expanded=False):
         st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
+        st.markmarkdown = st.markdown
         st.markdown("### ➕ Add Member")
         new_name = st.text_input("Full Name", key="add_name")
         new_username = st.text_input("LeetCode Username", key="add_username")
