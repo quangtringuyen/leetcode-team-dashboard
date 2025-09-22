@@ -247,19 +247,17 @@ def trend_frame_with_fallback(members_list, owner_username: str):
     """
     Build 'Accepted Trend by Date' data with fallback:
     - Try daily calendars (primary).
-    - If entirely empty (or partially empty per user), use weekly snapshot diffs to synthesize daily points
+    - If entirely empty (or for users with empty calendars), use weekly snapshot diffs to synthesize daily points
       (placing weekly gains on the week's Monday).
     - Combine both where applicable.
     """
     cal_df = calendars_to_frame(members_list)
-    # If we have at least some calendar data, we'll still try to add missing users from history.
     need_fallback = cal_df.empty
     if not need_fallback:
         users_with_calendar = set(cal_df["username"].unique())
     else:
         users_with_calendar = set()
 
-    # Build synthetic daily points from weekly snapshots
     history = load_history().get(owner_username, {})
     rows = []
     for m in members_list:
@@ -276,7 +274,6 @@ def trend_frame_with_fallback(members_list, owner_username: str):
         h["Accepted"] = h[["Easy","Medium","Hard"]].fillna(0).astype(int).sum(axis=1)
         h["prev"] = h["Accepted"].shift(1)
         h["gain"] = (h["Accepted"] - h["prev"]).fillna(h["Accepted"]).astype(int)
-        # Put the weekly gain on the Monday (week_start) as a "daily" point
         h["date"] = h["week_start"].dt.date
         for r in h.itertuples(index=False):
             rows.append({"name": nm, "username": uname, "date": pd.to_datetime(r.date), "accepted": int(r.gain)})
@@ -284,10 +281,8 @@ def trend_frame_with_fallback(members_list, owner_username: str):
     hist_daily = pd.DataFrame(rows)
 
     if need_fallback:
-        # Only snapshots available → use them
         return hist_daily
 
-    # Merge: calendar data + add-only for users missing from calendar
     if not hist_daily.empty:
         if users_with_calendar:
             missing_users = set(u["username"] for u in members_list) - users_with_calendar
@@ -298,7 +293,7 @@ def trend_frame_with_fallback(members_list, owner_username: str):
 
     return cal_df
 
-# ===================== AUTH SECTION (fixed: read session_state) =====================
+# ===================== AUTH SECTION (read session_state) =====================
 def _build_authenticator():
     return stauth.Authenticate(
         credentials=credentials_for_authenticator(),
@@ -324,15 +319,12 @@ def ensure_authenticated_user():
             st.session_state.authenticator = _build_authenticator()
         authenticator = st.session_state.authenticator
 
-        # Call the widget (renders UI and sets session_state keys)
         name, auth_status, username = _login_compat(authenticator)
 
-        # ✅ Read final truth from session_state (some versions set it there)
         ss_status = st.session_state.get("authentication_status", None)
         ss_user = st.session_state.get("username", None)
         ss_name = st.session_state.get("name", None)
 
-        # Prefer session_state values if present
         if ss_status is not None:
             auth_status = ss_status
         if ss_user:
@@ -340,7 +332,6 @@ def ensure_authenticated_user():
         if ss_name:
             name = ss_name
 
-        # Registration panel when not logged in
         if auth_status is None:
             with st.expander("📝 New here? Register", expanded=False):
                 col1, col2 = st.columns(2)
@@ -356,7 +347,6 @@ def ensure_authenticated_user():
                     else:
                         ok = auth_register(reg_user, reg_pw, name=reg_name, email=reg_email)
                         if ok:
-                            # Rebuild authenticator to include new user
                             st.session_state.authenticator = _build_authenticator()
                             st.success("Account created. Please log in.")
                             st.experimental_rerun()
@@ -368,7 +358,6 @@ def ensure_authenticated_user():
             return None
 
         if auth_status is True and username:
-            # Sidebar logout
             try:
                 authenticator.logout("🚪 Logout", location="sidebar")
             except TypeError:
@@ -396,7 +385,7 @@ def ensure_authenticated_user():
                 if verify_login(u, p):
                     st.session_state.user = u
                     st.success("Logged in!")
-                    st.experimental_rerun()  # rerun so the app renders
+                    st.experimental_rerun()
                 else:
                     st.error("Invalid credentials.")
         with b2:
@@ -464,6 +453,28 @@ if st.session_state.pop("force_snapshot", False):
 df = pd.DataFrame(data)
 df["Accepted"] = df["submissions"].apply(sum_accepted_from_submissions)
 df_sorted = df.sort_values(by="Accepted", ascending=False)
+
+# ===================== Consistent Colors per Member =====================
+def build_member_color_map(member_names: list[str]) -> dict:
+    # Stitch multiple qualitative palettes to have many distinct colors
+    palettes = (
+        px.colors.qualitative.Plotly
+        + px.colors.qualitative.Set3
+        + px.colors.qualitative.D3
+        + px.colors.qualitative.Pastel1
+        + px.colors.qualitative.Dark24
+    )
+    # Deduplicate while preserving order
+    seen = set()
+    palette = [c for c in palettes if not (c in seen or seen.add(c))]
+    # Assign colors deterministically by sorted name order
+    mapping = {}
+    for i, name in enumerate(sorted(member_names)):
+        mapping[name] = palette[i % len(palette)]
+    return mapping
+
+ALL_MEMBER_NAMES = sorted([m.get("name", m["username"]) for m in members])
+MEMBER_COLORS = build_member_color_map(ALL_MEMBER_NAMES)
 
 # ===================== Leaderboard & Profile =====================
 left_col, right_col = st.columns([1, 2])
@@ -540,7 +551,7 @@ with right_col:
         else:
             st.info("🎯 No accepted challenges yet!")
 
-# ===================== Weekly Progress (full roster + ffill + point labels) =====================
+# ===================== Weekly Progress (full roster + ffill + labels + colors) =====================
 st.divider()
 st.markdown("### 📅 Weekly Accepted Progress (Cumulative)")
 
@@ -607,11 +618,14 @@ else:
         chart_df = chart_df.reindex(full_index)
         chart_df = chart_df.groupby(level=0)[metric].ffill().fillna(0.0).to_frame("value").reset_index()
 
-        # 👉 Show data labels at each weekly point
-        fig = px.line(chart_df, x="week_start", y="value", color="name", markers=True,
-                      text="value",
-                      labels={"week_start":"Week Start","value":metric,"name":"Member"},
-                      title=f"Weekly {metric} Progress (Cumulative)")
+        # Distinct colors per member + value labels
+        fig = px.line(
+            chart_df, x="week_start", y="value", color="name", markers=True,
+            text="value",
+            color_discrete_map=MEMBER_COLORS,
+            labels={"week_start":"Week Start","value":metric,"name":"Member"},
+            title=f"Weekly {metric} Progress (Cumulative)"
+        )
         fig.update_traces(mode="lines+markers+text", textposition="top center", textfont=dict(size=11))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                           margin=dict(l=20, r=20, t=50, b=20), height=440)
@@ -667,7 +681,7 @@ else:
                 if medals:
                     st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
 
-# ===================== Accepted Trend by Date (with snapshot fallback) =====================
+# ===================== Accepted Trend by Date (with snapshot fallback + colors) =====================
 st.divider()
 st.markdown("### 📈 Accepted Trend by Date")
 trend_members = load_members(user)
@@ -675,7 +689,6 @@ if not trend_members:
     st.info("No members to chart.")
 else:
     with st.spinner("Gathering calendars…"):
-        # 👉 Use fallback builder that merges calendar + weekly-snapshot diffs if needed
         cal_df = trend_frame_with_fallback(trend_members, user)
 
     if cal_df.empty:
@@ -712,9 +725,11 @@ else:
                     agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
                     if cumulative:
                         agg["accepted"] = agg["accepted"].cumsum()
-                fig = px.line(agg, x="bucket", y="accepted", markers=True,
-                              labels={"bucket": "Date", "accepted": "Accepted"},
-                              title=f"{'Cumulative ' if cumulative else ''}Accepted — Team ({freq.lower()})")
+                fig = px.line(
+                    agg, x="bucket", y="accepted", markers=True,
+                    labels={"bucket": "Date", "accepted": "Accepted"},
+                    title=f"{'Cumulative ' if cumulative else ''}Accepted — Team ({freq.lower()})"
+                )
                 fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                                   margin=dict(l=20, r=20, t=50, b=20), height=420)
                 st.plotly_chart(fig, use_container_width=True)
@@ -729,21 +744,26 @@ else:
                         agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
                 else:
                     agg_full = agg
-                fig = px.line(agg_full, x="bucket", y="accepted", color="name", markers=True,
-                              labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
-                              title=f"{'Cumulative ' if cumulative else ''}Accepted — Per Member ({freq.lower()})")
+                fig = px.line(
+                    agg_full, x="bucket", y="accepted", color="name", markers=True,
+                    color_discrete_map=MEMBER_COLORS,
+                    labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
+                    title=f"{'Cumulative ' if cumulative else ''}Accepted — Per Member ({freq.lower()})"
+                )
                 fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                                   margin=dict(l=20, r=20, t=50, b=20), height=420)
                 st.plotly_chart(fig, use_container_width=True)
 
-# ===================== Team Performance (Accepted) =====================
+# ===================== Team Performance (Accepted) — per-member colors =====================
 st.divider()
 st.markdown("### 📈 Team Performance (Accepted challenges)")
 st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
 perf_df = df[["name", "Accepted"]].sort_values(by="Accepted", ascending=False)
+
+# Use discrete colors per member to keep colors consistent with other charts
 fig = px.bar(
-    perf_df, x="name", y="Accepted", color="Accepted",
-    color_continuous_scale=[(0, "#FFA116"), (1, "#34A853")],
+    perf_df, x="name", y="Accepted", color="name",
+    color_discrete_map=MEMBER_COLORS,
     text="Accepted",
     labels={"name": "Team Members", "Accepted": "Accepted Challenges"},
     title="Team Members — Total Accepted Challenges (Easy + Medium + Hard)"
@@ -769,7 +789,6 @@ colA, colB = st.columns([1, 1])
 with colA:
     with st.expander("📝 Manage Team Members", expanded=False):
         st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
-        st.markmarkdown = st.markdown
         st.markdown("### ➕ Add Member")
         new_name = st.text_input("Full Name", key="add_name")
         new_username = st.text_input("LeetCode Username", key="add_username")
