@@ -191,57 +191,10 @@ def sum_accepted_from_submissions(subs):
         return 0
     return sum(int(item.get("count", 0)) for item in subs if item.get("difficulty") in ("Easy", "Medium", "Hard"))
 
-# ---------- NEW: GraphQL recent accepted per day ----------
-RECENT_AC_QUERY = """
-query recentAcSubmissions($username: String!, $limit: Int!) {
-  recentAcSubmissionList(username: $username, limit: $limit) {
-    id
-    title
-    titleSlug
-    timestamp
-  }
-}
-"""
-
-@st.cache_data(show_spinner=False)
-def fetch_recent_ac_daily(username: str, limit: int = 100) -> dict:
-    """
-    Return dict {date: count} where count is number of UNIQUE accepted problems for that date.
-    """
-    url = "https://leetcode.com/graphql"
-    payload = {"query": RECENT_AC_QUERY, "variables": {"username": username, "limit": int(limit)}}
-    headers = {
-        "Content-Type": "application/json",
-        "Referer": f"https://leetcode.com/{username}/",
-        "Origin": "https://leetcode.com",
-    }
-    out = {}
-    try:
-        r = requests.post(url, json=payload, headers=headers, timeout=15)
-        r.raise_for_status()
-        data = r.json()
-        subs = data.get("data", {}).get("recentAcSubmissionList", []) or []
-        # Group by date, dedupe by slug per date
-        by_date = {}
-        for item in subs:
-            ts = int(item.get("timestamp", 0))
-            if ts <= 0:
-                continue
-            dt = datetime.fromtimestamp(ts).date()
-            slug = item.get("titleSlug")
-            by_date.setdefault(dt, set())
-            if slug:
-                by_date[dt].add(slug)
-        for d, slugs in by_date.items():
-            out[d] = len(slugs)
-        return out
-    except Exception:
-        return {}
-
 @st.cache_data(show_spinner=False)
 def fetch_submission_calendar(username: str):
     """
-    LeetCode public calendar (all submissions count per day).
+    LeetCode calendar: https://leetcode.com/api/user_submission_calendar/?username=<user>
     Returns dict[date -> count]
     """
     url = f"https://leetcode.com/api/user_submission_calendar/?username={username}"
@@ -260,25 +213,11 @@ def fetch_submission_calendar(username: str):
     except Exception:
         return {}
 
-def recent_ac_frame(members_list):
-    """
-    Build dataframe of recent accepted per day from GraphQL for given members.
-    Columns: name, username, date (Timestamp), accepted (int)
-    If a member has no recent data, they will be omitted here (to be filled by other sources).
-    """
-    rows = []
-    for m in members_list:
-        uname = m["username"]
-        nm = m.get("name", uname)
-        daily = fetch_recent_ac_daily(uname, limit=100)  # adjustable
-        for d, c in daily.items():
-            rows.append({"name": nm, "username": uname, "date": pd.to_datetime(d), "accepted": int(c)})
-    return pd.DataFrame(rows)
-
 def calendars_to_frame(members_list):
     """
-    Public calendar → daily counts (can be total submissions not only accepted-unique).
-    We'll only use it as a fallback if recent GraphQL has no data for a user.
+    Primary data source: daily calendar API.
+    Returns rows even if some users have empty calendars (we'll fill zeros for the shared date span).
+    If absolutely no calendars have data, returns empty DF (fallback added elsewhere).
     """
     rows = []
     min_d, max_d = None, None
@@ -306,21 +245,19 @@ def calendars_to_frame(members_list):
 
 def trend_frame_with_fallback(members_list, owner_username: str):
     """
-    Build 'Accepted Trend by Date' data with this priority:
-      1) GraphQL recent accepted per day (unique per problem per day)
-      2) Public calendar (fallback)
-      3) Weekly snapshot diffs → synthesize daily point on Mondays (fallback)
-    Merge sources to cover all members.
+    Build 'Accepted Trend by Date' data with fallback:
+    - Try daily calendars (primary).
+    - If entirely empty (or for users with empty calendars), use weekly snapshot diffs to synthesize daily points
+      (placing weekly gains on the week's Monday).
+    - Combine both where applicable.
     """
-    # 1) Recent GraphQL
-    recent_df = recent_ac_frame(members_list)
-    members_with_recent = set(recent_df["username"].unique()) if not recent_df.empty else set()
-
-    # 2) Calendar fallback
     cal_df = calendars_to_frame(members_list)
-    members_with_calendar = set(cal_df["username"].unique()) if not cal_df.empty else set()
+    need_fallback = cal_df.empty
+    if not need_fallback:
+        users_with_calendar = set(cal_df["username"].unique())
+    else:
+        users_with_calendar = set()
 
-    # 3) Weekly-snapshot fallback (gain placed on Monday)
     history = load_history().get(owner_username, {})
     rows = []
     for m in members_list:
@@ -340,31 +277,21 @@ def trend_frame_with_fallback(members_list, owner_username: str):
         h["date"] = h["week_start"].dt.date
         for r in h.itertuples(index=False):
             rows.append({"name": nm, "username": uname, "date": pd.to_datetime(r.date), "accepted": int(r.gain)})
+
     hist_daily = pd.DataFrame(rows)
 
-    # Merge priority per user:
-    # if user has recent → use recent only
-    # else if calendar → use calendar
-    # else → use hist
-    frames = []
-    for m in members_list:
-        uname = m["username"]
-        if uname in members_with_recent:
-            frames.append(recent_df[recent_df["username"] == uname])
-        elif uname in members_with_calendar:
-            frames.append(cal_df[cal_df["username"] == uname])
+    if need_fallback:
+        return hist_daily
+
+    if not hist_daily.empty:
+        if users_with_calendar:
+            missing_users = set(u["username"] for u in members_list) - users_with_calendar
+            add_from_hist = hist_daily[hist_daily["username"].isin(missing_users)]
+            cal_df = pd.concat([cal_df, add_from_hist], ignore_index=True)
         else:
-            if not hist_daily.empty:
-                frames.append(hist_daily[hist_daily["username"] == uname])
+            cal_df = pd.concat([cal_df, hist_daily], ignore_index=True)
 
-    if not frames:
-        return pd.DataFrame(columns=["name","username","date","accepted"])
-
-    df = pd.concat(frames, ignore_index=True)
-    # ensure sorted and ints
-    df = df.sort_values(["username", "date"]).reset_index(drop=True)
-    df["accepted"] = df["accepted"].fillna(0).astype(int)
-    return df
+    return cal_df
 
 # ===================== AUTH SECTION (read session_state) =====================
 def _build_authenticator():
@@ -529,6 +456,7 @@ df_sorted = df.sort_values(by="Accepted", ascending=False)
 
 # ===================== Consistent Colors per Member =====================
 def build_member_color_map(member_names: list[str]) -> dict:
+    # Stitch multiple qualitative palettes to have many distinct colors
     palettes = (
         px.colors.qualitative.Plotly
         + px.colors.qualitative.Set3
@@ -536,8 +464,10 @@ def build_member_color_map(member_names: list[str]) -> dict:
         + px.colors.qualitative.Pastel1
         + px.colors.qualitative.Dark24
     )
+    # Deduplicate while preserving order
     seen = set()
     palette = [c for c in palettes if not (c in seen or seen.add(c))]
+    # Assign colors deterministically by sorted name order
     mapping = {}
     for i, name in enumerate(sorted(member_names)):
         mapping[name] = palette[i % len(palette)]
@@ -752,14 +682,14 @@ else:
                 if medals:
                     st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
 
-# ===================== Accepted Trend by Date (GraphQL recent → calendar → snapshot) =====================
+# ===================== Accepted Trend by Date (with snapshot fallback + colors + labels) =====================
 st.divider()
 st.markdown("### 📈 Accepted Trend by Date")
 trend_members = load_members(user)
 if not trend_members:
     st.info("No members to chart.")
 else:
-    with st.spinner("Gathering daily accepted…"):
+    with st.spinner("Gathering calendars…"):
         cal_df = trend_frame_with_fallback(trend_members, user)
 
     if cal_df.empty:
@@ -796,6 +726,7 @@ else:
                     agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
                     if cumulative:
                         agg["accepted"] = agg["accepted"].cumsum()
+                # 👉 value labels at each point
                 fig = px.line(
                     agg, x="bucket", y="accepted", markers=True, text="accepted",
                     labels={"bucket": "Date", "accepted": "Accepted"},
@@ -818,6 +749,7 @@ else:
                         agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
                 else:
                     agg_full = agg
+                # 👉 value labels at each point + member colors
                 fig = px.line(
                     agg_full, x="bucket", y="accepted", color="name", markers=True, text="accepted",
                     color_discrete_map=MEMBER_COLORS,
@@ -837,6 +769,7 @@ st.markdown("### 📈 Team Performance (Accepted challenges)")
 st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
 perf_df = df[["name", "Accepted"]].sort_values(by="Accepted", ascending=False)
 
+# Use discrete colors per member to keep colors consistent with other charts
 fig = px.bar(
     perf_df, x="name", y="Accepted", color="name",
     color_discrete_map=MEMBER_COLORS,
