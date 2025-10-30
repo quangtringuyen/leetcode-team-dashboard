@@ -630,6 +630,104 @@ for member in members:
             })
 
 if recent_by_date:
+    # Build trend chart data
+    chart_data = []
+    all_dates = pd.date_range(start=seven_days_ago, end=today, freq='D').date
+
+    for member in members:
+        member_name = member.get("name", member["username"])
+        for day in all_dates:
+            count = 0
+            if day in recent_by_date:
+                count = sum(1 for sub in recent_by_date[day] if sub["name"] == member_name)
+            chart_data.append({
+                "date": pd.to_datetime(day),
+                "name": member_name,
+                "problems_solved": count
+            })
+
+    chart_df = pd.DataFrame(chart_data)
+
+    # Create trend chart with two views
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        view_mode = st.selectbox("Chart view", ["Per Member", "Team Total"], key="recent_view")
+    with col2:
+        show_markers = st.checkbox("Show data points", value=True, key="recent_markers")
+
+    if view_mode == "Team Total":
+        # Aggregate by date
+        agg_df = chart_df.groupby("date")["problems_solved"].sum().reset_index()
+        fig = px.bar(
+            agg_df, x="date", y="problems_solved",
+            labels={"date": "Date", "problems_solved": "Problems Solved"},
+            title="Daily Accepted Problems - Team Total (Last 7 Days)",
+            text="problems_solved"
+        )
+        fig.update_traces(
+            marker_color=px.colors.qualitative.Plotly[0],
+            textposition="outside",
+            texttemplate="%{text}",
+            hovertemplate="Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=50, b=20),
+            height=400,
+            xaxis=dict(tickformat="%b %d"),
+            showlegend=False
+        )
+    else:
+        # Per member line chart
+        fig = px.line(
+            chart_df, x="date", y="problems_solved", color="name",
+            color_discrete_map=MEMBER_COLORS,
+            labels={"date": "Date", "problems_solved": "Problems Solved", "name": "Member"},
+            title="Daily Accepted Problems - Per Member (Last 7 Days)",
+            markers=show_markers,
+            text="problems_solved" if show_markers else None
+        )
+        if show_markers:
+            fig.update_traces(
+                mode="lines+markers+text",
+                textposition="top center",
+                texttemplate="%{text}",
+                textfont=dict(size=10),
+                hovertemplate="Member: %{legendgroup}<br>Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
+            )
+        else:
+            fig.update_traces(
+                mode="lines+markers",
+                hovertemplate="Member: %{legendgroup}<br>Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
+            )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=50, b=20),
+            height=400,
+            xaxis=dict(tickformat="%b %d"),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+        )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Show summary stats
+    total_problems = sum(len(subs) for subs in recent_by_date.values())
+    most_active_day = max(recent_by_date.items(), key=lambda x: len(x[1]))
+
+    stat_cols = st.columns(3)
+    with stat_cols[0]:
+        st.metric("Total Problems Solved", total_problems, delta=f"{len(recent_by_date[today])} today" if today in recent_by_date else None)
+    with stat_cols[1]:
+        avg_per_day = total_problems / 7
+        st.metric("Average Per Day", f"{avg_per_day:.1f}")
+    with stat_cols[2]:
+        st.metric("Most Active Day", most_active_day[0].strftime("%b %d"), delta=f"{len(most_active_day[1])} problems")
+
+    st.markdown("---")
+    st.markdown("#### 📋 Detailed Breakdown")
+
     # Sort dates in descending order (most recent first)
     sorted_dates = sorted(recent_by_date.keys(), reverse=True)
 
