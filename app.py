@@ -98,10 +98,16 @@ def storage_read_json(local_path: str, default):
             return json.load(f)
 
 def storage_write_json(local_path: str, payload):
+    """Write JSON data to storage (S3 or local files)"""
     if _use_s3():
-        bucket, key = _s3_bucket_key(local_path)
-        buf = io.BytesIO(json.dumps(payload, indent=2).encode("utf-8"))
-        _s3_client().upload_fileobj(buf, bucket, key)
+        try:
+            bucket, key = _s3_bucket_key(local_path)
+            buf = io.BytesIO(json.dumps(payload, indent=2).encode("utf-8"))
+            _s3_client().upload_fileobj(buf, bucket, key)
+            # Successfully written to S3
+        except Exception as e:
+            st.error(f"Failed to write to S3: {e}")
+            raise
     else:
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         with open(local_path, "w", encoding="utf-8") as f:
@@ -423,7 +429,17 @@ def ensure_authenticated_user():
 
 # ===================== Authenticate =====================
 user = ensure_authenticated_user()
-st.caption("Storage: **{}**".format("S3" if _use_s3() else "Local files"))
+
+# Show storage status with more details
+if _use_s3():
+    try:
+        bucket = st.secrets["aws"]["S3_BUCKET"]
+        prefix = st.secrets["aws"]["S3_PREFIX"]
+        st.caption(f"💾 Storage: **AWS S3** | Bucket: `{bucket}` | Prefix: `{prefix}/`")
+    except:
+        st.caption("💾 Storage: **AWS S3**")
+else:
+    st.caption("💾 Storage: **Local Files** | Path: `./data/`")
 
 # ===================== Top controls =====================
 if "cache_buster" not in st.session_state:
@@ -876,6 +892,8 @@ else:
         st.plotly_chart(fig, use_container_width=True)
 
         if show_deltas:
+            st.markdown("#### 📊 Week-over-Week Changes (Accepted challenges)")
+
             ac_df = f_hist[["name", "week_start", "Accepted"]].set_index(["name", "week_start"]).sort_index()
             ac_df = ac_df.reindex(full_index)
             ac_df = ac_df.groupby(level=0)["Accepted"].ffill().fillna(0.0).to_frame("Accepted").reset_index()
@@ -891,39 +909,90 @@ else:
             deltas = ac_df_sorted.dropna(subset=["prev_total"]).copy()
             deltas["week_start"] = pd.to_datetime(deltas["week_start"]).dt.date
 
-            def arrowize(x):
-                if pd.isna(x) or x == 0: return "➖ 0"
-                return f"🔼 {int(x)}" if x > 0 else f"🔽 {int(x)}"
-            def pctfmt(x):
-                if pd.isna(x): return "—"
-                sign = "+" if x >= 0 else ""
-                return f"{sign}{x:.1f}%"
-            def rankfmt(x):
-                if pd.isna(x) or x == 0: return "—"
-                arrow = "⬆️" if x > 0 else "⬇️"
-                return f"{arrow} {int(abs(x))}"
-
-            out = deltas[["week_start","name","prev_total","Accepted","delta","pct_change","prev_rank","rank","rank_delta"]].copy()
-            out = out.rename(columns={"prev_total":"Prev (Accepted)","delta":"Δ Accepted","pct_change":"% Change","prev_rank":"Prev Rank","rank":"Rank","rank_delta":"Δ Rank"})
-            out["Δ Accepted"] = out["Δ Accepted"].apply(arrowize)
-            out["% Change"] = out["% Change"].apply(pctfmt)
-            out["Δ Rank"] = out["Δ Rank"].apply(rankfmt)
-            out = out.sort_values(["week_start","Rank","name"])
-
-            st.markdown("#### Week-over-Week Changes (Accepted challenges)")
-            st.dataframe(out, use_container_width=True)
-
+            # Show latest week highlights first
             latest_week = deltas["week_start"].max() if not deltas.empty else None
             if latest_week:
                 latest = deltas[deltas["week_start"] == latest_week].copy()
                 latest["gain"] = latest["delta"]
                 top = latest.sort_values("gain", ascending=False).head(3).reset_index(drop=True)
-                medals = []
-                if len(top) >= 1: medals.append(f"🥇 {top.iloc[0]['name']}: +{int(top.iloc[0]['gain'])}")
-                if len(top) >= 2: medals.append(f"🥈 {top.iloc[1]['name']}: +{int(top.iloc[1]['gain'])}")
-                if len(top) >= 3: medals.append(f"🥉 {top.iloc[2]['name']}: +{int(top.iloc[2]['gain'])}")
-                if medals:
-                    st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
+
+                # Create highlight cards for top performers
+                st.markdown(f"**🏆 Top Performers — Week of {latest_week.strftime('%b %d, %Y')}**")
+                cols = st.columns(3)
+                medals = ["🥇", "🥈", "🥉"]
+                colors = ["#FFD700", "#C0C0C0", "#CD7F32"]
+
+                for idx, (col, medal, color) in enumerate(zip(cols, medals, colors)):
+                    if idx < len(top):
+                        with col:
+                            gain = int(top.iloc[idx]['gain'])
+                            name = top.iloc[idx]['name']
+                            total = int(top.iloc[idx]['Accepted'])
+                            rank = int(top.iloc[idx]['rank'])
+
+                            gain_color = "#34A853" if gain > 0 else "#EF4743" if gain < 0 else "#999"
+                            st.markdown(f"""
+                                <div class="stat-card" style="border: 2px solid {color}; min-height: 140px;">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">{medal}</div>
+                                    <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem;">{name}</div>
+                                    <div style="color: {gain_color}; font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0;">
+                                        {'+' if gain > 0 else ''}{gain}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                        Total: {total} | Rank #{rank}
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                st.markdown("---")
+
+            # Format the detailed table with better styling
+            def arrowize(x):
+                if pd.isna(x) or x == 0: return "➖"
+                return f"🟢 +{int(x)}" if x > 0 else f"🔴 {int(x)}"
+
+            def pctfmt(x):
+                if pd.isna(x): return "—"
+                sign = "+" if x >= 0 else ""
+                return f"{sign}{x:.1f}%"
+
+            def rankfmt(x):
+                if pd.isna(x) or x == 0: return "—"
+                arrow = "⬆️" if x > 0 else "⬇️"
+                return f"{arrow} {int(abs(x))}"
+
+            # Prepare output table - NEWEST WEEK FIRST
+            out = deltas[["week_start","name","prev_total","Accepted","delta","pct_change","rank","rank_delta"]].copy()
+            out = out.rename(columns={
+                "week_start": "Week",
+                "name": "Member",
+                "prev_total": "Previous",
+                "Accepted": "Current",
+                "delta": "Change",
+                "pct_change": "% Change",
+                "rank": "Rank",
+                "rank_delta": "Rank Δ"
+            })
+
+            # Format columns
+            out["Week"] = pd.to_datetime(out["Week"]).dt.strftime("%b %d, %Y")
+            out["Previous"] = out["Previous"].astype(int)
+            out["Current"] = out["Current"].astype(int)
+            out["Change"] = out["Change"].apply(arrowize)
+            out["% Change"] = out["% Change"].apply(pctfmt)
+            out["Rank"] = out["Rank"].astype(int)
+            out["Rank Δ"] = out["Rank Δ"].apply(rankfmt)
+
+            # Sort by week (descending) and then by rank (ascending) - NEWEST FIRST
+            out = out.sort_values(["Week", "Rank"], ascending=[False, True])
+
+            # Display table with alternating row colors
+            st.dataframe(
+                out,
+                use_container_width=True,
+                hide_index=True,
+                height=400
+            )
 
 # ===================== Accepted Trend by Date (with snapshot fallback + colors + labels) =====================
 st.divider()
