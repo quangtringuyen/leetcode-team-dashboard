@@ -630,7 +630,7 @@ for member in members:
             })
 
 if recent_by_date:
-    # Build trend chart data
+    # Build chart data
     chart_data = []
     all_dates = pd.date_range(start=seven_days_ago, end=today, freq='D').date
 
@@ -648,69 +648,110 @@ if recent_by_date:
 
     chart_df = pd.DataFrame(chart_data)
 
-    # Create trend chart with two views
-    col1, col2 = st.columns([2, 2])
-    with col1:
-        view_mode = st.selectbox("Chart view", ["Per Member", "Team Total"], key="recent_view")
-    with col2:
-        show_markers = st.checkbox("Show data points", value=True, key="recent_markers")
+    # Visualization selector
+    viz_type = st.selectbox(
+        "Visualization",
+        ["Stacked Bar Chart", "Heatmap", "Area Chart"],
+        key="recent_viz",
+        help="Choose how to visualize the last 7 days of activity"
+    )
 
-    if view_mode == "Team Total":
-        # Aggregate by date
-        agg_df = chart_df.groupby("date")["problems_solved"].sum().reset_index()
+    if viz_type == "Stacked Bar Chart":
+        # Stacked bar chart - shows individual contributions AND team total
         fig = px.bar(
-            agg_df, x="date", y="problems_solved",
-            labels={"date": "Date", "problems_solved": "Problems Solved"},
-            title="Daily Accepted Problems - Team Total (Last 7 Days)",
-            text="problems_solved"
-        )
-        fig.update_traces(
-            marker_color=px.colors.qualitative.Plotly[0],
-            textposition="outside",
-            texttemplate="%{text}",
-            hovertemplate="Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
-        )
-        fig.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=20, r=20, t=50, b=20),
-            height=400,
-            xaxis=dict(tickformat="%b %d"),
-            showlegend=False
-        )
-    else:
-        # Per member line chart
-        fig = px.line(
             chart_df, x="date", y="problems_solved", color="name",
             color_discrete_map=MEMBER_COLORS,
             labels={"date": "Date", "problems_solved": "Problems Solved", "name": "Member"},
-            title="Daily Accepted Problems - Per Member (Last 7 Days)",
-            markers=show_markers,
-            text="problems_solved" if show_markers else None
+            title="Daily Accepted Problems - Last 7 Days",
+            text="problems_solved"
         )
-        if show_markers:
-            fig.update_traces(
-                mode="lines+markers+text",
-                textposition="top center",
-                texttemplate="%{text}",
-                textfont=dict(size=10),
-                hovertemplate="Member: %{legendgroup}<br>Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
+        fig.update_traces(
+            textposition="inside",
+            texttemplate="%{text}",
+            textfont=dict(color='white', size=11),
+            hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=50, b=80),
+            height=420,
+            xaxis=dict(tickformat="%b %d", title="Date"),
+            yaxis=dict(title="Problems Solved"),
+            barmode='stack',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.35,
+                xanchor="center",
+                x=0.5,
+                title=None
             )
-        else:
-            fig.update_traces(
-                mode="lines+markers",
-                hovertemplate="Member: %{legendgroup}<br>Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
-            )
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif viz_type == "Heatmap":
+        # Heatmap - great for spotting patterns
+        pivot_df = chart_df.pivot(index="name", columns="date", values="problems_solved")
+        pivot_df.columns = [d.strftime("%b %d") for d in pivot_df.columns]
+
+        fig = px.imshow(
+            pivot_df,
+            labels=dict(x="Date", y="Member", color="Problems"),
+            color_continuous_scale=[
+                [0, '#1a1a1a'],      # Dark for 0
+                [0.2, '#2d5a2d'],    # Dark green
+                [0.4, '#34A853'],    # LeetCode green
+                [0.6, '#FFA116'],    # LeetCode orange
+                [1, '#EF4743']       # LeetCode red for high activity
+            ],
+            aspect="auto",
+            title="Activity Heatmap - Last 7 Days"
+        )
+        fig.update_traces(
+            text=pivot_df.values,
+            texttemplate="%{text}",
+            textfont=dict(size=12),
+            hovertemplate="<b>%{y}</b><br>%{x}<br>Problems: %{z}<extra></extra>"
+        )
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=20, r=20, t=50, b=20),
-            height=400,
-            xaxis=dict(tickformat="%b %d"),
-            legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+            height=max(300, len(members) * 60),  # Dynamic height based on members
+            xaxis=dict(side="bottom"),
+            coloraxis_colorbar=dict(title="Problems")
         )
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.plotly_chart(fig, use_container_width=True)
+    else:  # Area Chart
+        # Stacked area chart - shows accumulation over time
+        fig = px.area(
+            chart_df, x="date", y="problems_solved", color="name",
+            color_discrete_map=MEMBER_COLORS,
+            labels={"date": "Date", "problems_solved": "Problems Solved", "name": "Member"},
+            title="Daily Accepted Problems - Last 7 Days",
+        )
+        fig.update_traces(
+            hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %d}<br>Problems: %{y}<extra></extra>"
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=50, b=80),
+            height=420,
+            xaxis=dict(tickformat="%b %d", title="Date"),
+            yaxis=dict(title="Problems Solved"),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.35,
+                xanchor="center",
+                x=0.5,
+                title=None
+            )
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     # Show summary stats
     total_problems = sum(len(subs) for subs in recent_by_date.values())
