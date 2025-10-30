@@ -17,7 +17,7 @@ try:
 except Exception:
     ST_AUTH_AVAILABLE = False
 
-from utils.leetcodeapi import fetch_user_data
+from utils.leetcodeapi import fetch_user_data, fetch_recent_submissions, fetch_daily_challenge
 from utils.auth import (
     register as auth_register,
     credentials_for_authenticator,
@@ -212,6 +212,24 @@ def fetch_submission_calendar(username: str):
         return out
     except Exception:
         return {}
+
+@st.cache_data(show_spinner=False)
+def fetch_all_recent_submissions(members_list, cache_key: float = 0.0):
+    """
+    Fetch recent submissions for all members.
+    Returns dict[username] -> list of recent submissions
+    """
+    result = {}
+    for m in members_list:
+        uname = m["username"]
+        submissions = fetch_recent_submissions(uname, limit=30)
+        result[uname] = submissions
+    return result
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def get_daily_challenge():
+    """Get today's daily challenge (cached for 1 hour)"""
+    return fetch_daily_challenge()
 
 def calendars_to_frame(members_list):
     """
@@ -550,6 +568,92 @@ with right_col:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("🎯 No accepted challenges yet!")
+
+# ===================== Daily Challenge & Recent Accepted Problems =====================
+st.divider()
+st.markdown("### 🌟 Today's LeetCode Daily Challenge")
+
+daily_challenge = get_daily_challenge()
+if daily_challenge:
+    diff_colors = {"Easy": "#34A853", "Medium": "#FFA116", "Hard": "#EF4743"}
+    diff_color = diff_colors.get(daily_challenge.get("difficulty", ""), "#999")
+
+    st.markdown(f"""
+        <div class="leetcode-card" style="background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                <div style="flex:1; min-width:250px;">
+                    <h3 style="margin:0; color:var(--text-primary);">{daily_challenge.get('title', 'Unknown')}</h3>
+                    <div style="margin-top:8px;">
+                        <span style="background:{diff_color}; color:#fff; padding:4px 12px; border-radius:12px; font-weight:600; font-size:0.85rem;">
+                            {daily_challenge.get('difficulty', 'Unknown')}
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    <a href="{daily_challenge.get('link', '')}" target="_blank" style="text-decoration:none;">
+                        <button style="background:var(--leetcode-orange); color:#fff; border:none; padding:10px 20px; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem;">
+                            Solve Today's Challenge →
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.info("Could not fetch today's daily challenge.")
+
+st.markdown("### 📅 Recent Accepted Problems (Last 7 Days)")
+
+with st.spinner("Fetching recent submissions..."):
+    all_recent = fetch_all_recent_submissions(members, cache_key=st.session_state.cache_buster)
+
+# Filter to last 7 days and group by date and member
+today = date.today()
+seven_days_ago = today - timedelta(days=7)
+
+recent_by_date = {}
+for member in members:
+    uname = member["username"]
+    name = member.get("name", uname)
+    submissions = all_recent.get(uname, [])
+
+    for sub in submissions:
+        sub_date = sub["date"]
+        if seven_days_ago <= sub_date <= today:
+            if sub_date not in recent_by_date:
+                recent_by_date[sub_date] = []
+            recent_by_date[sub_date].append({
+                "name": name,
+                "username": uname,
+                "title": sub["title"],
+                "titleSlug": sub["titleSlug"]
+            })
+
+if recent_by_date:
+    # Sort dates in descending order (most recent first)
+    sorted_dates = sorted(recent_by_date.keys(), reverse=True)
+
+    for day in sorted_dates:
+        day_submissions = recent_by_date[day]
+        day_str = day.strftime("%A, %B %d, %Y")
+
+        with st.expander(f"📆 {day_str} — {len(day_submissions)} problem(s) solved", expanded=(day == today)):
+            # Group by member for better display
+            by_member = {}
+            for sub in day_submissions:
+                member_name = sub["name"]
+                if member_name not in by_member:
+                    by_member[member_name] = []
+                by_member[member_name].append(sub)
+
+            for member_name, subs in by_member.items():
+                st.markdown(f"**{member_name}** ({len(subs)} problem{'s' if len(subs) > 1 else ''})")
+                for sub in subs:
+                    problem_url = f"https://leetcode.com/problems/{sub['titleSlug']}/"
+                    st.markdown(f"- [{sub['title']}]({problem_url})")
+                st.markdown("")
+else:
+    st.info("No accepted problems in the last 7 days. Keep coding!")
 
 # ===================== Weekly Progress (full roster + ffill + labels + colors) =====================
 st.divider()
