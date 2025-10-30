@@ -945,9 +945,10 @@ else:
         with c1:
             trend_people = st.multiselect("Members", options=all_names, default=all_names, key="trend_people")
         with c2:
-            freq = st.selectbox("Granularity", ["Daily", "Weekly", "Monthly"], index=1, key="trend_freq")
+            freq = st.selectbox("Granularity", ["Daily", "Weekly", "Monthly"], index=0, key="trend_freq")
         with c3:
-            cumulative = st.checkbox("Cumulative", value=False, key="trend_cum")
+            cumulative = st.checkbox("Show Cumulative", value=True, key="trend_cum",
+                                    help="Shows running total (cumulative sum) instead of daily/weekly/monthly counts")
         with c4:
             chart_type = st.selectbox("Chart Type", ["Line", "Bar", "Area"], index=0, key="trend_chart")
         with c5:
