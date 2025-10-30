@@ -939,7 +939,9 @@ else:
         st.info("No trend data is available yet. Record a snapshot after someone accepts challenges.")
     else:
         all_names = sorted(cal_df["name"].unique().tolist())
-        c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
+
+        # Controls in columns
+        c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 2, 2])
         with c1:
             trend_people = st.multiselect("Members", options=all_names, default=all_names, key="trend_people")
         with c2:
@@ -947,13 +949,16 @@ else:
         with c3:
             cumulative = st.checkbox("Cumulative", value=False, key="trend_cum")
         with c4:
-            mode = st.selectbox("Series", ["Per member", "Team total"], index=0, key="trend_mode")
+            chart_type = st.selectbox("Chart Type", ["Line", "Bar", "Area"], index=0, key="trend_chart")
+        with c5:
+            mode = st.selectbox("View", ["Per member", "Team total"], index=0, key="trend_mode")
 
         if not trend_people:
             st.info("Select at least one member.")
         else:
             df_tr = cal_df[cal_df["name"].isin(trend_people)].copy()
 
+            # Bucket data by granularity
             if freq == "Daily":
                 df_tr["bucket"] = df_tr["date"].dt.to_period("D").dt.to_timestamp(); freq_code = "D"
             elif freq == "Weekly":
@@ -963,25 +968,60 @@ else:
                 df_tr["bucket"] = df_tr["date"].dt.to_period("M").dt.to_timestamp(); freq_code = "MS"
 
             if mode == "Team total":
+                # Aggregate by date
                 agg = df_tr.groupby(["bucket"], as_index=False)["accepted"].sum().sort_values("bucket")
                 if not agg.empty:
                     full_idx = pd.date_range(agg["bucket"].min(), agg["bucket"].max(), freq=freq_code)
                     agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
                     if cumulative:
                         agg["accepted"] = agg["accepted"].cumsum()
-                # 👉 value labels at each point
-                fig = px.line(
-                    agg, x="bucket", y="accepted", markers=True, text="accepted",
-                    labels={"bucket": "Date", "accepted": "Accepted"},
-                    title=f"{'Cumulative ' if cumulative else ''}Accepted — Team ({freq.lower()})"
+
+                # Create chart based on type
+                if chart_type == "Bar":
+                    fig = px.bar(
+                        agg, x="bucket", y="accepted",
+                        labels={"bucket": "Date", "accepted": "Accepted"},
+                        title=f"{'Cumulative ' if cumulative else ''}Accepted Problems — Team Total ({freq})",
+                        text="accepted"
+                    )
+                    fig.update_traces(
+                        marker_color=px.colors.qualitative.Plotly[0],
+                        textposition="outside",
+                        texttemplate="%{text:.0f}",
+                        hovertemplate="Date=%{x}<br>Accepted=%{y}<extra></extra>"
+                    )
+                elif chart_type == "Area":
+                    fig = px.area(
+                        agg, x="bucket", y="accepted",
+                        labels={"bucket": "Date", "accepted": "Accepted"},
+                        title=f"{'Cumulative ' if cumulative else ''}Accepted Problems — Team Total ({freq})"
+                    )
+                    fig.update_traces(
+                        hovertemplate="Date=%{x}<br>Accepted=%{y}<extra></extra>",
+                        fillcolor=px.colors.qualitative.Plotly[0]
+                    )
+                else:  # Line
+                    fig = px.line(
+                        agg, x="bucket", y="accepted", markers=True,
+                        labels={"bucket": "Date", "accepted": "Accepted"},
+                        title=f"{'Cumulative ' if cumulative else ''}Accepted Problems — Team Total ({freq})"
+                    )
+                    fig.update_traces(
+                        mode="lines+markers",
+                        line_color=px.colors.qualitative.Plotly[0],
+                        hovertemplate="Date=%{x}<br>Accepted=%{y}<extra></extra>"
+                    )
+
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(l=20, r=20, t=50, b=20),
+                    height=450,
+                    showlegend=False
                 )
-                fig.update_traces(mode="lines+markers+text", textposition="top center",
-                                  textfont=dict(size=11), texttemplate="%{text:.0f}",
-                                  hovertemplate="Date=%{x}<br>Accepted=%{y}<extra></extra>")
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                                  margin=dict(l=20, r=20, t=50, b=20), height=420)
                 st.plotly_chart(fig, use_container_width=True)
-            else:
+
+            else:  # Per member
                 agg = df_tr.groupby(["name", "bucket"], as_index=False)["accepted"].sum()
                 if not agg.empty:
                     min_b, max_b = agg["bucket"].min(), agg["bucket"].max()
@@ -992,18 +1032,55 @@ else:
                         agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
                 else:
                     agg_full = agg
-                # 👉 value labels at each point + member colors
-                fig = px.line(
-                    agg_full, x="bucket", y="accepted", color="name", markers=True, text="accepted",
-                    color_discrete_map=MEMBER_COLORS,
-                    labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
-                    title=f"{'Cumulative ' if cumulative else ''}Accepted — Per Member ({freq.lower()})"
+
+                # Create chart based on type
+                if chart_type == "Bar":
+                    fig = px.bar(
+                        agg_full, x="bucket", y="accepted", color="name",
+                        color_discrete_map=MEMBER_COLORS,
+                        labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
+                        title=f"{'Cumulative ' if cumulative else ''}Accepted Problems — Per Member ({freq})",
+                        barmode='group' if not cumulative else 'stack'
+                    )
+                    fig.update_traces(
+                        hovertemplate="<b>%{fullData.name}</b><br>Date=%{x}<br>Accepted=%{y}<extra></extra>"
+                    )
+                elif chart_type == "Area":
+                    fig = px.area(
+                        agg_full, x="bucket", y="accepted", color="name",
+                        color_discrete_map=MEMBER_COLORS,
+                        labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
+                        title=f"{'Cumulative ' if cumulative else ''}Accepted Problems — Per Member ({freq})"
+                    )
+                    fig.update_traces(
+                        hovertemplate="<b>%{fullData.name}</b><br>Date=%{x}<br>Accepted=%{y}<extra></extra>"
+                    )
+                else:  # Line
+                    fig = px.line(
+                        agg_full, x="bucket", y="accepted", color="name", markers=True,
+                        color_discrete_map=MEMBER_COLORS,
+                        labels={"bucket": "Date", "accepted": "Accepted", "name": "Member"},
+                        title=f"{'Cumulative ' if cumulative else ''}Accepted Problems — Per Member ({freq})"
+                    )
+                    fig.update_traces(
+                        mode="lines+markers",
+                        hovertemplate="<b>%{fullData.name}</b><br>Date=%{x}<br>Accepted=%{y}<extra></extra>"
+                    )
+
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(l=20, r=20, t=50, b=80),
+                    height=450,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.35,
+                        xanchor="center",
+                        x=0.5,
+                        title=None
+                    )
                 )
-                fig.update_traces(mode="lines+markers+text", textposition="top center",
-                                  textfont=dict(size=11), texttemplate="%{text:.0f}",
-                                  hovertemplate="Member=%{legendgroup}<br>Date=%{x}<br>Accepted=%{y}<extra></extra>")
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                                  margin=dict(l=20, r=20, t=50, b=20), height=420)
                 st.plotly_chart(fig, use_container_width=True)
 
 # ===================== Team Performance (Accepted) — per-member colors =====================
