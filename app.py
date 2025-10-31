@@ -676,52 +676,91 @@ if selected_data:
 
     easy_c, med_c, hard_c = diff_count("Easy"), diff_count("Medium"), diff_count("Hard")
 
-    # Enhanced Stats Cards Row
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary)); border: 2px solid var(--leetcode-orange);">
-                <div class="stat-label">Total Solved</div>
-                <div class="stat-value" style="color: var(--leetcode-orange);">{sel_accepted}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, rgba(52,168,83,0.1), var(--bg-card)); border: 2px solid #34A853;">
-                <div class="stat-label">✅ Easy</div>
-                <div class="stat-value" style="color:#34A853">{easy_c}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, rgba(255,161,22,0.1), var(--bg-card)); border: 2px solid #FFA116;">
-                <div class="stat-label">⚠️ Medium</div>
-                <div class="stat-value" style="color:#FFA116">{med_c}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    with c4:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, rgba(239,71,67,0.1), var(--bg-card)); border: 2px solid #EF4743;">
-                <div class="stat-label">🔥 Hard</div>
-                <div class="stat-value" style="color:#EF4743">{hard_c}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
+    # Two-column layout: Stats on left, Pie chart on right
     if sel_accepted > 0:
-        fig = px.pie(
-            [{"difficulty":"Easy","count":easy_c},{"difficulty":"Medium","count":med_c},{"difficulty":"Hard","count":hard_c}],
-            values="count", names="difficulty",
-            color="difficulty",
-            color_discrete_map={'Easy': '#34A853','Medium':'#FFA116','Hard':'#EF4743'},
-            hole=0.4,
-        )
-        fig.update_layout(height=450, showlegend=True, margin=dict(l=20, r=20, t=30, b=0),
-                          legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=13)),
-                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(size=13))
-        fig.update_traces(textposition='inside', textinfo='percent+label',
-                          hovertemplate="<b>%{label}</b><br>Accepted: %{value}<br>Percentage: %{percent}",
-                          textfont=dict(color='#FFFFFF', size=13))
-        st.plotly_chart(fig, use_container_width=True)
+        stats_col, chart_col = st.columns([1, 1])
+
+        with stats_col:
+            st.markdown("#### 📊 Problem Statistics")
+            # Enhanced Stats Cards in 2x2 grid
+            row1_c1, row1_c2 = st.columns(2)
+            with row1_c1:
+                st.markdown(f"""
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary)); border: 2px solid var(--leetcode-orange); min-height: 120px;">
+                        <div class="stat-label" style="font-size: 1rem;">Total Solved</div>
+                        <div class="stat-value" style="color: var(--leetcode-orange); font-size: 2.5rem;">{sel_accepted}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">All Difficulties</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with row1_c2:
+                acceptance_rate = selected_data.get('acceptanceRate', 0)
+                st.markdown(f"""
+                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(52,168,83,0.1), var(--bg-card)); border: 2px solid #34A853; min-height: 120px;">
+                        <div class="stat-label" style="font-size: 1rem;">Acceptance Rate</div>
+                        <div class="stat-value" style="color:#34A853; font-size: 2.5rem;">{acceptance_rate if acceptance_rate else 'N/A'}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">Success Rate</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            row2_c1, row2_c2, row2_c3 = st.columns(3)
+            with row2_c1:
+                st.markdown(f"""
+                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(52,168,83,0.15), var(--bg-card)); border: 2px solid #34A853; min-height: 110px;">
+                        <div class="stat-label" style="font-size: 0.9rem;">✅ Easy</div>
+                        <div class="stat-value" style="color:#34A853; font-size: 2rem;">{easy_c}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">{(easy_c/sel_accepted*100):.1f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with row2_c2:
+                st.markdown(f"""
+                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(255,161,22,0.15), var(--bg-card)); border: 2px solid #FFA116; min-height: 110px;">
+                        <div class="stat-label" style="font-size: 0.9rem;">⚠️ Medium</div>
+                        <div class="stat-value" style="color:#FFA116; font-size: 2rem;">{med_c}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">{(med_c/sel_accepted*100):.1f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with row2_c3:
+                st.markdown(f"""
+                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(239,71,67,0.15), var(--bg-card)); border: 2px solid #EF4743; min-height: 110px;">
+                        <div class="stat-label" style="font-size: 0.9rem;">🔥 Hard</div>
+                        <div class="stat-value" style="color:#EF4743; font-size: 2rem;">{hard_c}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">{(hard_c/sel_accepted*100):.1f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with chart_col:
+            st.markdown("#### 🎯 Difficulty Distribution")
+            fig = px.pie(
+                [{"difficulty":"Easy","count":easy_c},{"difficulty":"Medium","count":med_c},{"difficulty":"Hard","count":hard_c}],
+                values="count", names="difficulty",
+                color="difficulty",
+                color_discrete_map={'Easy': '#34A853','Medium':'#FFA116','Hard':'#EF4743'},
+                hole=0.4,
+            )
+            fig.update_layout(
+                height=400,
+                showlegend=True,
+                margin=dict(l=10, r=10, t=10, b=10),
+                legend=dict(
+                    orientation="v",
+                    yanchor="middle",
+                    y=0.5,
+                    xanchor="left",
+                    x=1.1,
+                    font=dict(size=14)
+                ),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(size=13)
+            )
+            fig.update_traces(
+                textposition='inside',
+                textinfo='percent+value',
+                hovertemplate="<b>%{label}</b><br>Solved: %{value}<br>Percentage: %{percent}<extra></extra>",
+                textfont=dict(color='#FFFFFF', size=14, family="Arial Black"),
+                marker=dict(line=dict(color='#FFFFFF', width=2))
+            )
+            st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("🎯 No accepted challenges yet!")
 
