@@ -511,79 +511,219 @@ ALL_MEMBER_NAMES = sorted([m.get("name", m["username"]) for m in members])
 MEMBER_COLORS = build_member_color_map(ALL_MEMBER_NAMES)
 
 # ===================== Leaderboard & Profile =====================
-left_col, right_col = st.columns([1, 2])
-with left_col:
-    st.markdown("### 🏆 Leaderboard")
-    st.markdown('<div class="leetcode-card">', unsafe_allow_html=True)
+st.markdown("### 🏆 Team Leaderboard")
 
-    selected_user_un = st.session_state.get("selected_user", df_sorted.iloc[0]["username"])
-    max_ac = int(df["Accepted"].max()) if not df.empty else 0
+selected_user_un = st.session_state.get("selected_user", df_sorted.iloc[0]["username"])
+max_ac = int(df["Accepted"].max()) if not df.empty else 0
 
-    for i, row in enumerate(df_sorted.itertuples(index=False), start=1):
-        is_selected = (row.username == selected_user_un)
-        item_class = "leaderboard-item selected" if is_selected else "leaderboard-item"
-        st.markdown(f'<div class="{item_class}">', unsafe_allow_html=True)
-        c1, c2 = st.columns([0.2, 0.8])
-        with c1:
-            st.image(row.avatar, width=40)
-        with c2:
-            if st.button(f"#{i} {row.name}", key=f"lb_{row.username}", use_container_width=True):
-                st.session_state.selected_user = row.username
-                st.rerun()
-            progress = (row.Accepted / max_ac) if max_ac > 0 else 0
-            st.progress(progress, text=f"🎯 {row.Accepted} Accepted")
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+# Top 3 Podium Display
+if len(df_sorted) >= 3:
+    st.markdown("#### 🥇 Top Performers")
+    top3 = df_sorted.head(3)
 
-with right_col:
-    selected_data = next((item for item in data if item["username"] == st.session_state.get("selected_user", df_sorted.iloc[0]["username"])), None)
-    if selected_data:
-        sel_accepted = sum_accepted_from_submissions(selected_data.get("submissions", []))
-        st.markdown(f"""
-            <div class="profile-header">
-                <div style="display:flex; align-items:center; gap:20px;">
-                    <img src="{selected_data['avatar']}" width="80" style="border-radius:50%; border:3px solid var(--leetcode-orange);">
-                    <div>
-                        <h2 style="margin:0;">{selected_data['name']}</h2>
-                        <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
-                            <div class="rank-badge">🏅 Rank: {selected_data['ranking']}</div>
-                            <div class="solved-badge">✅ Accepted (Total): {sel_accepted}</div>
+    # Reorder for podium effect: 2nd, 1st, 3rd
+    podium_order = [1, 0, 2] if len(top3) >= 3 else [0, 1] if len(top3) >= 2 else [0]
+    podium_cols = st.columns([1, 1, 1])
+
+    medals = ["🥇", "🥈", "🥉"]
+    medal_colors = ["#FFD700", "#C0C0C0", "#CD7F32"]
+    heights = ["180px", "220px", "160px"]  # 1st tallest
+
+    for idx, pos in enumerate(podium_order):
+        if pos < len(top3):
+            row = top3.iloc[pos]
+            with podium_cols[idx]:
+                is_selected = (row.username == selected_user_un)
+                border_style = "3px solid #FFA116" if is_selected else "2px solid var(--border-color)"
+
+                st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+                        border: {border_style};
+                        border-radius: 12px;
+                        padding: 1.5rem;
+                        text-align: center;
+                        min-height: {heights[pos]};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    " onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">{medals[pos]}</div>
+                        <img src="{row.avatar}" width="70" style="border-radius: 50%; border: 3px solid {medal_colors[pos]}; margin-bottom: 0.8rem;">
+                        <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.3rem;">{row.name}</div>
+                        <div style="font-size: 1.8rem; font-weight: 700; color: {medal_colors[pos]}; margin: 0.5rem 0;">{int(row.Accepted)}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">problems solved</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                if st.button(f"View Profile", key=f"podium_{row.username}", use_container_width=True):
+                    st.session_state.selected_user = row.username
+                    st.rerun()
+
+    st.markdown("---")
+
+# Full Leaderboard Table
+st.markdown("#### 📊 Full Rankings")
+
+# Create enhanced leaderboard cards
+for i, row in enumerate(df_sorted.itertuples(index=False), start=1):
+    is_selected = (row.username == selected_user_un)
+
+    # Medal for top 3
+    medal = ""
+    if i == 1:
+        medal = "🥇"
+    elif i == 2:
+        medal = "🥈"
+    elif i == 3:
+        medal = "🥉"
+
+    # Different styling for selected user
+    if is_selected:
+        border_color = "#FFA116"
+        bg_gradient = "linear-gradient(90deg, rgba(255,161,22,0.15), rgba(255,161,22,0.05))"
+    else:
+        border_color = "var(--border-color)"
+        bg_gradient = "var(--bg-card)"
+
+    # Progress percentage
+    progress = (row.Accepted / max_ac * 100) if max_ac > 0 else 0
+
+    st.markdown(f"""
+        <div style="
+            background: {bg_gradient};
+            border: 2px solid {border_color};
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            transition: all 0.2s ease;
+        " onmouseover="this.style.transform='translateX(5px)'; this.style.boxShadow='0 4px 12px rgba(255,161,22,0.2)'"
+           onmouseout="this.style.transform='translateX(0)'; this.style.boxShadow='none'">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: var(--leetcode-orange);
+                    min-width: 50px;
+                    text-align: center;
+                ">
+                    {medal if medal else f"#{i}"}
+                </div>
+                <img src="{row.avatar}" width="50" style="border-radius: 50%; border: 2px solid {border_color};">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.3rem;">
+                        {row.name}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="flex: 1; background: var(--bg-secondary); border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="
+                                background: linear-gradient(90deg, #FFA116, #FF8C00);
+                                height: 100%;
+                                width: {progress}%;
+                                transition: width 0.3s ease;
+                            "></div>
+                        </div>
+                        <div style="
+                            font-weight: 700;
+                            font-size: 1.1rem;
+                            color: var(--leetcode-orange);
+                            min-width: 80px;
+                            text-align: right;
+                        ">
+                            {int(row.Accepted)} <span style="font-size: 0.8rem; color: var(--text-secondary);">solved</span>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Button to select user (invisible but clickable area)
+    if st.button(f"Select {row.name}", key=f"lb_{row.username}", use_container_width=True, type="secondary"):
+        st.session_state.selected_user = row.username
+        st.rerun()
+
+st.markdown("---")
+
+# ===================== Selected Member Profile =====================
+st.markdown("### 👤 Member Profile")
+
+selected_data = next((item for item in data if item["username"] == st.session_state.get("selected_user", df_sorted.iloc[0]["username"])), None)
+if selected_data:
+    sel_accepted = sum_accepted_from_submissions(selected_data.get("submissions", []))
+
+    # Enhanced Profile Header
+    st.markdown(f"""
+        <div class="profile-header" style="margin-bottom: 1.5rem;">
+            <div style="display:flex; align-items:center; gap:20px;">
+                <img src="{selected_data['avatar']}" width="100" style="border-radius:50%; border:4px solid var(--leetcode-orange); box-shadow: 0 4px 12px rgba(255,161,22,0.3);">
+                <div style="flex: 1;">
+                    <h2 style="margin:0; font-size: 1.8rem;">{selected_data['name']}</h2>
+                    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                        <div class="rank-badge" style="font-size: 0.95rem;">🏅 Global Rank: {selected_data['ranking']:,}</div>
+                        <div class="solved-badge" style="font-size: 0.95rem;">✅ Total Solved: {sel_accepted}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    def diff_count(diff):
+        for d in selected_data["submissions"]:
+            if d.get("difficulty") == diff:
+                return int(d.get("count", 0))
+        return 0
+
+    easy_c, med_c, hard_c = diff_count("Easy"), diff_count("Medium"), diff_count("Hard")
+
+    # Enhanced Stats Cards Row
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary)); border: 2px solid var(--leetcode-orange);">
+                <div class="stat-label">Total Solved</div>
+                <div class="stat-value" style="color: var(--leetcode-orange);">{sel_accepted}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, rgba(52,168,83,0.1), var(--bg-card)); border: 2px solid #34A853;">
+                <div class="stat-label">✅ Easy</div>
+                <div class="stat-value" style="color:#34A853">{easy_c}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, rgba(255,161,22,0.1), var(--bg-card)); border: 2px solid #FFA116;">
+                <div class="stat-label">⚠️ Medium</div>
+                <div class="stat-value" style="color:#FFA116">{med_c}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, rgba(239,71,67,0.1), var(--bg-card)); border: 2px solid #EF4743;">
+                <div class="stat-label">🔥 Hard</div>
+                <div class="stat-value" style="color:#EF4743">{hard_c}</div>
+            </div>
         """, unsafe_allow_html=True)
 
-        def diff_count(diff):
-            for d in selected_data["submissions"]:
-                if d.get("difficulty") == diff:
-                    return int(d.get("count", 0))
-            return 0
-
-        easy_c, med_c, hard_c = diff_count("Easy"), diff_count("Medium"), diff_count("Hard")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: st.markdown(f'<div class="stat-card"><div class="stat-label">Accepted (Total)</div><div class="stat-value">{sel_accepted}</div></div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="stat-card"><div class="stat-label">Easy</div><div class="stat-value" style="color:#34A853">{easy_c}</div></div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="stat-card"><div class="stat-label">Medium</div><div class="stat-value" style="color:#FFA116">{med_c}</div></div>', unsafe_allow_html=True)
-        with c4: st.markdown(f'<div class="stat-card"><div class="stat-label">Hard</div><div class="stat-value" style="color:#EF4743">{hard_c}</div></div>', unsafe_allow_html=True)
-
-        if sel_accepted > 0:
-            fig = px.pie(
-                [{"difficulty":"Easy","count":easy_c},{"difficulty":"Medium","count":med_c},{"difficulty":"Hard","count":hard_c}],
-                values="count", names="difficulty",
-                color="difficulty",
-                color_discrete_map={'Easy': '#34A853','Medium':'#FFA116','Hard':'#EF4743'},
-                hole=0.4,
-            )
-            fig.update_layout(height=520, showlegend=True, margin=dict(l=20, r=20, t=30, b=0),
-                              legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=13)),
-                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(size=13))
-            fig.update_traces(textposition='inside', textinfo='percent+label',
-                              hovertemplate="<b>%{label}</b><br>Accepted: %{value}<br>Percentage: %{percent}",
-                              textfont=dict(color='#FFFFFF', size=13))
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("🎯 No accepted challenges yet!")
+    if sel_accepted > 0:
+        fig = px.pie(
+            [{"difficulty":"Easy","count":easy_c},{"difficulty":"Medium","count":med_c},{"difficulty":"Hard","count":hard_c}],
+            values="count", names="difficulty",
+            color="difficulty",
+            color_discrete_map={'Easy': '#34A853','Medium':'#FFA116','Hard':'#EF4743'},
+            hole=0.4,
+        )
+        fig.update_layout(height=450, showlegend=True, margin=dict(l=20, r=20, t=30, b=0),
+                          legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=13)),
+                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(size=13))
+        fig.update_traces(textposition='inside', textinfo='percent+label',
+                          hovertemplate="<b>%{label}</b><br>Accepted: %{value}<br>Percentage: %{percent}",
+                          textfont=dict(color='#FFFFFF', size=13))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("🎯 No accepted challenges yet!")
 
 # ===================== Daily Challenge & Recent Accepted Problems =====================
 st.divider()
@@ -1002,12 +1142,117 @@ else:
             num_weeks = out["Week"].nunique()
             st.caption(f"📊 Showing **{num_rows}** entries across **{num_weeks}** week(s)")
 
-            # Display table with dynamic height
+            # Add custom CSS for table styling
+            st.markdown("""
+                <style>
+                /* Style the dataframe container */
+                div[data-testid="stDataFrame"] {
+                    border: 2px solid var(--leetcode-orange);
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+
+                /* Style table headers */
+                div[data-testid="stDataFrame"] thead tr th {
+                    background: linear-gradient(135deg, #FFA116, #FF8C00) !important;
+                    color: white !important;
+                    font-weight: 700 !important;
+                    font-size: 0.95rem !important;
+                    padding: 12px 8px !important;
+                    border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+                    text-align: center !important;
+                }
+
+                /* Style table cells */
+                div[data-testid="stDataFrame"] tbody tr td {
+                    border: 1px solid var(--border-color) !important;
+                    padding: 10px 8px !important;
+                    font-size: 0.9rem !important;
+                }
+
+                /* Alternate row colors */
+                div[data-testid="stDataFrame"] tbody tr:nth-child(odd) {
+                    background-color: var(--bg-card) !important;
+                }
+
+                div[data-testid="stDataFrame"] tbody tr:nth-child(even) {
+                    background-color: var(--bg-secondary) !important;
+                }
+
+                /* Hover effect on rows */
+                div[data-testid="stDataFrame"] tbody tr:hover {
+                    background-color: rgba(255, 161, 22, 0.1) !important;
+                    cursor: pointer;
+                }
+
+                /* Style specific columns */
+                div[data-testid="stDataFrame"] tbody tr td:nth-child(1) {
+                    font-weight: 600;
+                    color: var(--leetcode-orange);
+                }
+
+                div[data-testid="stDataFrame"] tbody tr td:nth-child(2) {
+                    font-weight: 600;
+                }
+
+                div[data-testid="stDataFrame"] tbody tr td:nth-child(5) {
+                    font-weight: 700;
+                    font-size: 1rem;
+                }
+
+                div[data-testid="stDataFrame"] tbody tr td:nth-child(7) {
+                    background-color: rgba(255, 161, 22, 0.05);
+                    font-weight: 700;
+                    text-align: center;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
+            # Display table with dynamic height and column configuration
             st.dataframe(
                 out,
                 use_container_width=True,
                 hide_index=True,
-                height=dynamic_height
+                height=dynamic_height,
+                column_config={
+                    "Week": st.column_config.TextColumn(
+                        "📅 Week",
+                        help="Week starting date",
+                        width="medium"
+                    ),
+                    "Member": st.column_config.TextColumn(
+                        "👤 Member",
+                        help="Team member name",
+                        width="medium"
+                    ),
+                    "Previous": st.column_config.NumberColumn(
+                        "📊 Previous",
+                        help="Total accepted problems last week",
+                        format="%d"
+                    ),
+                    "Current": st.column_config.NumberColumn(
+                        "📈 Current",
+                        help="Total accepted problems this week",
+                        format="%d"
+                    ),
+                    "Change": st.column_config.TextColumn(
+                        "🔄 Change",
+                        help="Week-over-week change in problems solved"
+                    ),
+                    "% Change": st.column_config.TextColumn(
+                        "📊 % Change",
+                        help="Percentage change from last week"
+                    ),
+                    "Rank": st.column_config.NumberColumn(
+                        "🏆 Rank",
+                        help="Current rank this week",
+                        format="%d"
+                    ),
+                    "Rank Δ": st.column_config.TextColumn(
+                        "🎯 Rank Δ",
+                        help="Change in rank from last week"
+                    )
+                }
             )
 
 # ===================== Accepted Trend by Date (with snapshot fallback + colors + labels) =====================
