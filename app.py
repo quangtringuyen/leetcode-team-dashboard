@@ -986,12 +986,28 @@ else:
             # Sort by week (descending) and then by rank (ascending) - NEWEST FIRST
             out = out.sort_values(["Week", "Rank"], ascending=[False, True])
 
-            # Display table with alternating row colors
+            # Calculate dynamic height based on number of rows
+            # Each row is ~35px, header is ~38px, add padding
+            num_rows = len(out)
+            row_height = 35
+            header_height = 38
+            padding = 10
+            min_height = 200
+            max_height = 800
+
+            # Dynamic height: show all rows but cap at max_height
+            dynamic_height = min(max(header_height + (num_rows * row_height) + padding, min_height), max_height)
+
+            # Add info about table size
+            num_weeks = out["Week"].nunique()
+            st.caption(f"📊 Showing **{num_rows}** entries across **{num_weeks}** week(s)")
+
+            # Display table with dynamic height
             st.dataframe(
                 out,
                 use_container_width=True,
                 hide_index=True,
-                height=400
+                height=dynamic_height
             )
 
 # ===================== Accepted Trend by Date (with snapshot fallback + colors + labels) =====================
