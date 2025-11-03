@@ -1070,9 +1070,48 @@ else:
             deltas = ac_df_sorted.dropna(subset=["prev_total"]).copy()
             deltas["week_start"] = pd.to_datetime(deltas["week_start"]).dt.date
 
+            # Show latest week highlights first
+            latest_week = deltas["week_start"].max() if not deltas.empty else None
+            if latest_week:
+                st.markdown("#### 📊 Week-over-Week Changes (Accepted challenges)")
+
+                latest = deltas[deltas["week_start"] == latest_week].copy()
+                latest["gain"] = latest["delta"]
+                top = latest.sort_values("gain", ascending=False).head(3).reset_index(drop=True)
+
+                # Create highlight cards for top performers
+                st.markdown(f"**🏆 Top Performers — Week of {latest_week.strftime('%b %d, %Y')}**")
+                cols = st.columns(3)
+                medals = ["🥇", "🥈", "🥉"]
+                colors = ["#FFD700", "#C0C0C0", "#CD7F32"]
+
+                for idx, (col, medal, color) in enumerate(zip(cols, medals, colors)):
+                    if idx < len(top):
+                        with col:
+                            gain = int(top.iloc[idx]['gain'])
+                            name = top.iloc[idx]['name']
+                            total = int(top.iloc[idx]['Accepted'])
+                            rank = int(top.iloc[idx]['rank'])
+
+                            gain_color = "#34A853" if gain > 0 else "#EF4743" if gain < 0 else "#999"
+                            st.markdown(f"""
+                                <div class="stat-card" style="border: 2px solid {color}; min-height: 140px;">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">{medal}</div>
+                                    <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem;">{name}</div>
+                                    <div style="color: {gain_color}; font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0;">
+                                        {'+' if gain > 0 else ''}{gain}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                        Total: {total} | Rank #{rank}
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                st.markdown("---")
+
             def arrowize(x):
-                if pd.isna(x) or x == 0: return "➖ 0"
-                return f"🔼 {int(x)}" if x > 0 else f"🔽 {int(x)}"
+                if pd.isna(x) or x == 0: return "➖"
+                return f"🟢 +{int(x)}" if x > 0 else f"🔴 {int(x)}"
             def pctfmt(x):
                 if pd.isna(x): return "—"
                 sign = "+" if x >= 0 else ""
@@ -1082,14 +1121,29 @@ else:
                 arrow = "⬆️" if x > 0 else "⬇️"
                 return f"{arrow} {int(abs(x))}"
 
-            out = deltas[["week_start","name","prev_total","Accepted","delta","pct_change","prev_rank","rank","rank_delta"]].copy()
-            out = out.rename(columns={"prev_total":"Prev (Accepted)","delta":"Δ Accepted","pct_change":"% Change","prev_rank":"Prev Rank","rank":"Rank","rank_delta":"Δ Rank"})
-            out["Δ Accepted"] = out["Δ Accepted"].apply(arrowize)
-            out["% Change"] = out["% Change"].apply(pctfmt)
-            out["Δ Rank"] = out["Δ Rank"].apply(rankfmt)
-            out = out.sort_values(["week_start","Rank","name"])
+            out = deltas[["week_start","name","prev_total","Accepted","delta","pct_change","rank","rank_delta"]].copy()
+            out = out.rename(columns={
+                "week_start": "Week",
+                "name": "Member",
+                "prev_total": "Previous",
+                "Accepted": "Current",
+                "delta": "Change",
+                "pct_change": "% Change",
+                "rank": "Rank",
+                "rank_delta": "Rank Δ"
+            })
 
-            st.markdown("#### Week-over-Week Changes (Accepted challenges)")
+            # Format columns
+            out["Week"] = pd.to_datetime(out["Week"]).dt.strftime("%b %d, %Y")
+            out["Previous"] = out["Previous"].astype(int)
+            out["Current"] = out["Current"].astype(int)
+            out["Change"] = out["Change"].apply(arrowize)
+            out["% Change"] = out["% Change"].apply(pctfmt)
+            out["Rank"] = out["Rank"].astype(int)
+            out["Rank Δ"] = out["Rank Δ"].apply(rankfmt)
+
+            # Sort by week (descending) and then by rank (ascending) - NEWEST FIRST
+            out = out.sort_values(["Week", "Rank"], ascending=[False, True])
 
             # Calculate dynamic height based on number of rows
             # Each row is ~35px, header is ~38px, add padding
