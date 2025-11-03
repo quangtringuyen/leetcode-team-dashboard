@@ -1157,9 +1157,51 @@ else:
             # Dynamic height: show all rows but cap at max_height
             dynamic_height = min(max(header_height + (num_rows * row_height) + padding, min_height), max_height)
 
-            # Add info about table size
+            # Add info about table size and download button
             num_weeks = out["Week"].nunique()
-            st.caption(f"📊 Showing **{num_rows}** entries across **{num_weeks}** week(s)")
+
+            col_info, col_download = st.columns([3, 1])
+            with col_info:
+                st.caption(f"📊 Showing **{num_rows}** entries across **{num_weeks}** week(s)")
+            with col_download:
+                # Create Excel file in memory
+                from io import BytesIO
+
+                buffer = BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    # Write the dataframe without formatting (raw data for Excel)
+                    export_df = deltas[["week_start","name","prev_total","Accepted","delta","pct_change","rank","rank_delta"]].copy()
+                    export_df = export_df.rename(columns={
+                        "week_start": "Week",
+                        "name": "Member",
+                        "prev_total": "Previous Total",
+                        "Accepted": "Current Total",
+                        "delta": "Change",
+                        "pct_change": "% Change",
+                        "rank": "Rank",
+                        "rank_delta": "Rank Change"
+                    })
+                    export_df = export_df.sort_values(["Week", "Rank"], ascending=[False, True])
+                    export_df.to_excel(writer, index=False, sheet_name='Week-over-Week')
+
+                    # Auto-adjust column widths
+                    worksheet = writer.sheets['Week-over-Week']
+                    for idx, col in enumerate(export_df.columns):
+                        max_length = max(
+                            export_df[col].astype(str).apply(len).max(),
+                            len(col)
+                        ) + 2
+                        worksheet.column_dimensions[chr(65 + idx)].width = max_length
+
+                buffer.seek(0)
+
+                st.download_button(
+                    label="📥 Download Excel",
+                    data=buffer,
+                    file_name=f"week_over_week_{date.today().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
             # Add custom CSS for table styling
             st.markdown("""
