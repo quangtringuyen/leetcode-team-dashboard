@@ -1090,9 +1090,7 @@ else:
             out = out.sort_values(["week_start","Rank","name"])
 
             st.markdown("#### Week-over-Week Changes (Accepted challenges)")
-            st.dataframe(out, use_container_width=True)
 
-<<<<<<< HEAD
             # Calculate dynamic height based on number of rows
             # Each row is ~35px, header is ~38px, add padding
             num_rows = len(out)
@@ -1221,19 +1219,6 @@ else:
                     )
                 }
             )
-=======
-            latest_week = deltas["week_start"].max() if not deltas.empty else None
-            if latest_week:
-                latest = deltas[deltas["week_start"] == latest_week].copy()
-                latest["gain"] = latest["delta"]
-                top = latest.sort_values("gain", ascending=False).head(3).reset_index(drop=True)
-                medals = []
-                if len(top) >= 1: medals.append(f"🥇 {top.iloc[0]['name']}: +{int(top.iloc[0]['gain'])}")
-                if len(top) >= 2: medals.append(f"🥈 {top.iloc[1]['name']}: +{int(top.iloc[1]['gain'])}")
-                if len(top) >= 3: medals.append(f"🥉 {top.iloc[2]['name']}: +{int(top.iloc[2]['gain'])}")
-                if medals:
-                    st.caption(f"**Top gainers — week of {latest_week}**: " + "  •  ".join(medals))
->>>>>>> parent of 41c1ce1 (make up table)
 
 # ===================== Accepted Trend by Date (with snapshot fallback + colors + labels) =====================
 st.divider()
