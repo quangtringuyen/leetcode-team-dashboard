@@ -1166,7 +1166,7 @@ else:
 
             col_info, col_download = st.columns([3, 1])
             with col_info:
-                st.caption(f"📊 Showing **{num_rows}** entries across **{num_weeks}** week(s)")
+                st.caption(f"📊 Showing **{len(out)}** entries across **{num_weeks}** week(s)")
             with col_download:
                 # Create Excel file in memory with emoji formatting
                 from io import BytesIO
