@@ -1145,17 +1145,21 @@ else:
             # Sort by week (descending) and then by rank (ascending) - NEWEST FIRST
             out = out.sort_values(["Week", "Rank"], ascending=[False, True])
 
-            # Calculate dynamic height based on number of rows
+            # Calculate dynamic height to show 1 week's data (newest week)
             # Each row is ~35px, header is ~38px, add padding
-            num_rows = len(out)
             row_height = 35
             header_height = 38
             padding = 10
             min_height = 200
-            max_height = 800
 
-            # Dynamic height: show all rows but cap at max_height
-            dynamic_height = min(max(header_height + (num_rows * row_height) + padding, min_height), max_height)
+            # Count members in the latest (newest) week
+            latest_week_str = out["Week"].iloc[0] if not out.empty else None
+            if latest_week_str:
+                members_in_latest_week = len(out[out["Week"] == latest_week_str])
+                # Height = header + (members in latest week * row height) + padding
+                dynamic_height = max(header_height + (members_in_latest_week * row_height) + padding, min_height)
+            else:
+                dynamic_height = min_height
 
             # Add info about table size and download button
             num_weeks = out["Week"].nunique()
@@ -1164,24 +1168,15 @@ else:
             with col_info:
                 st.caption(f"📊 Showing **{num_rows}** entries across **{num_weeks}** week(s)")
             with col_download:
-                # Create Excel file in memory
+                # Create Excel file in memory with emoji formatting
                 from io import BytesIO
 
                 buffer = BytesIO()
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    # Write the dataframe without formatting (raw data for Excel)
-                    export_df = deltas[["week_start","name","prev_total","Accepted","delta","pct_change","rank","rank_delta"]].copy()
-                    export_df = export_df.rename(columns={
-                        "week_start": "Week",
-                        "name": "Member",
-                        "prev_total": "Previous Total",
-                        "Accepted": "Current Total",
-                        "delta": "Change",
-                        "pct_change": "% Change",
-                        "rank": "Rank",
-                        "rank_delta": "Rank Change"
-                    })
-                    export_df = export_df.sort_values(["Week", "Rank"], ascending=[False, True])
+                    # Create formatted export dataframe (same as display table)
+                    export_df = out.copy()
+
+                    # Write to Excel
                     export_df.to_excel(writer, index=False, sheet_name='Week-over-Week')
 
                     # Auto-adjust column widths
@@ -1191,7 +1186,7 @@ else:
                             export_df[col].astype(str).apply(len).max(),
                             len(col)
                         ) + 2
-                        worksheet.column_dimensions[chr(65 + idx)].width = max_length
+                        worksheet.column_dimensions[chr(65 + idx)].width = min(max_length, 30)
 
                 buffer.seek(0)
 
