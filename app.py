@@ -1267,12 +1267,6 @@ else:
         if not trend_people:
             st.info("Select at least one member.")
         else:
-            # Show info about view mode
-            if cumulative and freq == "Daily":
-                st.info("📊 **Cumulative Daily View**: Shows the running total of all problems solved up to each day. Great for tracking overall progress!")
-            elif not cumulative and freq == "Daily":
-                st.info("📊 **Daily Count View**: Shows how many problems were solved each specific day. Great for spotting daily activity patterns!")
-
             df_tr = cal_df[cal_df["name"].isin(trend_people)].copy()
 
             # Bucket data by granularity
@@ -1290,17 +1284,8 @@ else:
                 if not agg.empty:
                     full_idx = pd.date_range(agg["bucket"].min(), agg["bucket"].max(), freq=freq_code)
                     agg = agg.set_index("bucket").reindex(full_idx, fill_value=0).rename_axis("bucket").reset_index()
-
-                    # Show date range being analyzed
-                    start_date_str = agg["bucket"].min().strftime("%b %d, %Y")
-                    end_date_str = agg["bucket"].max().strftime("%b %d, %Y")
-                    total_problems = int(agg["accepted"].sum())
-
                     if cumulative:
                         agg["accepted"] = agg["accepted"].cumsum()
-                        st.caption(f"📅 Period: **{start_date_str}** to **{end_date_str}** | Total: **{total_problems}** problems")
-                    else:
-                        st.caption(f"📅 Period: **{start_date_str}** to **{end_date_str}** | Total: **{total_problems}** problems")
 
                 # Create chart based on type
                 if chart_type == "Bar":
@@ -1354,17 +1339,8 @@ else:
                     full_buckets = pd.date_range(min_b, max_b, freq=freq_code)
                     full_index = pd.MultiIndex.from_product([trend_people, full_buckets], names=["name", "bucket"])
                     agg_full = agg.set_index(["name", "bucket"]).reindex(full_index, fill_value=0).reset_index()
-
-                    # Show date range being analyzed
-                    start_date_str = min_b.strftime("%b %d, %Y")
-                    end_date_str = max_b.strftime("%b %d, %Y")
-                    total_problems = int(agg_full["accepted"].sum())
-
                     if cumulative:
                         agg_full["accepted"] = agg_full.groupby("name")["accepted"].cumsum()
-                        st.caption(f"📅 Period: **{start_date_str}** to **{end_date_str}** | Total: **{total_problems}** problems")
-                    else:
-                        st.caption(f"📅 Period: **{start_date_str}** to **{end_date_str}** | Total: **{total_problems}** problems")
                 else:
                     agg_full = agg
 
