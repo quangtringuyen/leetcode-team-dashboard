@@ -1,6 +1,7 @@
 # services/auth_service.py
 from __future__ import annotations
 import streamlit as st
+import os
 
 try:
     import streamlit_authenticator as stauth
@@ -20,9 +21,9 @@ from utils.auth import (
 class AuthManager:
     """Adapter that supports cookie auth (streamlit-authenticator) or a fallback session login."""
     def __init__(self):
-        self.cookie_name = st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth")
-        self.cookie_key = st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me")
-        self.cookie_exp = int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14))
+        self.cookie_name = os.environ.get("COOKIE_NAME", "leetdash_auth")
+        self.cookie_key = os.environ.get("COOKIE_KEY", "change-me")
+        self.cookie_exp = int(os.environ.get("COOKIE_EXPIRY_DAYS", "14"))
         self.authenticator = None
         if ST_AUTH_AVAILABLE:
             self._build_authenticator()

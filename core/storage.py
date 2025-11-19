@@ -73,19 +73,16 @@ class S3Storage(Storage):
 
 
 def choose_storage() -> Storage:
-    """Select S3 or local based on Streamlit secrets."""
-    if not HAS_ST:
-        return LocalStorage()
+    """Select S3 or local based on environment variables."""
     try:
-        aws = st.secrets.get("aws", {})
-        required = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET", "S3_PREFIX"]
-        if all(k in aws for k in required):
+        required = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET_NAME", "S3_PREFIX"]
+        if all(os.environ.get(k) for k in required):
             cfg = S3Config(
-                bucket=aws["S3_BUCKET"],
-                prefix=aws["S3_PREFIX"],
-                access_key=aws["AWS_ACCESS_KEY_ID"],
-                secret_key=aws["AWS_SECRET_ACCESS_KEY"],
-                region=aws["AWS_DEFAULT_REGION"],
+                bucket=os.environ.get("S3_BUCKET_NAME"),
+                prefix=os.environ.get("S3_PREFIX"),
+                access_key=os.environ.get("AWS_ACCESS_KEY_ID"),
+                secret_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                region=os.environ.get("AWS_DEFAULT_REGION"),
             )
             return S3Storage(cfg)
     except Exception:

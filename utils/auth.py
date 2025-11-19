@@ -18,13 +18,9 @@ except Exception:
 # Storage (S3-or-local), same behavior as app.py
 # -----------------------------
 def _use_s3() -> bool:
-    if not HAS_ST:
-        return False
     try:
-        return "aws" in st.secrets and all(
-            k in st.secrets["aws"]
-            for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET", "S3_PREFIX")
-        )
+        required_keys = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET_NAME", "S3_PREFIX")
+        return all(os.environ.get(k) for k in required_keys)
     except Exception:
         return False
 
@@ -35,15 +31,15 @@ def _s3_client():
         import boto3
         _s3_client_cached = boto3.client(
             "s3",
-            aws_access_key_id=st.secrets["aws"]["AWS_ACCESS_KEY_ID"],
-            aws_secret_access_key=st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"],
-            region_name=st.secrets["aws"]["AWS_DEFAULT_REGION"],
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("AWS_DEFAULT_REGION"),
         )
     return _s3_client_cached
 
 def _s3_bucket_key(local_path: str) -> Tuple[str, str]:
-    bucket = st.secrets["aws"]["S3_BUCKET"]
-    prefix = st.secrets["aws"]["S3_PREFIX"].rstrip("/")
+    bucket = os.environ.get("S3_BUCKET_NAME")
+    prefix = os.environ.get("S3_PREFIX", "").rstrip("/")
     key = f"{prefix}/{local_path.lstrip('/')}"
     return bucket, key
 

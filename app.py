@@ -60,10 +60,8 @@ st.markdown('<div class="header-title">👨🏼‍💻 LeetCode Team Dashboard</
 # ===================== S3-or-Local storage adapter =====================
 def _use_s3() -> bool:
     try:
-        return "aws" in st.secrets and all(
-            k in st.secrets["aws"]
-            for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET", "S3_PREFIX")
-        )
+        required_keys = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "S3_BUCKET_NAME", "S3_PREFIX")
+        return all(os.environ.get(k) for k in required_keys)
     except Exception:
         return False
 
@@ -72,14 +70,14 @@ def _s3_client():
     import boto3
     return boto3.client(
         "s3",
-        aws_access_key_id=st.secrets["aws"]["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"],
-        region_name=st.secrets["aws"]["AWS_DEFAULT_REGION"],
+        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.environ.get("AWS_DEFAULT_REGION"),
     )
 
 def _s3_bucket_key(local_path: str):
-    bucket = st.secrets["aws"]["S3_BUCKET"]
-    prefix = st.secrets["aws"]["S3_PREFIX"].rstrip("/")
+    bucket = os.environ.get("S3_BUCKET_NAME")
+    prefix = os.environ.get("S3_PREFIX", "").rstrip("/")
     key = f"{prefix}/{local_path.lstrip('/')}"
     return bucket, key
 
@@ -315,9 +313,9 @@ def trend_frame_with_fallback(members_list, owner_username: str):
 def _build_authenticator():
     return stauth.Authenticate(
         credentials=credentials_for_authenticator(),
-        cookie_name=st.secrets.get("auth", {}).get("COOKIE_NAME", "leetdash_auth"),
-        key=st.secrets.get("auth", {}).get("COOKIE_KEY", "change-me"),
-        cookie_expiry_days=int(st.secrets.get("auth", {}).get("COOKIE_EXPIRY_DAYS", 14)),
+        cookie_name=os.environ.get("COOKIE_NAME", "leetdash_auth"),
+        key=os.environ.get("COOKIE_KEY", "change-me"),
+        cookie_expiry_days=int(os.environ.get("COOKIE_EXPIRY_DAYS", "14")),
     )
 
 def _login_compat(authenticator):
