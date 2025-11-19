@@ -22,6 +22,9 @@ COPY . .
 # Create directory for S3 cache (if using local storage fallback)
 RUN mkdir -p /app/.s3_cache
 
+# Create .streamlit directory for secrets
+RUN mkdir -p /app/.streamlit
+
 # Expose Streamlit default port
 EXPOSE 8501
 

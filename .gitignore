@@ -1,4 +1,33 @@
+# Dependencies
 node_modules/
+
+# Environment and Secrets
 .env
+.streamlit/secrets.toml
+
+# History
 .history/*
 .history/app_*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Local data
+.s3_cache/
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
