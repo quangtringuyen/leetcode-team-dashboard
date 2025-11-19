@@ -1131,17 +1131,19 @@ else:
                 "rank_delta": "Rank Δ"
             })
 
-            # Format columns
-            out["Week"] = pd.to_datetime(out["Week"]).dt.strftime("%b %d, %Y")
+            # Sort by week (descending) and then by rank (ascending) - NEWEST FIRST
+            # IMPORTANT: Sort BEFORE formatting the Week column as string
+            out["Week"] = pd.to_datetime(out["Week"])
+            out = out.sort_values(["Week", "Rank"], ascending=[False, True])
+
+            # Format columns AFTER sorting
+            out["Week"] = out["Week"].dt.strftime("%b %d, %Y")
             out["Previous"] = out["Previous"].astype(int)
             out["Current"] = out["Current"].astype(int)
             out["Change"] = out["Change"].apply(arrowize)
             out["% Change"] = out["% Change"].apply(pctfmt)
             out["Rank"] = out["Rank"].astype(int)
             out["Rank Δ"] = out["Rank Δ"].apply(rankfmt)
-
-            # Sort by week (descending) and then by rank (ascending) - NEWEST FIRST
-            out = out.sort_values(["Week", "Rank"], ascending=[False, True])
 
             # Calculate dynamic height to show 1 week's data (newest week)
             # Each row is ~35px, header is ~38px, add padding
