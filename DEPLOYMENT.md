@@ -7,6 +7,30 @@ This guide will help you deploy the LeetCode Team Dashboard on your NAS using Do
 - Docker installed on your NAS
 - Docker Compose installed (optional but recommended)
 - Access to your NAS terminal/SSH
+- AWS S3 bucket (if using S3 storage)
+
+## Important: Secrets Configuration
+
+Before deploying, you **MUST** configure the `.streamlit/secrets.toml` file with your credentials. This file contains:
+- AWS credentials for S3 storage
+- Authentication configuration
+
+The secrets file is already created with the following structure:
+```toml
+[aws]
+AWS_ACCESS_KEY_ID = "your_key"
+AWS_SECRET_ACCESS_KEY = "your_secret"
+AWS_DEFAULT_REGION = "ap-southeast-1"
+S3_BUCKET = "leetcode-team-dashboard"
+S3_PREFIX = "prod"
+
+[auth]
+COOKIE_NAME = "leetdash_auth"
+COOKIE_KEY = "leetcode_dashboard_signature_key_2024"
+COOKIE_EXPIRY_DAYS = 30
+```
+
+**Security Note:** Never commit `secrets.toml` to version control. Keep it secure on your NAS.
 
 ## Quick Start
 
@@ -23,18 +47,29 @@ This guide will help you deploy the LeetCode Team Dashboard on your NAS using Do
    cd /volume1/docker/leetcode-dashboard/
    ```
 
-3. **Create data directory for persistent storage**
+3. **Verify secrets file exists**
+   ```bash
+   # Check if secrets file exists
+   ls -la .streamlit/secrets.toml
+
+   # The file should already be configured with your AWS credentials
+   # If you need to edit it:
+   # nano .streamlit/secrets.toml
+   ```
+
+4. **Create data directory for persistent storage**
    ```bash
    mkdir -p data
    ```
 
-4. **Start the application**
+5. **Start the application**
    ```bash
    docker-compose up -d
    ```
 
-5. **Access the dashboard**
+6. **Access the dashboard**
    - Open your browser and navigate to: `http://your-nas-ip:8501`
+   - Default login: `admin` / `admin123` (change this in production!)
 
 ### Using Docker CLI
 
@@ -49,6 +84,7 @@ docker run -d \
   --name leetcode-dashboard \
   -p 8501:8501 \
   -v $(pwd)/data:/app/.s3_cache \
+  -v $(pwd)/.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro \
   --restart unless-stopped \
   leetcode-dashboard
 ```
@@ -70,24 +106,25 @@ ports:
 docker run -d -p 8080:8501 ...
 ```
 
-### AWS S3 Configuration (Optional)
+### AWS S3 Configuration
 
-If you want to use AWS S3 for storage instead of local storage:
+AWS S3 credentials are configured in `.streamlit/secrets.toml`. The current configuration uses:
+- **Bucket:** `leetcode-team-dashboard`
+- **Region:** `ap-southeast-1`
+- **Prefix:** `prod`
 
-1. Edit `docker-compose.yml` and uncomment the AWS environment variables:
-   ```yaml
-   environment:
-     - AWS_ACCESS_KEY_ID=your_access_key
-     - AWS_SECRET_ACCESS_KEY=your_secret_key
-     - AWS_DEFAULT_REGION=us-east-1
-     - S3_BUCKET_NAME=your-bucket-name
-   ```
+All team data, snapshots, and configurations are automatically stored in S3.
 
-2. Restart the container:
+To modify S3 settings:
+1. Edit `.streamlit/secrets.toml`
+2. Update the `[aws]` section
+3. Restart the container:
    ```bash
    docker-compose down
    docker-compose up -d
    ```
+
+**Note:** The app will fall back to local storage if S3 is unavailable.
 
 ### Persistent Data Storage
 
