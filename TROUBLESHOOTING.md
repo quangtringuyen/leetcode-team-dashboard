@@ -10,11 +10,24 @@ When running the application in Docker, you may see errors like:
 website is categorized as Miscellaneous or Unknown
 ```
 
-This happens when the Docker container cannot access leetcode.com due to DNS resolution issues or network filtering.
+This happens when:
+- Docker containers cannot access leetcode.com due to DNS resolution issues or network filtering
+- Corporate firewalls categorize leetcode.com as blocked content
+- Network policies block outbound connections to certain websites
 
 ### Solutions
 
-#### Solution 1: Use Public DNS Servers (Recommended - Already Configured)
+#### Solution 1: Updated API Client with Headers (Already Implemented)
+
+The application has been updated to include proper HTTP headers that mimic a real browser, which helps bypass filtering:
+- Added User-Agent headers
+- Added Accept, Referer, and other browser headers
+- Implemented automatic retry logic with exponential backoff
+- Added rate limiting handling
+
+**This is already implemented in the code** - just redeploy your application to use the updated version.
+
+#### Solution 2: Use Public DNS Servers (For Docker - Already Configured)
 
 The [docker-compose.yml](docker-compose.yml) has been configured to use public DNS servers:
 - Google DNS: 8.8.8.8, 8.8.4.4

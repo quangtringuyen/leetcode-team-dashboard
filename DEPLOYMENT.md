@@ -1,6 +1,6 @@
-# Docker Deployment Guide for NAS
+# Docker Deployment Guide
 
-This guide will help you deploy the LeetCode Team Dashboard on your NAS using Docker.
+This guide will help you deploy the LeetCode Team Dashboard using Docker on NAS, VPS, or any server with Docker support.
 
 ## Prerequisites
 
@@ -209,6 +209,35 @@ rm -rf data/
    - Follow the Docker Compose quick start steps
 
 ## Troubleshooting
+
+### "Website is categorized as Miscellaneous or Unknown" Error
+
+This error occurs when the container cannot access leetcode.com due to DNS or network issues.
+
+**Solution:** The `docker-compose.yml` has been configured with public DNS servers (Google DNS and Cloudflare DNS) to fix this issue. If you still encounter problems:
+
+1. **Test network connectivity:**
+   ```bash
+   # Run the network test script inside the container
+   docker exec -it leetcode-team-dashboard python test_network.py
+   ```
+
+2. **Check DNS resolution:**
+   ```bash
+   docker exec -it leetcode-team-dashboard nslookup leetcode.com
+   ```
+
+3. **If DNS fails, manually set DNS in docker-compose.yml:**
+   ```yaml
+   services:
+     leetcode-dashboard:
+       dns:
+         - 8.8.8.8
+         - 8.8.4.4
+         - 1.1.1.1
+   ```
+
+4. **For more solutions, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
 
 ### Container won't start
 ```bash
