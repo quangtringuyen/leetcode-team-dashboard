@@ -147,6 +147,15 @@ schedule.every(6).hours.do(self.fetch_and_record_all_teams)  # Every 6 hours
 - Each user's/team's data is isolated.
 - For production, use HTTPS and consider a real database for better security.
 
+## 🔧 Troubleshooting
+
+If you encounter issues like "website is categorized as Miscellaneous or Unknown" or other problems, see the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) guide for solutions.
+
+Common issues:
+- DNS resolution problems → Use public DNS (already configured in docker-compose.yml)
+- Network/firewall restrictions → Check the troubleshooting guide
+- Container won't start → Check logs with `docker-compose logs -f`
+
 ## 👩‍💻 Developed By
 Its a small scale project do not use it for huge teamsizes
 @saralaufeyson
