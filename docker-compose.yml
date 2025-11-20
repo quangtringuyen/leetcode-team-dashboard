@@ -11,6 +11,11 @@ services:
       - ./data:/app/.s3_cache
     env_file:
       - .env
+    # Use public DNS servers to avoid network categorization issues
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
@@ -28,6 +33,11 @@ services:
       - ./data:/app/.s3_cache
     env_file:
       - .env
+    # Use public DNS servers to avoid network categorization issues
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     restart: unless-stopped
     depends_on:
       - leetcode-dashboard
