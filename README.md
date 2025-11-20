@@ -150,7 +150,23 @@ schedule.every(6).hours.do(self.fetch_and_record_all_teams)  # Every 6 hours
 
 If you encounter issues, see the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) guide for solutions.
 
+### Quick Diagnostics
+
+**If you see "Failed to fetch data for team members":**
+
+```bash
+# 1. Check container logs for detailed error messages
+docker-compose logs -f leetcode-dashboard
+
+# 2. Run the API connectivity test
+docker exec -it leetcode-team-dashboard python test_leetcode_api.py
+
+# 3. Test network connectivity
+docker exec -it leetcode-team-dashboard python test_network.py
+```
+
 Common issues:
+- **"Failed to fetch data"** → Run diagnostics above, check logs for [ERROR] messages
 - **"Website is categorized as Miscellaneous or Unknown"** → Already fixed with DNS configuration and HTTP headers
 - **Network/firewall restrictions** → Check the troubleshooting guide
 - **Container won't start** → Check logs with `docker-compose logs -f`
