@@ -16,14 +16,9 @@ A collaborative dashboard for tracking and visualizing LeetCode progress for tea
 - **Responsive Design:** Works on desktop and mobile.
 - **Secure Data:** Passwords are hashed; each team's data is private.
 
-## 🌐 Live Demo
-
-Deployed at:  
-**[https://leetcode-team-dashboard.streamlit.app/](https://leetcode-team-dashboard.streamlit.app/)**
-
 ## 🛠️ Setup & Installation
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker (Recommended for Production)
 
 1. **Clone the repository:**
    ```bash
@@ -52,7 +47,9 @@ Deployed at:
    docker-compose logs -f leetcode-dashboard  # View dashboard logs
    ```
 
-### Option 2: Local Python
+### Option 2: Local Development
+
+For local development only (not recommended for production):
 
 1. **Clone the repository:**
    ```bash
@@ -76,10 +73,12 @@ Deployed at:
    streamlit run app.py
    ```
 
-5. **Run the scheduler (optional, in a separate terminal):**
+5. **Run the scheduler (in a separate terminal):**
    ```bash
    python scheduler.py
    ```
+
+**Note:** For production use, Docker deployment is strongly recommended for better reliability and built-in scheduler support.
 
 ## 📦 File Structure
 
@@ -149,12 +148,20 @@ schedule.every(6).hours.do(self.fetch_and_record_all_teams)  # Every 6 hours
 
 ## 🔧 Troubleshooting
 
-If you encounter issues like "website is categorized as Miscellaneous or Unknown" or other problems, see the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) guide for solutions.
+If you encounter issues, see the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) guide for solutions.
 
 Common issues:
-- DNS resolution problems → Use public DNS (already configured in docker-compose.yml)
-- Network/firewall restrictions → Check the troubleshooting guide
-- Container won't start → Check logs with `docker-compose logs -f`
+- **"Website is categorized as Miscellaneous or Unknown"** → Already fixed with DNS configuration and HTTP headers
+- **Network/firewall restrictions** → Check the troubleshooting guide
+- **Container won't start** → Check logs with `docker-compose logs -f`
+- **Scheduler not running** → Verify with `docker-compose ps scheduler`
+
+## 🚀 Deployment
+
+For production deployment:
+- See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed Docker deployment guide
+- Includes NAS-specific instructions (Synology, QNAP, TrueNAS)
+- Network troubleshooting and optimization tips
 
 ## 👩‍💻 Developed By
 Its a small scale project do not use it for huge teamsizes

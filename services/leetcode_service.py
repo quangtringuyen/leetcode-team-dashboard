@@ -35,21 +35,42 @@ class LeetCodeService:
 
     @st.cache_data(show_spinner=False)
     def fetch_submission_calendar(self, username: str) -> Dict:
+        import time
         url = f"https://leetcode.com/api/user_submission_calendar/?username={username}"
-        try:
-            r = requests.get(url, timeout=15)
-            r.raise_for_status()
-            payload = r.json()
-            raw = payload.get("submission_calendar", "{}")
-            data = json.loads(raw)
-            out = {}
-            for ts_str, cnt in data.items():
-                ts = int(ts_str)
-                day = datetime.utcfromtimestamp(ts).date()
-                out[day] = int(cnt)
-            return out
-        except Exception:
-            return {}
+
+        # Headers to bypass filtering
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': f'https://leetcode.com/{username}/',
+            'Connection': 'keep-alive',
+        }
+
+        # Retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                r = requests.get(url, headers=headers, timeout=15)
+                r.raise_for_status()
+                payload = r.json()
+                raw = payload.get("submission_calendar", "{}")
+                data = json.loads(raw)
+                out = {}
+                for ts_str, cnt in data.items():
+                    ts = int(ts_str)
+                    day = datetime.utcfromtimestamp(ts).date()
+                    out[day] = int(cnt)
+                return out
+            except requests.exceptions.RequestException as e:
+                print(f"Error fetching calendar for {username} (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+            except Exception as e:
+                print(f"Unexpected error fetching calendar for {username}: {e}")
+                break
+        return {}
 
     def calendars_to_frame(self, members: List[Dict[str, str]]) -> pd.DataFrame:
         rows = []
