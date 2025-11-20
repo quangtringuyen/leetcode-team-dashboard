@@ -4,72 +4,62 @@ This guide will help you deploy the LeetCode Team Dashboard using Docker on NAS,
 
 ## Prerequisites
 
-- Docker installed on your NAS
-- Docker Compose installed (optional but recommended)
-- Access to your NAS terminal/SSH
-- AWS S3 bucket (if using S3 storage)
+- Docker installed on your server/NAS
+- Docker Compose installed (recommended)
+- Terminal/SSH access
+- AWS S3 bucket (optional - for cloud storage)
 
-## Important: Secrets Configuration
+## Important: Environment Configuration
 
-Before deploying, you **MUST** configure the `.streamlit/secrets.toml` file with your credentials. This file contains:
-- AWS credentials for S3 storage
+Before deploying, you **MUST** configure the `.env` file with your credentials:
+
+1. **Copy the example file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` with your credentials:**
+   ```bash
+   nano .env  # or use your preferred editor
+   ```
+
+The `.env` file contains:
+- AWS credentials for S3 storage (optional)
 - Authentication configuration
+- Scheduler settings
 
-The secrets file is already created with the following structure:
-```toml
-[aws]
-AWS_ACCESS_KEY_ID = "your_key"
-AWS_SECRET_ACCESS_KEY = "your_secret"
-AWS_DEFAULT_REGION = "ap-southeast-1"
-S3_BUCKET = "leetcode-team-dashboard"
-S3_PREFIX = "prod"
-
-[auth]
-COOKIE_NAME = "leetdash_auth"
-COOKIE_KEY = "leetcode_dashboard_signature_key_2024"
-COOKIE_EXPIRY_DAYS = 30
-```
-
-**Security Note:** Never commit `secrets.toml` to version control. Keep it secure on your NAS.
+**Security Note:** Never commit `.env` to version control. The `.gitignore` file already excludes it.
 
 ## Quick Start
 
 ### Using Docker Compose (Recommended)
 
-1. **Transfer files to your NAS**
+1. **Clone or transfer the repository**
    ```bash
-   # Upload the entire project directory to your NAS
-   # Example path: /volume1/docker/leetcode-dashboard/
+   git clone <your-repo-url>
+   cd leetcode-team-dashboard
+   # Or upload the directory to your server
    ```
 
-2. **Navigate to the project directory**
+2. **Configure environment variables**
    ```bash
-   cd /volume1/docker/leetcode-dashboard/
+   cp .env.example .env
+   nano .env  # Edit with your credentials
    ```
 
-3. **Verify secrets file exists**
-   ```bash
-   # Check if secrets file exists
-   ls -la .streamlit/secrets.toml
-
-   # The file should already be configured with your AWS credentials
-   # If you need to edit it:
-   # nano .streamlit/secrets.toml
-   ```
-
-4. **Create data directory for persistent storage**
+3. **Create data directory for persistent storage**
    ```bash
    mkdir -p data
    ```
 
-5. **Start the application**
+4. **Start the application**
    ```bash
    docker-compose up -d
    ```
 
-6. **Access the dashboard**
-   - Open your browser and navigate to: `http://your-nas-ip:8501`
-   - Default login: `admin` / `admin123` (change this in production!)
+5. **Access the dashboard**
+   - Open your browser: `http://your-server-ip:8501`
+   - Create your first account via the registration form
 
 ### Using Docker CLI
 
@@ -79,14 +69,27 @@ If you prefer using Docker commands directly:
 # Build the image
 docker build -t leetcode-dashboard .
 
-# Run the container
+# Run the dashboard container
 docker run -d \
   --name leetcode-dashboard \
   -p 8501:8501 \
   -v $(pwd)/data:/app/.s3_cache \
-  -v $(pwd)/.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro \
+  --env-file .env \
+  --dns 8.8.8.8 \
+  --dns 8.8.4.4 \
   --restart unless-stopped \
   leetcode-dashboard
+
+# Run the scheduler container
+docker run -d \
+  --name leetcode-scheduler \
+  -v $(pwd)/data:/app/.s3_cache \
+  --env-file .env \
+  --dns 8.8.8.8 \
+  --dns 8.8.4.4 \
+  --restart unless-stopped \
+  leetcode-dashboard \
+  python scheduler.py
 ```
 
 ## Configuration
@@ -106,25 +109,26 @@ ports:
 docker run -d -p 8080:8501 ...
 ```
 
-### AWS S3 Configuration
+### AWS S3 Configuration (Optional)
 
-AWS S3 credentials are configured in `.streamlit/secrets.toml`. The current configuration uses:
-- **Bucket:** `leetcode-team-dashboard`
-- **Region:** `ap-southeast-1`
-- **Prefix:** `prod`
+AWS S3 credentials are configured in `.env`. To enable S3 storage:
 
-All team data, snapshots, and configurations are automatically stored in S3.
+1. Edit `.env` and configure:
+   ```bash
+   AWS_ACCESS_KEY_ID=your_key
+   AWS_SECRET_ACCESS_KEY=your_secret
+   AWS_DEFAULT_REGION=ap-southeast-1
+   S3_BUCKET_NAME=your-bucket-name
+   S3_PREFIX=prod
+   ```
 
-To modify S3 settings:
-1. Edit `.streamlit/secrets.toml`
-2. Update the `[aws]` section
-3. Restart the container:
+2. Restart the containers:
    ```bash
    docker-compose down
    docker-compose up -d
    ```
 
-**Note:** The app will fall back to local storage if S3 is unavailable.
+**Note:** If S3 credentials are not provided, the app will use local file storage in the `./data` directory.
 
 ### Persistent Data Storage
 
