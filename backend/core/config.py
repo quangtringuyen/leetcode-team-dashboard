@@ -3,10 +3,9 @@ Configuration settings
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator, Field
-from typing import List, Union, Any
+from pydantic import Field, field_serializer
+from typing import List
 import os
-import json
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -27,45 +26,19 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # CORS - Keep as List[str] type for proper typing
-    CORS_ORIGINS: List[str] = Field(
-        default=[
-            "http://localhost:3000",
-            "http://localhost:8000",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8000",
-        ]
+    # CORS - Use string type, parse it later
+    # This avoids pydantic-settings trying to JSON parse it
+    cors_origins_str: str = Field(
+        default="http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:8000",
+        alias="CORS_ORIGINS"
     )
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: Any) -> List[str]:
-        """Parse CORS_ORIGINS from various formats"""
-        # If it's already a list, return it
-        if isinstance(v, list):
-            return v
-
-        # If it's a string, try to parse it
-        if isinstance(v, str):
-            # Remove any whitespace
-            v = v.strip()
-
-            # Empty string returns default
-            if not v:
-                return []
-
-            # Try JSON parsing first (for array format like ["url1", "url2"])
-            if v.startswith('['):
-                try:
-                    return json.loads(v)
-                except json.JSONDecodeError:
-                    pass
-
-            # Otherwise parse as comma-separated
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-
-        # Fallback to empty list
-        return []
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        """Parse CORS_ORIGINS from comma-separated string"""
+        if not self.cors_origins_str:
+            return []
+        return [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]
 
     # AWS S3 (Optional)
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
