@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
 from backend.core.config import settings
-from utils.leetcodeapi import fetch_user_data
+from backend.utils.leetcodeapi import fetch_user_data
 
 router = APIRouter()
 
