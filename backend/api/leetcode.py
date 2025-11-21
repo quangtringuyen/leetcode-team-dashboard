@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from backend.core.security import get_current_user
-from utils.leetcodeapi import (
+from backend.utils.leetcodeapi import (
     fetch_user_data,
     fetch_recent_submissions,
     fetch_daily_challenge
