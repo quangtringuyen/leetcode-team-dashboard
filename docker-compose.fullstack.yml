@@ -4,8 +4,8 @@ services:
   # FastAPI Backend
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: leetcode-api
     restart: unless-stopped
     ports:
