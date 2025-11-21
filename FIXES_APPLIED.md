@@ -30,34 +30,69 @@ COPY .env* ./
 
 ---
 
-## ✅ Fix 2: CORS_ORIGINS Parsing Error
+## ✅ Fix 2: CORS_ORIGINS Parsing Error (UPDATED FIX)
 
 **Problem:**
 ```
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 pydantic_settings.exceptions.SettingsError: error parsing value for field "CORS_ORIGINS"
 ```
 
 **Root Cause:**
 - `.env` file has: `CORS_ORIGINS=http://localhost:3000,http://localhost:8000`
-- Pydantic v2 expects a `List[str]` but receives a comma-separated string
-- No automatic conversion happens
+- Pydantic v2 tries to parse `List[str]` fields as JSON first
+- Comma-separated string is not valid JSON, causing parse error before validator runs
 
 **Solution:**
-Added a custom validator to `backend/core/config.py` that parses comma-separated strings:
+Updated `backend/core/config.py` with improved Pydantic v2 configuration:
 
 ```python
-@field_validator("CORS_ORIGINS", mode="before")
-@classmethod
-def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-    """Parse CORS_ORIGINS from comma-separated string or list"""
-    if isinstance(v, str):
-        return [origin.strip() for origin in v.split(",")]
-    return v
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, Field
+import json
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file='.env',
+        env_file_encoding='utf-8',
+        extra='ignore'
+    )
+
+    CORS_ORIGINS: List[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8000",
+        ]
+    )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Any) -> List[str]:
+        """Parse CORS_ORIGINS from various formats"""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            # Try JSON first
+            if v.startswith('['):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Parse as comma-separated
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return []
 ```
 
-Now it supports both formats:
-- ✅ Comma-separated string: `CORS_ORIGINS=http://localhost:3000,http://localhost:8000`
-- ✅ List format: `CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]`
+Now it supports all formats:
+- ✅ Comma-separated: `CORS_ORIGINS=http://localhost:3000,http://localhost:8000`
+- ✅ JSON array: `CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]`
+- ✅ Python list (programmatic use)
 
 ---
 
