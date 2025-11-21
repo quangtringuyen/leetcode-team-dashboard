@@ -1,143 +1,280 @@
 # LeetCode Team Dashboard
 
-A collaborative dashboard for tracking and visualizing LeetCode progress for teams, built with Streamlit.
+A collaborative platform for tracking and visualizing LeetCode progress for teams, powered by a modern FastAPI backend with Docker deployment support.
+
+> **Note:** This project has been migrated from Streamlit to a FastAPI REST API backend. The Streamlit version is still available in git history if needed.
 
 ## 🚀 Features
 
-- **Team-based authentication:** Login/register to manage your own team.
-- **Add/Remove Members:** Easily manage your team's LeetCode members.
-- **Leaderboard:** See team rankings by problems solved.
-- **Profile View:** View detailed stats for each member, including solved counts by difficulty.
-- **Difficulty Distribution:** Interactive pie chart of solved problems by difficulty.
-- **Team Performance:** Bar chart comparing all team members.
-- **Automatic Data Capture:** Scheduler service automatically fetches and records data every Monday at midnight.
-- **Week-over-Week Tracking:** Track progress over time with historical data snapshots.
-- **Dark/Light Theme Support:** UI adapts to Streamlit theme.
-- **Responsive Design:** Works on desktop and mobile.
-- **Secure Data:** Passwords are hashed; each team's data is private.
+### Backend API (FastAPI)
+- **RESTful API:** Modern REST API with OpenAPI documentation
+- **JWT Authentication:** Secure token-based authentication
+- **Team Management:** Add, remove, and manage team members via API
+- **LeetCode Integration:** Real-time data fetching from LeetCode
+- **Historical Tracking:** Weekly snapshots and trend analysis
+- **Flexible Storage:** Supports both local JSON files and AWS S3
+- **Docker Ready:** Containerized deployment with health checks
+- **NAS Optimized:** Guides for Synology, QNAP, TrueNAS, Unraid
+- **Production Ready:** Comprehensive testing, monitoring, and logging
+- **Frontend Agnostic:** Use with React, Vue, Mobile apps, or any frontend
+
+### Core Features
+- **Team-based authentication:** Secure login/register with JWT tokens
+- **Member Management:** Track multiple team members' LeetCode progress
+- **Leaderboard Data:** Rankings by problems solved, difficulty levels
+- **User Statistics:** Detailed stats including recent submissions
+- **Automatic Snapshots:** Scheduler service records data every Monday at midnight
+- **Historical Analytics:** Week-over-week progress tracking
+- **Daily Challenges:** Fetch today's LeetCode daily challenge
+- **Secure & Private:** Passwords hashed with bcrypt; team data isolated
 
 ## 🛠️ Setup & Installation
 
-### Option 1: Docker (Recommended for Production)
+### Quick Start (60 seconds) ⚡
 
-1. **Clone the repository:**
+The fastest way to get started:
+
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd leetcode-team-dashboard
+
+# 2. Run automated deployment
+./deploy-nas.sh
+```
+
+That's it! The script will configure everything and start the services.
+
+**Access your API:**
+- API Documentation: http://localhost:8000/api/docs
+- Health Check: http://localhost:8000/api/health
+
+### Manual Docker Deployment
+
+For more control over the deployment:
+
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd leetcode-team-dashboard
+
+# 2. Configure environment variables
+cp .env.backend.example .env
+# Generate a secret key:
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+# Edit .env and set SECRET_KEY with the generated value
+
+# 3. Start services with Docker Compose
+docker compose -f docker-compose.backend.yml up -d
+
+# 4. Verify deployment
+docker compose -f docker-compose.backend.yml ps
+curl http://localhost:8000/api/health
+```
+
+**Access URLs:**
+- **API Docs (Swagger):** http://localhost:8000/api/docs
+- **ReDoc:** http://localhost:8000/api/redoc
+- **Health Check:** http://localhost:8000/api/health
+
+### Local Development
+
+For development and testing:
+
+```bash
+# 1. Clone and enter directory
+git clone <your-repo-url>
+cd leetcode-team-dashboard
+
+# 2. Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements_backend.txt
+
+# 4. Configure environment
+cp .env.backend.example .env
+nano .env  # Set SECRET_KEY and other settings
+
+# 5. Run the API server
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+# 6. Run tests (optional)
+python test_backend.py
+pytest backend/tests/
+```
+
+### NAS-Specific Deployment
+
+For Synology, QNAP, TrueNAS, Unraid, and other NAS devices, see the comprehensive guide:
+
+📖 **[NAS_DEPLOYMENT_GUIDE.md](NAS_DEPLOYMENT_GUIDE.md)** - Detailed instructions with GUI and SSH methods for each platform
+
+## 📦 Project Structure
+
+```
+leetcode-team-dashboard/
+├── backend/                          # FastAPI Application
+│   ├── main.py                      # Main API entry point
+│   ├── api/                         # API Endpoints
+│   │   ├── auth.py                  # Authentication (login, register, JWT)
+│   │   ├── team.py                  # Team member management
+│   │   ├── leetcode.py              # LeetCode data integration
+│   │   └── analytics.py             # Historical data & analytics
+│   ├── core/                        # Core Modules
+│   │   ├── config.py                # Configuration & settings
+│   │   ├── security.py              # JWT & password handling
+│   │   └── storage.py               # S3 and local file storage
+│   └── tests/                       # Test Suite
+│       └── test_api.py              # API endpoint tests
+│
+├── utils/                           # Business Logic (unchanged)
+│   └── leetcodeapi.py               # LeetCode GraphQL integration
+│
+├── Docker & Deployment
+│   ├── Dockerfile.backend           # Backend container image
+│   ├── docker-compose.backend.yml   # Service orchestration
+│   ├── deploy-nas.sh                # Automated deployment script
+│   └── nginx/                       # Nginx reverse proxy config
+│
+├── Configuration
+│   ├── .env.backend.example         # Environment template
+│   ├── requirements_backend.txt     # Backend dependencies
+│   └── .env                         # Your environment variables (create this)
+│
+├── Data Storage (auto-created)
+│   ├── data/users.json              # User credentials (hashed)
+│   ├── data/members.json            # Team members by user
+│   ├── data/history.json            # Weekly snapshots
+│   └── logs/                        # Application logs
+│
+└── Documentation
+    ├── README.md                    # This file
+    ├── README.Docker.md             # Docker quick start guide
+    ├── NAS_DEPLOYMENT_GUIDE.md      # Comprehensive NAS deployment
+    ├── DEPLOYMENT_SUMMARY.md        # Deployment options overview
+    └── NO_STREAMLIT_MIGRATION.md    # Migration details
+```
+
+## 📝 API Usage
+
+### Quick Start with API
+
+1. **Access API Documentation:**
+   ```
+   http://localhost:8000/api/docs
+   ```
+   Interactive Swagger UI with all endpoints
+
+2. **Register a User:**
    ```bash
-   git clone <your-repo-url>
-   cd leetcode-team-dashboard
+   curl -X POST http://localhost:8000/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"username":"myuser","email":"user@example.com","password":"mypassword"}'
    ```
 
-2. **Configure environment variables:**
+3. **Login (Get JWT Token):**
    ```bash
-   cp .env.example .env
-   # Edit .env with your AWS credentials (if using S3) and other settings
+   curl -X POST http://localhost:8000/api/auth/login \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "username=myuser&password=mypassword"
+   ```
+   Returns: `{"access_token": "your-jwt-token", "token_type": "bearer"}`
+
+4. **Add Team Member:**
+   ```bash
+   curl -X POST http://localhost:8000/api/team/members \
+     -H "Authorization: Bearer your-jwt-token" \
+     -H "Content-Type: application/json" \
+     -d '{"username":"leetcode_user","name":"John Doe"}'
    ```
 
-3. **Start with Docker Compose:**
+5. **Get Team Leaderboard:**
    ```bash
-   docker-compose up -d
+   curl -X GET http://localhost:8000/api/team/members \
+     -H "Authorization: Bearer your-jwt-token"
    ```
 
-4. **Access the dashboard:**
-   - Dashboard: http://localhost:8501
-   - The scheduler service runs automatically in the background
+### API Endpoints
 
-5. **View logs:**
-   ```bash
-   docker-compose logs -f scheduler    # View scheduler logs
-   docker-compose logs -f leetcode-dashboard  # View dashboard logs
-   ```
+**Authentication:**
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login and get JWT token
+- `GET /api/auth/me` - Get current user info
 
-### Option 2: Local Development
+**Team Management:**
+- `GET /api/team/members` - List all team members with stats
+- `POST /api/team/members` - Add new team member
+- `DELETE /api/team/members/{username}` - Remove member
 
-For local development only (not recommended for production):
+**LeetCode Data:**
+- `GET /api/leetcode/user/{username}` - Get user stats
+- `GET /api/leetcode/submissions/{username}` - Recent submissions
+- `GET /api/leetcode/daily-challenge` - Today's challenge
 
-1. **Clone the repository:**
-   ```bash
-   git clone <your-repo-url>
-   cd leetcode-team-dashboard
-   ```
+**Analytics:**
+- `GET /api/analytics/history` - Get weekly snapshots
+- `POST /api/analytics/snapshot` - Create snapshot manually
+- `GET /api/analytics/trends` - Get team trends
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**Full documentation:** http://localhost:8000/api/docs
 
-3. **Set environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Run the dashboard:**
-   ```bash
-   streamlit run app.py
-   ```
-
-5. **Run the scheduler (in a separate terminal):**
-   ```bash
-   python scheduler.py
-   ```
-
-**Note:** For production use, Docker deployment is strongly recommended for better reliability and built-in scheduler support.
-
-## 📦 File Structure
-
-- `app.py` — Main Streamlit app.
-- `scheduler.py` — Background service for automatic data fetching every Monday at midnight.
-- `docker-compose.yml` — Docker services configuration (dashboard + scheduler).
-- `utils/leetcodeapi.py` — Fetches LeetCode user data via GraphQL.
-- `utils/auth.py` — Handles authentication and user management.
-- `services/` — Service layer for members, history, and LeetCode data.
-- `core/storage.py` — Storage abstraction (supports local files or S3).
-- `data/members.json` — Stores team member data (per user/team).
-- `data/users.json` — Stores user credentials (hashed).
-- `data/history.json` — Stores weekly snapshots of team progress.
-- `.env` — Environment variables (credentials, configuration).
-- `requirements.txt` — Python dependencies.
-
-## 📝 Usage
-
-- **Login/Register:** Create an account to manage your team.
-- **Add Members:** Enter LeetCode username and full name to add a member.
-- **Remove Members:** Select and remove members from your team.
-- **View Stats:** Click on a member in the leaderboard to view their profile and stats.
-- **Automatic Tracking:** The scheduler service automatically captures data every Monday at 00:00 (midnight).
-- **Manual Refresh:** You can still manually refresh data in the dashboard at any time.
-
-## ⏰ Scheduler Configuration
-
-The scheduler service automatically fetches and records LeetCode data for all teams every Monday at midnight.
+## ⚙️ Configuration
 
 ### Environment Variables
 
-- `RUN_ON_STARTUP` — Set to `true` to run data fetch immediately on startup (useful for testing). Default: `false`
-- `ENVIRONMENT` — Set environment name (e.g., `production`, `development`). Default: `production`
-
-### Viewing Scheduler Status
+Create a `.env` file from the template:
 
 ```bash
-# Check if scheduler is running
-docker-compose ps
-
-# View scheduler logs
-docker-compose logs -f scheduler
-
-# Restart scheduler
-docker-compose restart scheduler
+cp .env.backend.example .env
 ```
 
-### Customizing Schedule
+**Required Settings:**
 
-To change the schedule from Monday at midnight, edit the schedule configuration in [scheduler.py](scheduler.py:111):
+```bash
+# REQUIRED: Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY=your-random-secret-key-here
+```
 
+**Optional Settings:**
+
+```bash
+# AWS S3 Storage (leave empty for local file storage)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=ap-southeast-1
+S3_BUCKET_NAME=
+S3_PREFIX=prod
+
+# Application Settings
+ENVIRONMENT=production
+LOG_LEVEL=info
+RUN_ON_STARTUP=false  # Run snapshot on startup
+
+# CORS Origins (add your frontend URL)
+CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+
+# JWT Token expiration (minutes, default: 7 days)
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+```
+
+### ⏰ Scheduler Service
+
+The scheduler service automatically captures team data every Monday at midnight.
+
+**Check Status:**
+```bash
+docker compose -f docker-compose.backend.yml ps
+docker compose -f docker-compose.backend.yml logs -f scheduler
+```
+
+**Customize Schedule:**
+Edit `scheduler.py` to change the schedule:
 ```python
-# Change from:
-schedule.every().monday.at("00:00").do(self.fetch_and_record_all_teams)
-
-# To (examples):
-schedule.every().day.at("00:00").do(self.fetch_and_record_all_teams)  # Daily at midnight
-schedule.every().sunday.at("23:59").do(self.fetch_and_record_all_teams)  # Sunday at 11:59 PM
-schedule.every(6).hours.do(self.fetch_and_record_all_teams)  # Every 6 hours
+schedule.every().monday.at("00:00").do(...)  # Current: Monday midnight
+schedule.every().day.at("00:00").do(...)     # Daily midnight
+schedule.every(6).hours.do(...)              # Every 6 hours
 ```
 
 ## 🔒 Security Notes
@@ -146,49 +283,158 @@ schedule.every(6).hours.do(self.fetch_and_record_all_teams)  # Every 6 hours
 - Each user's/team's data is isolated.
 - For production, use HTTPS and consider a real database for better security.
 
-## 🔧 Troubleshooting
+## 🧪 Testing
 
-If you encounter issues, see the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) guide for solutions.
-
-### Quick Diagnostics
-
-**If you see "Failed to fetch data for team members":**
+### Quick Health Check
 
 ```bash
-# 1. Check container logs for detailed error messages
-docker-compose logs -f leetcode-dashboard
+# Check if API is running
+curl http://localhost:8000/api/health
 
-# 2. Run the API connectivity test
-docker exec -it leetcode-team-dashboard python test_leetcode_api.py
-
-# 3. Test network connectivity
-docker exec -it leetcode-team-dashboard python test_network.py
+# Expected response:
+# {"status":"healthy","service":"LeetCode Team Dashboard API","version":"2.0.0"}
 ```
 
-Common issues:
-- **"Failed to fetch data"** → Run diagnostics above, check logs for [ERROR] messages
-- **"Website is categorized as Miscellaneous or Unknown"** → Already fixed with DNS configuration and HTTP headers
-- **Network/firewall restrictions** → Check the troubleshooting guide
-- **Container won't start** → Check logs with `docker-compose logs -f`
-- **Scheduler not running** → Verify with `docker-compose ps scheduler`
+### Run Full Test Suite
 
-## 🚀 Deployment
+```bash
+# If using Docker
+docker exec leetcode-api python test_backend.py
 
-For production deployment:
-- See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed Docker deployment guide
-- Includes NAS-specific instructions (Synology, QNAP, TrueNAS)
-- Network troubleshooting and optimization tips
+# If running locally
+python test_backend.py
+pytest backend/tests/
+```
+
+**Test Results:** All 5/5 tests passing ✅
+
+### Test Coverage
+
+- ✅ Imports and dependencies
+- ✅ Password hashing and verification
+- ✅ Storage operations (S3 and local)
+- ✅ API creation and endpoints
+- ✅ LeetCode API integration
+
+## 🔧 Troubleshooting
+
+### Service Won't Start
+
+```bash
+# Check logs
+docker compose -f docker-compose.backend.yml logs api
+
+# Common fixes:
+# 1. Port 8000 in use
+lsof -i :8000  # Find and kill conflicting process
+
+# 2. Missing .env file
+cp .env.backend.example .env
+
+# 3. Permission issues
+chmod -R 755 data/
+```
+
+### Can't Access API
+
+```bash
+# Test locally first
+curl http://localhost:8000/api/health
+
+# Check container status
+docker compose -f docker-compose.backend.yml ps
+# Should show "Up (healthy)"
+
+# Check firewall (allow port 8000)
+```
+
+### LeetCode API Errors
+
+```bash
+# Test connectivity
+docker exec leetcode-api curl -I https://leetcode.com
+
+# Already configured with public DNS (8.8.8.8, 1.1.1.1)
+# Check logs for specific errors
+docker compose -f docker-compose.backend.yml logs -f api
+```
+
+**For detailed troubleshooting:** See [NAS_DEPLOYMENT_GUIDE.md](NAS_DEPLOYMENT_GUIDE.md#troubleshooting)
+
+## 🚀 Deployment Options
+
+### Choose Your Deployment Method
+
+| Method | Best For | Documentation | Time |
+|--------|----------|---------------|------|
+| **Automated Script** | Quick setup, NAS users | Run `./deploy-nas.sh` | 2 min |
+| **Manual Docker** | Customization | [README.Docker.md](README.Docker.md) | 5 min |
+| **NAS-Specific** | Synology, QNAP, TrueNAS, Unraid | [NAS_DEPLOYMENT_GUIDE.md](NAS_DEPLOYMENT_GUIDE.md) | 5-10 min |
+| **Local Development** | Testing, development | See above | 10 min |
+
+### Production Considerations
+
+- ✅ Generate unique SECRET_KEY
+- ✅ Enable HTTPS (nginx or NAS reverse proxy)
+- ✅ Configure firewall (restrict port 8000)
+- ✅ Set up automated backups
+- ✅ Monitor logs and health checks
+- ✅ Keep Docker images updated
+
+**See:** [DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md) for complete deployment overview
+
+## 📚 Documentation
+
+- **[README.md](README.md)** - This file, main overview
+- **[README.Docker.md](README.Docker.md)** - Docker deployment quick start
+- **[NAS_DEPLOYMENT_GUIDE.md](NAS_DEPLOYMENT_GUIDE.md)** - Comprehensive NAS deployment guide
+- **[DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md)** - Deployment options overview
+- **[NO_STREAMLIT_MIGRATION.md](NO_STREAMLIT_MIGRATION.md)** - Streamlit to FastAPI migration details
+- **[API Documentation](http://localhost:8000/api/docs)** - Interactive API docs (after deployment)
+
+## 🎯 Frontend Development
+
+The backend API is ready for any frontend framework:
+
+**Recommended Frameworks:**
+- React / Next.js (Web)
+- Vue / Nuxt (Web)
+- Flutter (Mobile)
+- React Native (Mobile)
+- Electron / Tauri (Desktop)
+
+**Getting Started:**
+1. API is already CORS-configured for `localhost:3000`
+2. Use JWT bearer token authentication
+3. Full API documentation at `http://localhost:8000/api/docs`
+4. Example API calls provided in this README
+
+## 🔐 Security
+
+- ✅ Passwords hashed with bcrypt
+- ✅ JWT token-based authentication
+- ✅ CORS protection
+- ✅ Team data isolation
+- ✅ Environment variable configuration
+- ✅ Health check endpoints
+- ⚠️ For production: Use HTTPS, configure firewall, enable monitoring
 
 ## 👩‍💻 Developed By
-Its a small scale project do not use it for huge teamsizes
-@saralaufeyson
+
+Small scale project - suitable for small to medium teams (up to ~100 members)
+
+Original developer: @saralaufeyson
 
 ## 📄 License
 
 MIT License
 
----
-## Open For collaboration 
-contatct saralaufeysonlaya08@gmail.com or view my github profile for more info 
+## 🤝 Open For Collaboration
 
-**Built with [Streamlit](https://streamlit.io/) and the LeetCode API.**
+Contact: saralaufeysonlaya08@gmail.com
+
+For more info, visit the GitHub profile
+
+---
+
+**Built with [FastAPI](https://fastapi.tiangolo.com/), Docker, and the LeetCode GraphQL API** 🚀

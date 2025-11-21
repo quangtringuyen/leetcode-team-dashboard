@@ -1,208 +1,387 @@
-# Quick Start Guide
+# ⚡ Quick Start Guide - 60 Seconds to Live
 
-## 🚀 Deploy in 5 Minutes
-
-### Step 1: Get the Code
-```bash
-git clone <your-repo-url>
-cd leetcode-team-dashboard
-```
-
-### Step 2: Configure Environment
-```bash
-cp .env.example .env
-nano .env  # Edit AWS credentials if using S3
-```
-
-### Step 3: Start Services
-```bash
-docker-compose up -d
-```
-
-### Step 4: Access Dashboard
-Open browser: `http://localhost:8501`
+Get your LeetCode Team Dashboard API running in under 60 seconds.
 
 ---
 
-## 🔍 Verify Everything is Working
+## 🎯 One-Command Deployment
 
-### Check Services
 ```bash
-docker-compose ps
+./deploy-nas.sh
 ```
 
-You should see both services running:
-- `leetcode-team-dashboard` - Web interface (port 8501)
-- `leetcode-scheduler` - Background data fetcher
-
-### Check Logs
-```bash
-# Dashboard logs
-docker-compose logs -f leetcode-dashboard
-
-# Scheduler logs
-docker-compose logs -f scheduler
-```
-
-Look for `[SUCCESS]` messages - these indicate successful API calls.
+**That's it!** The script handles everything automatically.
 
 ---
 
-## ⚠️ Troubleshooting "Failed to fetch data"
+## 📍 What Happens
 
-If you see errors when adding team members:
+The deployment script will:
 
-### 1. Run API Test
-```bash
-docker exec -it leetcode-team-dashboard python test_leetcode_api.py
-```
-
-This will show you exactly what's failing:
-- ✅ All PASS = Everything works
-- ❌ Some FAIL = Check which test failed
-
-### 2. Check Error Logs
-```bash
-docker-compose logs leetcode-dashboard | grep ERROR
-```
-
-Look for patterns:
-- `[ERROR] Connection error` = Network/DNS issue
-- `[ERROR] Timeout error` = Firewall blocking requests
-- `[ERROR] User not found` = Invalid username
-- `[ERROR] Response status: 403` = LeetCode blocking requests
-
-### 3. Test Network
-```bash
-docker exec -it leetcode-team-dashboard python test_network.py
-```
-
-### Common Fixes
-
-**Network/DNS Issues:**
-```bash
-# Restart with fresh DNS
-docker-compose down
-docker-compose up -d --build
-```
-
-**LeetCode Blocking Requests:**
-- Wait 5-10 minutes (rate limiting)
-- Add valid LeetCode usernames only
-- Don't add too many members at once
-
-**Firewall/Corporate Network:**
-- Check if leetcode.com is accessible from your network
-- Try from a different network
-- Contact your IT department to whitelist leetcode.com
+1. ✅ Check Docker installation
+2. ✅ Create `.env` file with secure SECRET_KEY
+3. ✅ Create data directories
+4. ✅ Build Docker images (~1-2 minutes)
+5. ✅ Start API and scheduler services
+6. ✅ Run health checks
+7. ✅ Display access URLs
 
 ---
 
-## 📊 First Time Setup
+## 🌐 Access Your API
 
-1. **Create Account**
-   - Go to http://localhost:8501
-   - Click "Register"
-   - Create your account
+After deployment completes, open your browser:
 
-2. **Add Team Members**
-   - Enter valid LeetCode usernames
-   - Start with 1-2 members to test
-   - Wait for data to load
+```
+http://localhost:8000/api/docs
+```
 
-3. **Verify Data**
-   - Check the leaderboard
-   - View member profiles
-   - Verify statistics are correct
+Or if on NAS, replace `localhost` with your NAS IP:
 
-4. **Set Up Scheduler**
-   - Scheduler runs automatically every Monday at midnight
-   - To test immediately: Set `RUN_ON_STARTUP=true` in `.env`
-   - Restart: `docker-compose restart scheduler`
+```
+http://192.168.1.100:8000/api/docs
+```
+
+---
+
+## ✅ Verify It's Working
+
+### 1. Quick Health Check
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+**Expected:**
+```json
+{
+  "status": "healthy",
+  "service": "LeetCode Team Dashboard API",
+  "version": "2.0.0"
+}
+```
+
+### 2. Check Containers
+
+```bash
+docker compose -f docker-compose.backend.yml ps
+```
+
+**Expected:**
+```
+NAME                  STATUS              PORTS
+leetcode-api         Up (healthy)        0.0.0.0:8000->8000/tcp
+leetcode-scheduler   Up (healthy)
+```
+
+### 3. View Logs
+
+```bash
+docker compose -f docker-compose.backend.yml logs -f
+```
+
+You should see:
+- API server starting on port 8000
+- No error messages
+- Scheduler running
+
+---
+
+## 🎨 First Steps with API
+
+### 1. Register Your User
+
+Open: http://localhost:8000/api/docs
+
+Find: `POST /api/auth/register`
+
+Click: **Try it out**
+
+Fill in:
+```json
+{
+  "username": "yourname",
+  "email": "your@email.com",
+  "password": "yourpassword"
+}
+```
+
+Click: **Execute**
+
+### 2. Login (Get Token)
+
+Find: `POST /api/auth/login`
+
+Fill in:
+```
+username: yourname
+password: yourpassword
+```
+
+Click: **Execute**
+
+**Copy the `access_token`** from the response
+
+### 3. Authorize API
+
+Click: **Authorize** button (top right)
+
+Enter: `Bearer <your-access-token>`
+
+Click: **Authorize**
+
+Now you can use all endpoints!
+
+### 4. Add Team Member
+
+Find: `POST /api/team/members`
+
+Fill in:
+```json
+{
+  "username": "leetcode_username",
+  "name": "Team Member Name"
+}
+```
+
+Click: **Execute**
+
+### 5. View Team
+
+Find: `GET /api/team/members`
+
+Click: **Execute**
+
+You'll see all team members with their LeetCode stats!
+
+---
+
+## 📊 Using the API
+
+### From Command Line
+
+```bash
+# 1. Register
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"myuser","email":"user@example.com","password":"pass123"}'
+
+# 2. Login (save token)
+TOKEN=$(curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=myuser&password=pass123" | jq -r '.access_token')
+
+# 3. Add member
+curl -X POST http://localhost:8000/api/team/members \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"leetcode_user","name":"John Doe"}'
+
+# 4. Get team
+curl -X GET http://localhost:8000/api/team/members \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### From JavaScript/Frontend
+
+```javascript
+// 1. Register
+const response = await fetch('http://localhost:8000/api/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'myuser',
+    email: 'user@example.com',
+    password: 'pass123'
+  })
+});
+
+// 2. Login
+const loginResponse = await fetch('http://localhost:8000/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: 'username=myuser&password=pass123'
+});
+const { access_token } = await loginResponse.json();
+
+// 3. Add member
+await fetch('http://localhost:8000/api/team/members', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${access_token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: 'leetcode_user',
+    name: 'John Doe'
+  })
+});
+
+// 4. Get team
+const teamResponse = await fetch('http://localhost:8000/api/team/members', {
+  headers: { 'Authorization': `Bearer ${access_token}` }
+});
+const team = await teamResponse.json();
+console.log(team);
+```
 
 ---
 
 ## 🔧 Common Commands
 
+### Service Management
+
 ```bash
-# View all logs
-docker-compose logs -f
+# Start
+docker compose -f docker-compose.backend.yml up -d
 
-# Restart everything
-docker-compose restart
+# Stop
+docker compose -f docker-compose.backend.yml down
 
-# Stop everything
-docker-compose down
+# Restart
+docker compose -f docker-compose.backend.yml restart
 
-# Update and rebuild
+# Status
+docker compose -f docker-compose.backend.yml ps
+
+# Logs
+docker compose -f docker-compose.backend.yml logs -f
+```
+
+### Maintenance
+
+```bash
+# Update code
 git pull
-docker-compose down
-docker-compose up -d --build
 
-# View scheduler status
-docker-compose ps scheduler
-docker-compose logs -f scheduler
+# Rebuild
+docker compose -f docker-compose.backend.yml build --no-cache
 
-# Run tests
-docker exec -it leetcode-team-dashboard python test_leetcode_api.py
-docker exec -it leetcode-team-dashboard python test_network.py
+# Restart with new code
+docker compose -f docker-compose.backend.yml up -d
+
+# Backup data
+tar -czf backup-$(date +%Y%m%d).tar.gz data/
 ```
 
 ---
 
-## 📝 Configuration Tips
+## 🐛 Troubleshooting
 
-### Minimal .env (Local Storage)
+### Can't access API
+
+**Problem:** Browser can't connect to API
+
+**Solution:**
 ```bash
-# Auth
-COOKIE_NAME=leetdash_auth
-COOKIE_KEY=your-random-secret-key
-COOKIE_EXPIRY_DAYS=30
+# 1. Check if containers are running
+docker compose -f docker-compose.backend.yml ps
 
-# Scheduler
-RUN_ON_STARTUP=false
-ENVIRONMENT=production
+# 2. Check if port is accessible
+curl http://localhost:8000/api/health
+
+# 3. If on NAS, use NAS IP instead of localhost
+curl http://YOUR-NAS-IP:8000/api/health
+
+# 4. Check firewall allows port 8000
 ```
 
-### Full .env (S3 Storage)
+### Service won't start
+
+**Problem:** Docker containers failing
+
+**Solution:**
 ```bash
-# AWS S3
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_DEFAULT_REGION=ap-southeast-1
-S3_BUCKET_NAME=your-bucket
-S3_PREFIX=prod
+# 1. Check logs for errors
+docker compose -f docker-compose.backend.yml logs api
 
-# Auth
-COOKIE_NAME=leetdash_auth
-COOKIE_KEY=your-random-secret-key
-COOKIE_EXPIRY_DAYS=30
+# 2. Ensure .env file exists
+ls -la .env
 
-# Scheduler
-RUN_ON_STARTUP=false
-ENVIRONMENT=production
+# 3. Check port 8000 is free
+lsof -i :8000
+
+# 4. Try rebuilding
+docker compose -f docker-compose.backend.yml down
+docker compose -f docker-compose.backend.yml build --no-cache
+docker compose -f docker-compose.backend.yml up -d
+```
+
+### "Failed to fetch user data"
+
+**Problem:** Can't get LeetCode data
+
+**Solution:**
+```bash
+# 1. Check LeetCode connectivity from container
+docker exec leetcode-api curl -I https://leetcode.com
+
+# 2. Check logs for specific errors
+docker compose -f docker-compose.backend.yml logs -f api
+
+# 3. Verify username exists on LeetCode
+# Visit: https://leetcode.com/USERNAME
 ```
 
 ---
 
-## 🆘 Getting Help
+## 📚 Next Steps
 
-1. **Check logs first** - Most issues are visible in logs
-2. **Run diagnostics** - Use the test scripts
-3. **See full guide** - Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-4. **Report issues** - Include logs and test results
+**Explored the basics?** Check out:
+
+- **[README.md](README.md)** - Full feature documentation
+- **[README.Docker.md](README.Docker.md)** - Advanced Docker setup
+- **[NAS_DEPLOYMENT_GUIDE.md](NAS_DEPLOYMENT_GUIDE.md)** - NAS-specific guides
+- **[DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md)** - All deployment options
+
+**Want to build a frontend?**
+- API is CORS-ready for `localhost:3000`
+- Use any framework (React, Vue, Flutter, etc.)
+- Full API docs at `/api/docs`
+
+**Ready for production?**
+- Generate new SECRET_KEY
+- Enable HTTPS
+- Configure firewall
+- Set up automated backups
 
 ---
 
 ## ✅ Success Checklist
 
-- [ ] Both containers running (`docker-compose ps`)
-- [ ] No errors in logs (`docker-compose logs`)
-- [ ] API tests passing (`python test_leetcode_api.py`)
-- [ ] Can access dashboard (http://localhost:8501)
-- [ ] Can create account
-- [ ] Can add team members
-- [ ] Data loads correctly
-- [ ] Scheduler shows in logs
+- [ ] Ran `./deploy-nas.sh` successfully
+- [ ] Can access http://localhost:8000/api/docs
+- [ ] Health check returns `"healthy"`
+- [ ] Registered a test user
+- [ ] Got JWT token from login
+- [ ] Added a team member
+- [ ] Can view team members list
+- [ ] Data persists after `docker compose restart`
 
-If all checked ✅ - You're good to go! 🎉
+**All checked?** You're ready to go! 🎉
+
+---
+
+## 🆘 Need Help?
+
+**Quick checks:**
+```bash
+# Health
+curl http://localhost:8000/api/health
+
+# Logs
+docker compose -f docker-compose.backend.yml logs -f
+
+# Status
+docker compose -f docker-compose.backend.yml ps
+```
+
+**Documentation:**
+- Quick issues: This file
+- Docker: [README.Docker.md](README.Docker.md)
+- NAS setup: [NAS_DEPLOYMENT_GUIDE.md](NAS_DEPLOYMENT_GUIDE.md)
+- Detailed troubleshooting: [NAS_DEPLOYMENT_GUIDE.md#troubleshooting](NAS_DEPLOYMENT_GUIDE.md#troubleshooting)
+
+---
+
+**Happy tracking! 🚀**
