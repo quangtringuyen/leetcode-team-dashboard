@@ -103,7 +103,7 @@ echo "---------------------------------"
 if command -v curl &> /dev/null; then
     echo "Checking backend..."
     for i in {1..10}; do
-        HEALTH=$(curl -s http://localhost:8080/api/health 2>/dev/null || echo "")
+        HEALTH=$(curl -s http://localhost:8090/api/health 2>/dev/null || echo "")
         if echo "$HEALTH" | grep -q "healthy"; then
             echo "✅ Backend is healthy!"
             echo "   Storage: $(echo $HEALTH | grep -o '"storage":"[^"]*"' | cut -d'"' -f4)"
@@ -147,8 +147,8 @@ echo "===================================================="
 echo ""
 echo "📍 Access URLs:"
 echo "   • Frontend:     http://localhost:3000"
-echo "   • API Docs:     http://localhost:8080/api/docs"
-echo "   • Health Check: http://localhost:8080/api/health"
+echo "   • API Docs:     http://localhost:8090/api/docs"
+echo "   • Health Check: http://localhost:8090/api/health"
 echo ""
 echo "🌐 For remote access, replace 'localhost' with your NAS IP"
 echo "   Example: http://192.168.1.100:3000"
