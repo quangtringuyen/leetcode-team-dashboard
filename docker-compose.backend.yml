@@ -9,7 +9,7 @@ services:
     container_name: leetcode-api
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8090:8000"  # Changed to port 8080 to avoid conflict
     volumes:
       # Persistent data storage
       - ./data:/app/data
