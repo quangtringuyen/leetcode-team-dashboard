@@ -19,7 +19,20 @@ import type {
   ApiError,
 } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Use same host as frontend, but on port 8090
+const getApiBaseUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Otherwise, use current hostname with port 8090
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  return `${protocol}//${hostname}:8090`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Create axios instance
 const apiClient = axios.create({
