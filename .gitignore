@@ -3,6 +3,12 @@ node_modules/
 
 # Environment and Secrets
 .env
+.env.bak
+.env.backup
+.env.*
+!.env.example
+!.env.backend.example
+!.env.README.md
 .streamlit/secrets.toml
 
 # History
@@ -27,7 +33,17 @@ ENV/
 .idea/
 *.swp
 
+# Logs
+*.log
+logs/
+backend*.log
+
 # OS
 .DS_Store
 Thumbs.db
-.env.bak
+
+# Test and temporary files
+test_*.py
+*_backup*.json
+transform_*.py
+deploy-to-nas.sh
