@@ -161,7 +161,7 @@ def record_weekly_snapshots(team_owner: str, team_data: list, when: date | None 
                 "username": uname,
                 "name": name,
                 "totalSolved": total,
-                "Easy": easy, "Medium": medium, "Hard": hard
+                "easy": easy, "medium": medium, "hard": hard
             })
             changed = True
 
@@ -287,7 +287,7 @@ def trend_frame_with_fallback(members_list, owner_username: str):
             continue
         h["week_start"] = pd.to_datetime(h["week_start"])
         h = h.sort_values("week_start")
-        h["Accepted"] = h[["Easy","Medium","Hard"]].fillna(0).astype(int).sum(axis=1)
+        h["Accepted"] = h[["easy","medium","hard"]].fillna(0).astype(int).sum(axis=1)
         h["prev"] = h["Accepted"].shift(1)
         h["gain"] = (h["Accepted"] - h["prev"]).fillna(h["Accepted"]).astype(int)
         h["date"] = h["week_start"].dt.date
@@ -994,9 +994,9 @@ for uname, snaps in team_hist.items():
             "username": uname,
             "name": member_name_by_username.get(uname, s.get("name", uname)),
             "week_start": s.get("week_start"),
-            "Easy": int(s.get("Easy", 0)),
-            "Medium": int(s.get("Medium", 0)),
-            "Hard": int(s.get("Hard", 0)),
+            "Easy": int(s.get("easy") or s.get("Easy", 0)),
+            "Medium": int(s.get("medium") or s.get("Medium", 0)),
+            "Hard": int(s.get("hard") or s.get("Hard", 0)),
         })
 hist_df = pd.DataFrame(rows)
 
