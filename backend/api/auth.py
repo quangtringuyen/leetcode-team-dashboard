@@ -75,18 +75,35 @@ async def register(user: UserRegister):
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """Login and get access token"""
+    print(f"[AUTH] Login attempt for username: {form_data.username}")
+
     # Load users
     users = read_json(settings.USERS_FILE, default={})
+    print(f"[AUTH] Loaded {len(users)} users from database")
 
     user = users.get(form_data.username)
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
+    if not user:
+        print(f"[AUTH] User '{form_data.username}' not found")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    print(f"[AUTH] User found: {form_data.username}")
+
+    if not verify_password(form_data.password, user["hashed_password"]):
+        print(f"[AUTH] Password verification failed for user: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    print(f"[AUTH] Password verified for user: {form_data.username}")
+
     if user.get("disabled", False):
+        print(f"[AUTH] User account disabled: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User account is disabled"
@@ -98,6 +115,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         data={"sub": user["username"]},
         expires_delta=access_token_expires
     )
+
+    print(f"[AUTH] Login successful for user: {form_data.username}")
 
     return {"access_token": access_token, "token_type": "bearer"}
 
