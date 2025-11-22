@@ -5,5 +5,12 @@
     "full_name": "LeetCode Scamp",
     "hashed_password": "$2b$12$P5.B1HzikynZr0MsRY1iR.bLmN8BiWxDsrDXVMJsxT16ExQ6uKARy",
     "disabled": false
+  },
+  "testuser": {
+    "username": "testuser",
+    "email": "test@example.com",
+    "full_name": "Test User",
+    "hashed_password": "$2b$12$RvyiE0Hjr8IINwKptEukIO3qdd0t8kbldKK3Yo0.IZJ7GQ2hPKRlG",
+    "disabled": false
   }
 }
