@@ -27,9 +27,15 @@ async def get_history(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
 
     history = read_json(settings.HISTORY_FILE, default={})
-    user_history = history.get(username, [])
+    # History structure: {owner: {member_username: [snapshots]}}
+    user_history_dict = history.get(username, {})
 
-    return [WeeklySnapshot(**snapshot) for snapshot in user_history]
+    # Flatten all snapshots from all members
+    all_snapshots = []
+    for member_username, snapshots in user_history_dict.items():
+        all_snapshots.extend(snapshots)
+
+    return [WeeklySnapshot(**snapshot) for snapshot in all_snapshots]
 
 @router.post("/snapshot")
 async def record_snapshot(current_user: dict = Depends(get_current_user)):
@@ -48,19 +54,26 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
     week_start = today - timedelta(days=today.weekday())
     week_start_str = week_start.isoformat()
 
-    # Load history
+    # Load history - Structure: {owner: {member_username: [snapshots]}}
     history = read_json(settings.HISTORY_FILE, default={})
-    user_history = history.get(username, [])
+    if username not in history:
+        history[username] = {}
+    user_history = history[username]
 
     # Record snapshot for each member
     snapshots_added = 0
     for member in user_members:
-        data = fetch_user_data(member["username"])
+        member_username = member["username"]
+        data = fetch_user_data(member_username)
         if data:
+            # Initialize member's history if not exists
+            if member_username not in user_history:
+                user_history[member_username] = []
+
             # Check if snapshot already exists for this week/member
             exists = any(
-                s["week_start"] == week_start_str and s["member"] == member["username"]
-                for s in user_history
+                s.get("week_start") == week_start_str
+                for s in user_history[member_username]
             )
 
             if not exists:
@@ -72,14 +85,14 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
 
                 snapshot = {
                     "week_start": week_start_str,
-                    "member": member["username"],
+                    "member": member_username,
                     "totalSolved": data.get("totalSolved", 0),
-                    "easy": easy,
-                    "medium": medium,
-                    "hard": hard,
+                    "easy": int(easy),
+                    "medium": int(medium),
+                    "hard": int(hard),
                     "timestamp": datetime.utcnow().isoformat()
                 }
-                user_history.append(snapshot)
+                user_history[member_username].append(snapshot)
                 snapshots_added += 1
 
     # Save history
@@ -101,33 +114,38 @@ async def get_trends(
     username = current_user["username"]
 
     history = read_json(settings.HISTORY_FILE, default={})
-    user_history = history.get(username, [])
+    # History structure: {owner: {member_username: [snapshots]}}
+    user_history_dict = history.get(username, {})
 
-    if not user_history:
+    if not user_history_dict:
         return {"weeks": [], "members": {}}
 
-    # Sort by week
-    sorted_history = sorted(user_history, key=lambda x: x["week_start"])
-
-    # Get last N weeks
-    recent_history = sorted_history[-weeks * 10:]  # Approximate
-
-    # Group by member
+    # Group by member and extract recent weeks
     trends = {}
-    for snapshot in recent_history:
-        member = snapshot["member"]
-        if member not in trends:
-            trends[member] = []
-        trends[member].append({
-            "week": snapshot["week_start"],
-            "total": snapshot["totalSolved"],
-            "easy": snapshot.get("easy", 0),
-            "medium": snapshot.get("medium", 0),
-            "hard": snapshot.get("hard", 0)
-        })
+    all_weeks = set()
+
+    for member_username, snapshots in user_history_dict.items():
+        # Sort by week
+        sorted_snapshots = sorted(snapshots, key=lambda x: x.get("week_start", ""))
+
+        # Get last N weeks worth of snapshots
+        recent_snapshots = sorted_snapshots[-weeks:]
+
+        trends[member_username] = []
+        for snapshot in recent_snapshots:
+            week_start = snapshot.get("week_start")
+            if week_start:
+                all_weeks.add(week_start)
+                trends[member_username].append({
+                    "week": week_start,
+                    "total": snapshot.get("totalSolved", 0),
+                    "easy": snapshot.get("easy", 0),
+                    "medium": snapshot.get("medium", 0),
+                    "hard": snapshot.get("hard", 0)
+                })
 
     # Get unique weeks
-    weeks_list = sorted(list(set(s["week_start"] for s in recent_history)))[-weeks:]
+    weeks_list = sorted(list(all_weeks))[-weeks:]
 
     return {
         "weeks": weeks_list,
@@ -140,31 +158,30 @@ async def get_week_over_week(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
 
     history = read_json(settings.HISTORY_FILE, default={})
-    user_history = history.get(username, [])
+    # History structure: {owner: {member_username: [snapshots]}}
+    user_history_dict = history.get(username, {})
 
-    if not user_history:
+    if not user_history_dict:
         return []
-
-    # Sort by week
-    sorted_history = sorted(user_history, key=lambda x: x["week_start"])
 
     # Get last 2 weeks
     today = date.today()
     this_week_start = (today - timedelta(days=today.weekday())).isoformat()
     last_week_start = (today - timedelta(days=today.weekday() + 7)).isoformat()
 
-    # Group by member
-    this_week_data = {
-        s["member"]: s["totalSolved"]
-        for s in sorted_history
-        if s["week_start"] == this_week_start
-    }
+    # Extract data for each member
+    this_week_data = {}
+    last_week_data = {}
 
-    last_week_data = {
-        s["member"]: s["totalSolved"]
-        for s in sorted_history
-        if s["week_start"] == last_week_start
-    }
+    for member_username, snapshots in user_history_dict.items():
+        for snapshot in snapshots:
+            week = snapshot.get("week_start")
+            total = snapshot.get("totalSolved", 0)
+
+            if week == this_week_start:
+                this_week_data[member_username] = total
+            elif week == last_week_start:
+                last_week_data[member_username] = total
 
     # Calculate changes
     changes = []

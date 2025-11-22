@@ -76,13 +76,11 @@ def load_users() -> Dict[str, Any]:
     """
     Returns:
     {
-      "users": {
-        "alice": {"name": "Alice", "email": "alice@example.com", "password": "<hash or plaintext>"},
-        ...
-      }
+      "alice": {"username": "alice", "email": "alice@example.com", "password": "<hash or plaintext>"},
+      ...
     }
     """
-    return _read_json(USERS_PATH, {"users": {}})
+    return _read_json(USERS_PATH, {})
 
 def save_users(db: Dict[str, Any]):
     _write_json(USERS_PATH, db)
@@ -98,12 +96,18 @@ def register(username: str, password: str, name: Optional[str] = None, email: Op
     Create a new user with a bcrypt-hashed password. Returns False if user exists.
     """
     db = load_users()
-    if username in db["users"]:
+    if username in db:
         return False
     # Truncate password to 72 bytes for bcrypt compatibility
     password_bytes = password.encode("utf-8")[:72]
     hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
-    db["users"][username] = {"name": name or username, "email": email or "", "password": hashed}
+    db[username] = {
+        "username": username,
+        "full_name": name or username,
+        "email": email or "",
+        "hashed_password": hashed,
+        "disabled": False
+    }
     save_users(db)
     return True
 
@@ -113,11 +117,11 @@ def verify_login(username: str, password: str) -> bool:
     it will be transparently migrated to bcrypt.
     """
     db = load_users()
-    rec = db.get("users", {}).get(username)
+    rec = db.get(username)
     if not rec:
         return False
 
-    stored = rec.get("password", "")
+    stored = rec.get("hashed_password") or rec.get("password", "")
     if _is_bcrypt_hash(stored):
         try:
             # Truncate password to 72 bytes for bcrypt compatibility
@@ -131,8 +135,10 @@ def verify_login(username: str, password: str) -> bool:
             # Truncate password to 72 bytes for bcrypt compatibility
             password_bytes = password.encode("utf-8")[:72]
             new_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
-            rec["password"] = new_hash
-            db["users"][username] = rec
+            rec["hashed_password"] = new_hash
+            # Remove old password field if it exists
+            rec.pop("password", None)
+            db[username] = rec
             save_users(db)
             return True
         return False
@@ -143,20 +149,20 @@ def migrate_plaintext_passwords() -> int:
     Returns the number of accounts migrated.
     """
     db = load_users()
-    users = db.get("users", {})
     changed = 0
-    for uname, rec in users.items():
-        pwd = rec.get("password", "")
+    for uname, rec in db.items():
+        pwd = rec.get("hashed_password") or rec.get("password", "")
         if pwd and not _is_bcrypt_hash(pwd):
             # treat current stored pwd as plaintext and re-hash
             # Truncate password to 72 bytes for bcrypt compatibility
             password_bytes = pwd.encode("utf-8")[:72]
             new_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
-            rec["password"] = new_hash
-            users[uname] = rec
+            rec["hashed_password"] = new_hash
+            # Remove old password field if it exists
+            rec.pop("password", None)
+            db[uname] = rec
             changed += 1
     if changed:
-        db["users"] = users
         save_users(db)
     return changed
 
@@ -173,14 +179,13 @@ def credentials_for_authenticator() -> Dict[str, Any]:
     If legacy plaintext exists, run migrate_plaintext_passwords() first.
     """
     db = load_users()
-    users = db.get("users", {})
     return {
         "usernames": {
             uname: {
-                "name": urec.get("name", uname),
+                "name": urec.get("full_name") or urec.get("name", uname),
                 "email": urec.get("email", ""),
-                "password": urec.get("password", ""),  # should be bcrypt
+                "password": urec.get("hashed_password") or urec.get("password", ""),  # should be bcrypt
             }
-            for uname, urec in users.items()
+            for uname, urec in db.items()
         }
     }
