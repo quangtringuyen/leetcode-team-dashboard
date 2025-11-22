@@ -21,7 +21,6 @@ ENV/
 
 # Local data
 .s3_cache/
-data/
 
 # IDE
 .vscode/

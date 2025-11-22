@@ -100,7 +100,9 @@ def register(username: str, password: str, name: Optional[str] = None, email: Op
     db = load_users()
     if username in db["users"]:
         return False
-    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    # Truncate password to 72 bytes for bcrypt compatibility
+    password_bytes = password.encode("utf-8")[:72]
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
     db["users"][username] = {"name": name or username, "email": email or "", "password": hashed}
     save_users(db)
     return True
@@ -118,13 +120,17 @@ def verify_login(username: str, password: str) -> bool:
     stored = rec.get("password", "")
     if _is_bcrypt_hash(stored):
         try:
-            return bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8"))
+            # Truncate password to 72 bytes for bcrypt compatibility
+            password_bytes = password.encode("utf-8")[:72]
+            return bcrypt.checkpw(password_bytes, stored.encode("utf-8"))
         except Exception:
             return False
     else:
         # Legacy plaintext: if it matches exactly, migrate to bcrypt
         if password == stored:
-            new_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            # Truncate password to 72 bytes for bcrypt compatibility
+            password_bytes = password.encode("utf-8")[:72]
+            new_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
             rec["password"] = new_hash
             db["users"][username] = rec
             save_users(db)
@@ -143,7 +149,9 @@ def migrate_plaintext_passwords() -> int:
         pwd = rec.get("password", "")
         if pwd and not _is_bcrypt_hash(pwd):
             # treat current stored pwd as plaintext and re-hash
-            new_hash = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            # Truncate password to 72 bytes for bcrypt compatibility
+            password_bytes = pwd.encode("utf-8")[:72]
+            new_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
             rec["password"] = new_hash
             users[uname] = rec
             changed += 1
