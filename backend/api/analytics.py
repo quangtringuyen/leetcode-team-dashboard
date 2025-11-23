@@ -152,6 +152,91 @@ async def get_trends(
         "members": trends
     }
 
+def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str, Any]]:
+    """Internal helper to get week-over-week changes (synchronous, for Excel export)"""
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+
+    if not user_history_dict:
+        return []
+
+    today = date.today()
+    changes = []
+
+    # For each of the last N weeks, compare with the previous week
+    for week_offset in range(weeks):
+        current_week_start = (today - timedelta(days=today.weekday() + (week_offset * 7))).isoformat()
+        previous_week_start = (today - timedelta(days=today.weekday() + ((week_offset + 1) * 7))).isoformat()
+
+        # Extract data for each member for this specific week pair
+        current_week_data = {}
+        previous_week_data = {}
+
+        for member_username, snapshots in user_history_dict.items():
+            for snapshot in snapshots:
+                week = snapshot.get("week_start")
+                total = snapshot.get("totalSolved", 0)
+
+                if week == current_week_start:
+                    current_week_data[member_username] = total
+                elif week == previous_week_start:
+                    previous_week_data[member_username] = total
+
+        # Calculate ranks for this week pair
+        current_week_ranks = {
+            m: i + 1 
+            for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
+        }
+        previous_week_ranks = {
+            m: i + 1 
+            for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
+        }
+
+        all_members = set(list(current_week_data.keys()) + list(previous_week_data.keys()))
+
+        for member in all_members:
+            current_val = current_week_data.get(member, 0)
+            previous_val = previous_week_data.get(member, 0)
+            
+            # Skip if no data for this member in this week window
+            if current_val == 0 and previous_val == 0:
+                continue
+                
+            change = current_val - previous_val
+            
+            # Calculate percentage change
+            if previous_val > 0:
+                pct_change = (change / previous_val) * 100
+            elif current_val > 0:
+                pct_change = 100.0
+            else:
+                pct_change = 0.0
+                
+            # Calculate rank delta
+            current_rank = current_week_ranks.get(member)
+            previous_rank = previous_week_ranks.get(member)
+            
+            rank_delta = 0
+            if current_rank and previous_rank:
+                rank_delta = previous_rank - current_rank
+
+            # Format week date
+            week_date_obj = date.fromisoformat(current_week_start)
+            formatted_week = week_date_obj.strftime("%b %d, %Y")
+
+            changes.append({
+                "week": formatted_week,
+                "member": member,
+                "previous": previous_val,
+                "current": current_val,
+                "change": change,
+                "pct_change": round(pct_change, 1),
+                "rank": current_rank if current_rank else 0,
+                "rank_delta": rank_delta
+            })
+
+    return changes
+
 @router.get("/week-over-week")
 async def get_week_over_week(
     weeks: int = 1,
