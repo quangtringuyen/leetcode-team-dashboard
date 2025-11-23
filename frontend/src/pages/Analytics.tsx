@@ -20,9 +20,9 @@ export default function Analytics() {
   } = getTrends(weeks);
 
   // Prepare trend chart data
-  const trendChartData = trendsData?.weeks.map((week) => {
+  const trendChartData = trendsData?.weeks?.map((week) => {
     const dataPoint: any = { week };
-    Object.entries(trendsData.members).forEach(([member, data]) => {
+    Object.entries(trendsData?.members || {}).forEach(([member, data]) => {
       const weekData = data.find((d) => d.week === week);
       dataPoint[member] = weekData?.total || 0;
     });
@@ -38,9 +38,9 @@ export default function Analytics() {
 
   // Prepare difficulty pie chart data
   const difficultyData = [
-    { name: 'Easy', value: stats?.difficulty_breakdown.easy || 0 },
-    { name: 'Medium', value: stats?.difficulty_breakdown.medium || 0 },
-    { name: 'Hard', value: stats?.difficulty_breakdown.hard || 0 },
+    { name: 'Easy', value: stats?.difficulty_breakdown?.easy || 0 },
+    { name: 'Medium', value: stats?.difficulty_breakdown?.medium || 0 },
+    { name: 'Hard', value: stats?.difficulty_breakdown?.hard || 0 },
   ];
 
   return (
@@ -96,8 +96,8 @@ export default function Analytics() {
                   change.change > 0
                     ? 'text-green-500'
                     : change.change < 0
-                    ? 'text-red-500'
-                    : 'text-muted-foreground';
+                      ? 'text-red-500'
+                      : 'text-muted-foreground';
 
                 return (
                   <div

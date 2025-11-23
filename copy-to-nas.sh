@@ -26,8 +26,14 @@ fi
 echo "📤 Copying files..."
 
 # Copy updated authentication files
+echo "  → authStore.ts (session persistence fix)"
 scp frontend/src/stores/authStore.ts "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/stores/"
+
+echo "  → App.tsx (protected route fix)"
 scp frontend/src/App.tsx "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/"
+
+echo "  → Analytics.tsx (undefined property fix)"
+scp frontend/src/pages/Analytics.tsx "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/pages/"
 
 echo "✅ Files copied successfully!"
 echo ""
