@@ -37,6 +37,8 @@ export function useAnalytics() {
       queryKey: ['analytics', 'acceptedTrend', days],
       queryFn: () => analyticsApi.getAcceptedTrend(days),
       refetchInterval: 300000,
+      staleTime: 0, // Always consider data stale
+      cacheTime: 0, // Don't cache
     });
 
   // Get week-over-week changes
