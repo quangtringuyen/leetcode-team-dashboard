@@ -184,23 +184,58 @@ async def get_week_over_week(current_user: dict = Depends(get_current_user)):
                 last_week_data[member_username] = total
 
     # Calculate changes
+    # Calculate changes
     changes = []
     all_members = set(list(this_week_data.keys()) + list(last_week_data.keys()))
+
+    # Calculate ranks
+    this_week_ranks = {
+        m: i + 1 
+        for i, (m, _) in enumerate(sorted(this_week_data.items(), key=lambda x: x[1], reverse=True))
+    }
+    last_week_ranks = {
+        m: i + 1 
+        for i, (m, _) in enumerate(sorted(last_week_data.items(), key=lambda x: x[1], reverse=True))
+    }
 
     for member in all_members:
         this_week = this_week_data.get(member, 0)
         last_week = last_week_data.get(member, 0)
         change = this_week - last_week
+        
+        # Calculate percentage change
+        if last_week > 0:
+            pct_change = (change / last_week) * 100
+        elif this_week > 0:
+            pct_change = 100.0
+        else:
+            pct_change = 0.0
+            
+        # Calculate rank delta (positive means improved rank, e.g. 5 -> 3 is +2)
+        this_rank = this_week_ranks.get(member)
+        last_rank = last_week_ranks.get(member)
+        
+        rank_delta = 0
+        if this_rank and last_rank:
+            rank_delta = last_rank - this_rank
+
+        # Format week date
+        week_date_obj = date.fromisoformat(this_week_start)
+        formatted_week = week_date_obj.strftime("%b %d, %Y")
 
         changes.append({
+            "week": formatted_week,
             "member": member,
-            "thisWeek": this_week,
-            "lastWeek": last_week,
-            "change": change
+            "previous": last_week,
+            "current": this_week,
+            "change": change,
+            "pct_change": round(pct_change, 1),
+            "rank": this_rank,
+            "rank_delta": rank_delta
         })
 
-    # Sort by change descending
-    changes.sort(key=lambda x: x["change"], reverse=True)
+    # Sort by current total descending (to match rank)
+    changes.sort(key=lambda x: x["current"], reverse=True)
 
     return changes
 
