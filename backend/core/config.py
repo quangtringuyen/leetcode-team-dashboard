@@ -35,10 +35,17 @@ class Settings(BaseSettings):
 
     @property
     def CORS_ORIGINS(self) -> List[str]:
-        """Parse CORS_ORIGINS from comma-separated string"""
-        if not self.cors_origins_str:
-            return []
-        return [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]
+        """Parse CORS_ORIGINS from comma-separated string and ensure required origins are present"""
+        # Base origins from env variable
+        origins = []
+        if self.cors_origins_str:
+            origins = [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]
+        # Ensure the production frontend domain is always allowed
+        required = ["https://leetcode.quangtringuyen.cloud", "https://quangtringuyen.cloud"]
+        for r in required:
+            if r not in origins:
+                origins.append(r)
+        return origins
 
     # AWS S3 (Optional)
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
