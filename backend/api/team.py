@@ -172,9 +172,9 @@ async def get_team_stats(current_user: dict = Depends(get_current_user)):
     avg_solved = total_solved // len(members_data) if members_data else 0
     
     # Aggregate difficulty breakdown
-    total_easy = sum(m.get("easySolved", 0) for m in members_data)
-    total_medium = sum(m.get("mediumSolved", 0) for m in members_data)
-    total_hard = sum(m.get("hardSolved", 0) for m in members_data)
+    total_easy = sum(m.get("easy", 0) for m in members_data)
+    total_medium = sum(m.get("medium", 0) for m in members_data)
+    total_hard = sum(m.get("hard", 0) for m in members_data)
 
     return {
         "total_members": len(user_members),
@@ -205,9 +205,9 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
                 "username": member["username"],
                 "name": member.get("name", member["username"]),
                 "totalSolved": leetcode_data.get("totalSolved", 0),
-                "easySolved": leetcode_data.get("easySolved", 0),
-                "mediumSolved": leetcode_data.get("mediumSolved", 0),
-                "hardSolved": leetcode_data.get("hardSolved", 0),
+                "easy": leetcode_data.get("easy", 0),
+                "medium": leetcode_data.get("medium", 0),
+                "hard": leetcode_data.get("hard", 0),
                 "ranking": leetcode_data.get("ranking", "N/A")
             })
     
@@ -255,9 +255,9 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
     ws_stats.cell(row=1, column=2, value="Value").font = header_font
     
     total_solved = sum(m["totalSolved"] for m in members_data)
-    total_easy = sum(m["easySolved"] for m in members_data)
-    total_medium = sum(m["mediumSolved"] for m in members_data)
-    total_hard = sum(m["hardSolved"] for m in members_data)
+    total_easy = sum(m.get("easy", 0) for m in members_data)
+    total_medium = sum(m.get("medium", 0) for m in members_data)
+    total_hard = sum(m.get("hard", 0) for m in members_data)
     avg_solved = total_solved // len(members_data) if members_data else 0
     
     stats = [
