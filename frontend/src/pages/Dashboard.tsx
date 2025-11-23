@@ -29,7 +29,7 @@ export default function Dashboard() {
   const goalProgress = Math.min((totalSolved / weeklyGoal) * 100, 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -93,15 +93,15 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Column: Leaderboard & Podium */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-8">
           <Podium members={members} isLoading={isMembersLoading} />
           <Leaderboard members={members} isLoading={isMembersLoading} />
         </div>
 
         {/* Right Column: Daily Challenge & Recent Activity */}
-        <div className="space-y-6">
+        <div className="space-y-8">
           <DailyChallengeCard />
           <RecentSubmissionsList />
         </div>

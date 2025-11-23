@@ -75,13 +75,13 @@ export default function Podium({ members, isLoading }: PodiumProps) {
 
   return (
     <Card className="glass p-6">
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex flex-col items-center gap-6">
         <div className="text-center">
           <h3 className="text-2xl font-bold gradient-text">Top Performers</h3>
           <p className="text-muted-foreground text-sm mt-1">This week's champions</p>
         </div>
 
-        <div className="flex items-end justify-center gap-4 h-64 mt-4">
+        <div className="flex items-end justify-center gap-4 min-h-[20rem] w-full pb-4">
           {second && <PodiumPosition member={second} position={2} height="10rem" />}
           {first && <PodiumPosition member={first} position={1} height="13rem" />}
           {third && <PodiumPosition member={third} position={3} height="9rem" />}

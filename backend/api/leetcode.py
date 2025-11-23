@@ -24,7 +24,7 @@ async def get_daily_challenge(current_user: dict = Depends(get_current_user)):
 async def get_daily_challenge_completions(current_user: dict = Depends(get_current_user)):
     """
     Check which team members have completed today's daily challenge.
-    Returns list of members with their completion status.
+    Returns only members who have completed the challenge.
     """
     # Get today's daily challenge
     challenge = fetch_daily_challenge()
@@ -65,6 +65,10 @@ async def get_daily_challenge_completions(current_user: dict = Depends(get_curre
                         completion_time = datetime.fromtimestamp(timestamp).strftime("%H:%M")
                         break
             
+            # Only return if completed
+            if not completed:
+                return None
+            
             # Get user profile data for avatar
             user_data = fetch_user_data(member["username"])
             
@@ -72,18 +76,12 @@ async def get_daily_challenge_completions(current_user: dict = Depends(get_curre
                 "username": member["username"],
                 "name": member.get("name", member["username"]),
                 "avatar": user_data.get("avatar") if user_data else None,
-                "completed": completed,
+                "completed": True,
                 "completionTime": completion_time
             }
         except Exception as e:
             logger.error(f"Error checking completion for {member['username']}: {e}")
-            return {
-                "username": member["username"],
-                "name": member.get("name", member["username"]),
-                "avatar": None,
-                "completed": False,
-                "completionTime": None
-            }
+            return None
     
     # Check all members concurrently
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -91,23 +89,81 @@ async def get_daily_challenge_completions(current_user: dict = Depends(get_curre
         for future in as_completed(futures):
             try:
                 result = future.result()
-                completions.append(result)
+                if result:  # Only add if completed
+                    completions.append(result)
             except Exception as e:
                 logger.error(f"Error processing member completion: {e}")
     
-    # Sort: completed first, then by completion time, then by name
-    completions.sort(key=lambda x: (
-        not x["completed"],  # False (completed) comes before True (not completed)
-        x["completionTime"] or "99:99",  # Earlier times first
-        x["name"]
-    ))
+    # Sort by completion time
+    completions.sort(key=lambda x: x["completionTime"] or "99:99")
     
     return {
         "challenge": challenge,
         "completions": completions,
-        "totalMembers": len(completions),
-        "completedCount": sum(1 for c in completions if c["completed"])
+        "totalMembers": len(members),
+        "completedCount": len(completions)
     }
+
+@router.get("/daily/history")
+async def get_daily_challenge_history(
+    days: int = 7,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get the last N days of daily challenges with completion counts.
+    """
+    from datetime import timedelta
+    from backend.api.team import get_members_list_internal
+    
+    members = get_members_list_internal(current_user["username"])
+    history = []
+    
+    # For now, we'll fetch today's challenge and simulate history
+    # In a real implementation, you'd need to query LeetCode's API for historical challenges
+    # or maintain your own database of past challenges
+    
+    today_challenge = fetch_daily_challenge()
+    if today_challenge:
+        # Check completions for today
+        title_slug = today_challenge.get("titleSlug")
+        completed_count = 0
+        
+        def check_completion(member):
+            try:
+                submissions = fetch_recent_submissions(member["username"], limit=50)
+                for sub in submissions:
+                    if sub.get("titleSlug") == title_slug:
+                        timestamp = int(sub.get("timestamp", 0))
+                        submission_date = datetime.fromtimestamp(timestamp).date()
+                        if submission_date == date.today():
+                            return 1
+                return 0
+            except:
+                return 0
+        
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(check_completion, m) for m in members]
+            for future in as_completed(futures):
+                try:
+                    completed_count += future.result()
+                except:
+                    pass
+        
+        history.append({
+            "date": today_challenge.get("date"),
+            "title": today_challenge.get("title"),
+            "titleSlug": today_challenge.get("titleSlug"),
+            "difficulty": today_challenge.get("difficulty"),
+            "link": today_challenge.get("link"),
+            "completedCount": completed_count,
+            "totalMembers": len(members)
+        })
+    
+    return {
+        "history": history,
+        "totalMembers": len(members)
+    }
+
 
 @router.get("/recent")
 async def get_recent_submissions(
