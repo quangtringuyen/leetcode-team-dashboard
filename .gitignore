@@ -8,6 +8,7 @@ node_modules/
 .env.*
 !.env.example
 !.env.backend.example
+!.env.production.example
 !.env.README.md
 .streamlit/secrets.toml
 
