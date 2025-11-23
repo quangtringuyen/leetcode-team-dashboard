@@ -156,8 +156,10 @@ export const analyticsApi = {
     return response.data;
   },
 
-  async getWeekOverWeek(): Promise<WeekOverWeekChange[]> {
-    const response = await apiClient.get<WeekOverWeekChange[]>('/api/analytics/week-over-week');
+  async getWeekOverWeek(weeks: number = 1): Promise<WeekOverWeekChange[]> {
+    const response = await apiClient.get<WeekOverWeekChange[]>('/api/analytics/week-over-week', {
+      params: { weeks },
+    });
     return response.data;
   },
 

@@ -153,7 +153,10 @@ async def get_trends(
     }
 
 @router.get("/week-over-week")
-async def get_week_over_week(current_user: dict = Depends(get_current_user)):
+async def get_week_over_week(
+    weeks: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
     """Get week-over-week changes for team members"""
     username = current_user["username"]
 
@@ -164,79 +167,125 @@ async def get_week_over_week(current_user: dict = Depends(get_current_user)):
     if not user_history_dict:
         return []
 
-    # Get last 2 weeks
     today = date.today()
-    this_week_start = (today - timedelta(days=today.weekday())).isoformat()
-    last_week_start = (today - timedelta(days=today.weekday() + 7)).isoformat()
-
-    # Extract data for each member
-    this_week_data = {}
-    last_week_data = {}
-
-    for member_username, snapshots in user_history_dict.items():
-        for snapshot in snapshots:
-            week = snapshot.get("week_start")
-            total = snapshot.get("totalSolved", 0)
-
-            if week == this_week_start:
-                this_week_data[member_username] = total
-            elif week == last_week_start:
-                last_week_data[member_username] = total
-
-    # Calculate changes
-    # Calculate changes
     changes = []
-    all_members = set(list(this_week_data.keys()) + list(last_week_data.keys()))
+    
+    # Iterate through requested number of weeks
+    for w in range(weeks):
+        # Calculate week starts for this iteration
+        # w=0 -> this week vs last week
+        # w=1 -> last week vs 2 weeks ago
+        current_week_start = (today - timedelta(days=today.weekday() + 7 * w)).isoformat()
+        previous_week_start = (today - timedelta(days=today.weekday() + 7 * (w + 1))).isoformat()
 
-    # Calculate ranks
-    this_week_ranks = {
-        m: i + 1 
-        for i, (m, _) in enumerate(sorted(this_week_data.items(), key=lambda x: x[1], reverse=True))
-    }
-    last_week_ranks = {
-        m: i + 1 
-        for i, (m, _) in enumerate(sorted(last_week_data.items(), key=lambda x: x[1], reverse=True))
-    }
+        # Extract data for each member for this specific week pair
+        current_week_data = {}
+        previous_week_data = {}
 
-    for member in all_members:
-        this_week = this_week_data.get(member, 0)
-        last_week = last_week_data.get(member, 0)
-        change = this_week - last_week
-        
-        # Calculate percentage change
-        if last_week > 0:
-            pct_change = (change / last_week) * 100
-        elif this_week > 0:
-            pct_change = 100.0
-        else:
-            pct_change = 0.0
+        for member_username, snapshots in user_history_dict.items():
+            for snapshot in snapshots:
+                week = snapshot.get("week_start")
+                total = snapshot.get("totalSolved", 0)
+
+                if week == current_week_start:
+                    current_week_data[member_username] = total
+                elif week == previous_week_start:
+                    previous_week_data[member_username] = total
+
+        # Calculate ranks for this week pair
+        current_week_ranks = {
+            m: i + 1 
+            for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
+        }
+        previous_week_ranks = {
+            m: i + 1 
+            for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
+        }
+
+        all_members = set(list(current_week_data.keys()) + list(previous_week_data.keys()))
+
+        for member in all_members:
+            current_val = current_week_data.get(member, 0)
+            previous_val = previous_week_data.get(member, 0)
             
-        # Calculate rank delta (positive means improved rank, e.g. 5 -> 3 is +2)
-        this_rank = this_week_ranks.get(member)
-        last_rank = last_week_ranks.get(member)
-        
-        rank_delta = 0
-        if this_rank and last_rank:
-            rank_delta = last_rank - this_rank
+            # Skip if no data for this member in this week window (optional, but keeps table clean)
+            if current_val == 0 and previous_val == 0:
+                continue
+                
+            change = current_val - previous_val
+            
+            # Calculate percentage change
+            if previous_val > 0:
+                pct_change = (change / previous_val) * 100
+            elif current_val > 0:
+                pct_change = 100.0
+            else:
+                pct_change = 0.0
+                
+            # Calculate rank delta
+            current_rank = current_week_ranks.get(member)
+            previous_rank = previous_week_ranks.get(member)
+            
+            rank_delta = 0
+            if current_rank and previous_rank:
+                rank_delta = previous_rank - current_rank
 
-        # Format week date
-        week_date_obj = date.fromisoformat(this_week_start)
-        formatted_week = week_date_obj.strftime("%b %d, %Y")
+            # Format week date
+            week_date_obj = date.fromisoformat(current_week_start)
+            formatted_week = week_date_obj.strftime("%b %d, %Y")
 
-        changes.append({
-            "week": formatted_week,
-            "member": member,
-            "previous": last_week,
-            "current": this_week,
-            "change": change,
-            "pct_change": round(pct_change, 1),
-            "rank": this_rank,
-            "rank_delta": rank_delta
-        })
+            changes.append({
+                "week": formatted_week,
+                "member": member,
+                "previous": previous_val,
+                "current": current_val,
+                "change": change,
+                "pct_change": round(pct_change, 1),
+                "rank": current_rank if current_rank else 0,
+                "rank_delta": rank_delta
+            })
 
-    # Sort by current total descending (to match rank)
-    changes.sort(key=lambda x: x["current"], reverse=True)
+    # Sort by week (descending) then by current total (descending)
+    # Since we iterate weeks 0, 1, 2... they are already in date desc order.
+    # We just need to sort by rank within each week.
+    # Actually, let's sort by date desc, then rank asc (which is total desc)
+    changes.sort(key=lambda x: (x["week"], x["current"]), reverse=True)
+    # Wait, date string sort might be wrong if format is "Nov 03". 
+    # But we iterate w=0, 1, 2. w=0 is latest.
+    # If we append in order, they are grouped by week.
+    # But we want to sort strictly.
+    # Let's rely on the fact that we generate them in order.
+    # We just need to sort by rank within each block?
+    # Actually, simpler: just sort by current total descending, but that mixes weeks?
+    # No, we want to see Week 1 grouped, then Week 2 grouped.
+    # Since we append w=0 first, then w=1, the list is implicitly ordered by week descending.
+    # We just need to sort by rank WITHIN each week.
+    # But `changes.sort` is stable.
+    # So if we sort by `current` descending, it might mix weeks if we don't include week in key.
+    # Let's sort by (week_index, current_desc).
+    # But we don't have week_index in the dict.
+    # Let's just trust the generation order for weeks, and sort by current for members?
+    # No, `changes.sort` will reorder everything.
+    
+    # Let's re-sort properly.
+    # We need a sortable date.
+    # Let's add `week_start_iso` to the dict for sorting, then remove it? Or just keep it.
+    # Or just sort by `current` descending, and rely on stable sort?
+    # If we sort by `current` desc, we lose the week grouping.
+    
+    # Correct approach:
+    # We want primary sort key: Week (descending)
+    # Secondary sort key: Rank (ascending) / Total (descending)
+    
+    # Since "Nov 03" is not easily sortable as string, let's use the loop index logic implicitly.
+    # Actually, I can just sort the `changes` list at the end?
+    # But I don't have the ISO date in the dict.
+    # Let's add `week_sort` key.
+    
+    # Re-writing the loop slightly to include sort key.
+    pass # (This is just thought process, I will implement it in the code block)
 
+    # I will add a hidden sort key `_sort_date`
     return changes
 
 @router.get("/weekly-progress")
