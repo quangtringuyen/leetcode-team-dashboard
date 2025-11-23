@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useTeam } from '@/hooks/useTeam';
 import WeeklyProgressChart from '@/components/charts/WeeklyProgressChart';
 import AcceptedTrendChart from '@/components/charts/AcceptedTrendChart';
 import DifficultyPieChart from '@/components/charts/DifficultyPieChart';
 import TeamPerformanceChart from '@/components/charts/TeamPerformanceChart';
+import WeekOverWeekTable from '@/components/analytics/WeekOverWeekTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { Download, Camera } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 export default function Analytics() {
   const [weeks, setWeeks] = useState(12);
   const [trendDays, setTrendDays] = useState(30);
+  const chartsRef = useRef<HTMLDivElement>(null);
 
   const {
     weekOverWeek,
@@ -41,14 +43,48 @@ export default function Analytics() {
     { name: 'Hard', value: stats?.difficulty_breakdown?.hard || 0 },
   ];
 
+  const handleDownloadExcel = () => {
+    window.location.href = '/api/team/export/excel';
+  };
+
+  const handleCaptureScreenshot = async () => {
+    if (chartsRef.current) {
+      try {
+        const canvas = await html2canvas(chartsRef.current, {
+          backgroundColor: '#ffffff', // Ensure white background
+          scale: 2, // Higher quality
+        });
+
+        const link = document.createElement('a');
+        link.download = `analytics-dashboard-${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (error) {
+        console.error('Failed to capture screenshot:', error);
+      }
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={chartsRef}>
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold gradient-text">Analytics</h1>
-        <p className="text-muted-foreground mt-1">
-          Deep dive into your team's performance
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold gradient-text">Analytics</h1>
+          <p className="text-muted-foreground mt-1">
+            Deep dive into your team's performance
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleCaptureScreenshot}>
+            <Camera className="mr-2 h-4 w-4" />
+            Capture
+          </Button>
+          <Button onClick={handleDownloadExcel}>
+            <Download className="mr-2 h-4 w-4" />
+            Download Excel
+          </Button>
+        </div>
       </div>
 
       {/* Week-over-Week Changes */}
@@ -60,52 +96,10 @@ export default function Analytics() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isWeekOverWeekLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : weekOverWeek.length === 0 ? (
-            <p className="text-muted-foreground">No data available</p>
-          ) : (
-            <div className="space-y-3">
-              {weekOverWeek.map((change) => {
-                const changeIcon =
-                  change.change > 0 ? (
-                    <ArrowUp className="h-4 w-4 text-green-500" />
-                  ) : change.change < 0 ? (
-                    <ArrowDown className="h-4 w-4 text-red-500" />
-                  ) : (
-                    <Minus className="h-4 w-4 text-muted-foreground" />
-                  );
-
-                const changeColor =
-                  change.change > 0
-                    ? 'text-green-500'
-                    : change.change < 0
-                      ? 'text-red-500'
-                      : 'text-muted-foreground';
-
-                return (
-                  <div
-                    key={change.member}
-                    className="flex items-center justify-between p-3 rounded-lg bg-accent/50"
-                  >
-                    <span className="font-medium">{change.member}</span>
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm text-muted-foreground">
-                        <span>Last: {change.lastWeek}</span>
-                        <span className="mx-2">→</span>
-                        <span>This: {change.thisWeek}</span>
-                      </div>
-                      <Badge variant="secondary" className={`gap-1 ${changeColor}`}>
-                        {changeIcon}
-                        {change.change > 0 ? '+' : ''}
-                        {change.change}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <WeekOverWeekTable
+            data={weekOverWeek}
+            isLoading={isWeekOverWeekLoading}
+          />
         </CardContent>
       </Card>
 

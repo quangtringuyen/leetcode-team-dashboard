@@ -76,10 +76,14 @@ export interface TrendData {
 }
 
 export interface WeekOverWeekChange {
+  week: string;
   member: string;
-  thisWeek: number;
-  lastWeek: number;
+  previous: number;
+  current: number;
   change: number;
+  pct_change: number;
+  rank: number;
+  rank_delta: number;
 }
 
 export interface SnapshotResponse {
