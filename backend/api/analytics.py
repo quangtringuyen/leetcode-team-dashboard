@@ -442,105 +442,66 @@ async def get_accepted_trend(
 ):
     """
     Get daily accepted problems trend.
-    Primary: Use LeetCode calendar API
-    Fallback: Use weekly snapshots (place gains on Monday)
+    Uses GraphQL API to fetch recent submissions and aggregates by day.
     """
-    import requests
-    import json as json_lib
-    
+    from backend.utils.leetcodeapi import fetch_recent_submissions
+    from collections import defaultdict
+
     username = current_user["username"]
-    
+
     # Get team members
     all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
-    
+
     if not user_members:
         return []
-    
+
     # Calculate date range
     end_date = date.today()
     start_date = end_date - timedelta(days=days-1)
-    
-    # Try calendar API for each member
+
     result = []
-    members_with_calendar = set()
-    
+
+    # Fetch submissions for each member
     for member in user_members:
         member_username = member["username"]
         member_name = member.get("name", member_username)
-        
-        # Fetch calendar data
+
         try:
-            url = f"https://leetcode.com/api/user_submission_calendar/?username={member_username}"
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Parse submission calendar
-            calendar_str = data.get("submission_calendar", "{}")
-            calendar = json_lib.loads(calendar_str)
-            
-            if calendar:
-                members_with_calendar.add(member_username)
-                
-                # Convert timestamps to dates and filter by range
-                for timestamp_str, count in calendar.items():
-                    timestamp = int(timestamp_str)
-                    submission_date = datetime.utcfromtimestamp(timestamp).date()
-                    
-                    if start_date <= submission_date <= end_date:
-                        result.append({
-                            "date": submission_date.isoformat(),
-                            "member": member_name,
-                            "username": member_username,
-                            "accepted": int(count)
-                        })
-        except Exception:
-            # Calendar API failed, will use fallback
-            pass
-    
-    # Fallback: Use snapshot diffs for members without calendar data
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
-    
-    for member in user_members:
-        member_username = member["username"]
-        member_name = member.get("name", member_username)
-        
-        # Skip if we already have calendar data
-        if member_username in members_with_calendar:
+            # Fetch recent submissions (increased limit to cover more days)
+            submissions = fetch_recent_submissions(member_username, limit=200)
+
+            # Group submissions by date
+            daily_counts = defaultdict(set)  # Use set to avoid counting same problem multiple times
+
+            for sub in submissions:
+                timestamp = int(sub.get("timestamp", 0))
+                submission_date = datetime.fromtimestamp(timestamp).date()
+
+                # Check if within date range
+                if start_date <= submission_date <= end_date:
+                    # Use titleSlug as unique identifier to avoid counting duplicates
+                    title_slug = sub.get("titleSlug")
+                    if title_slug:
+                        daily_counts[submission_date].add(title_slug)
+
+            # Convert to result format
+            for submission_date, problems in daily_counts.items():
+                result.append({
+                    "date": submission_date.isoformat(),
+                    "member": member_name,
+                    "username": member_username,
+                    "accepted": len(problems)  # Count unique problems solved that day
+                })
+
+        except Exception as e:
+            # Log error but continue with other members
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching submissions for {member_username}: {e}")
             continue
-        
-        # Get snapshots for this member
-        snapshots = user_history_dict.get(member_username, [])
-        if not snapshots:
-            continue
-        
-        # Sort by week
-        sorted_snapshots = sorted(snapshots, key=lambda x: x.get("week_start", ""))
-        
-        # Calculate weekly gains and place on Monday
-        for i in range(1, len(sorted_snapshots)):
-            prev = sorted_snapshots[i-1]
-            curr = sorted_snapshots[i]
-            
-            prev_total = prev.get("totalSolved", 0)
-            curr_total = curr.get("totalSolved", 0)
-            gain = curr_total - prev_total
-            
-            if gain > 0:
-                week_start = curr.get("week_start")
-                if week_start:
-                    week_date = date.fromisoformat(week_start)
-                    if start_date <= week_date <= end_date:
-                        result.append({
-                            "date": week_date.isoformat(),
-                            "member": member_name,
-                            "username": member_username,
-                            "accepted": gain
-                        })
-    
+
     # Sort by date
     result.sort(key=lambda x: x["date"])
-    
+
     return result

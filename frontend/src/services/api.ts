@@ -21,6 +21,7 @@ import type {
   AcceptedTrendData,
   DailyChallenge,
   RecentSubmission,
+  DailyChallengeHistoryResponse,
 } from '@/types';
 
 // Use same host as frontend, but on port 8090
@@ -207,18 +208,7 @@ export const leetcodeApi = {
     return response.data;
   },
 
-  async getDailyHistory(days: number = 7): Promise<{
-    history: Array<{
-      date: string;
-      title: string;
-      titleSlug: string;
-      difficulty: string;
-      link: string;
-      completedCount: number;
-      totalMembers: number;
-    }>;
-    totalMembers: number;
-  }> {
+  async getDailyHistory(days: number = 7): Promise<DailyChallengeHistoryResponse> {
     const response = await apiClient.get('/api/leetcode/daily/history', {
       params: { days },
     });

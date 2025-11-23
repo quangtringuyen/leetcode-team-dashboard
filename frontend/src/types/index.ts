@@ -136,3 +136,26 @@ export interface RecentSubmission {
   avatar?: string;
   accepted: number;
 }
+
+export interface DailyChallengeCompletion {
+  username: string;
+  name: string;
+  avatar: string | null;
+  completionTime: string;
+}
+
+export interface DailyChallengeHistory {
+  date: string;
+  title: string;
+  titleSlug: string;
+  difficulty: string;
+  link: string;
+  completions: DailyChallengeCompletion[];
+  completedCount: number;
+  totalMembers: number;
+}
+
+export interface DailyChallengeHistoryResponse {
+  history: DailyChallengeHistory[];
+  totalMembers: number;
+}
