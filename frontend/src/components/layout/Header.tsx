@@ -1,12 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, Code2 } from 'lucide-react';
+import { LogOut, Code2, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useState } from 'react';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', path: '/' },
@@ -23,17 +26,16 @@ export default function Header() {
           <span className="gradient-text">LeetCode Dashboard</span>
         </Link>
 
-        {/* Navigation */}
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
           {navigation.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === item.path
+              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === item.path
                   ? 'text-foreground'
                   : 'text-muted-foreground'
-              }`}
+                }`}
             >
               {item.name}
             </Link>
@@ -42,26 +44,81 @@ export default function Header() {
 
         {/* User menu */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
+          {/* Mobile Menu */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="sm">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64">
+              <div className="flex flex-col gap-4 mt-8">
+                <div className="flex items-center gap-3 pb-4 border-b">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {user?.username?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-sm">
+                    <p className="font-medium">{user?.full_name || user?.username}</p>
+                    <p className="text-muted-foreground text-xs">{user?.email}</p>
+                  </div>
+                </div>
+
+                <nav className="flex flex-col gap-2">
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent ${location.pathname === item.path
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </nav>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="gap-2 mt-4"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Desktop User Info */}
+          <div className="hidden md:flex items-center gap-3">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-primary/10 text-primary">
                 {user?.username?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="hidden md:block text-sm">
+            <div className="text-sm">
               <p className="font-medium">{user?.full_name || user?.username}</p>
               <p className="text-muted-foreground text-xs">{user?.email}</p>
             </div>
           </div>
 
+          {/* Desktop Logout Button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={logout}
-            className="gap-2"
+            className="gap-2 hidden md:flex"
           >
             <LogOut className="h-4 w-4" />
-            <span className="hidden md:inline">Logout</span>
+            <span>Logout</span>
           </Button>
         </div>
       </div>
