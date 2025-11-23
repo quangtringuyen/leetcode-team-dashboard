@@ -6,6 +6,7 @@ import Podium from '@/components/dashboard/Podium';
 import Leaderboard from '@/components/dashboard/Leaderboard';
 import DailyChallengeCard from '@/components/dashboard/DailyChallengeCard';
 import RecentSubmissionsList from '@/components/dashboard/RecentSubmissionsList';
+import DailyChallengeCompletions from '@/components/dashboard/DailyChallengeCompletions';
 import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
@@ -105,6 +106,9 @@ export default function Dashboard() {
           <RecentSubmissionsList />
         </div>
       </div>
+
+      {/* Daily Challenge Completions - Full Width at Bottom */}
+      <DailyChallengeCompletions />
     </div>
   );
 }

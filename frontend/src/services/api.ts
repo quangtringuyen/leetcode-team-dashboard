@@ -184,6 +184,22 @@ export const leetcodeApi = {
     return response.data;
   },
 
+  async getDailyCompletions(): Promise<{
+    challenge: DailyChallenge;
+    completions: Array<{
+      username: string;
+      name: string;
+      avatar: string | null;
+      completed: boolean;
+      completionTime: string | null;
+    }>;
+    totalMembers: number;
+    completedCount: number;
+  }> {
+    const response = await apiClient.get('/api/leetcode/daily/completions');
+    return response.data;
+  },
+
   async getRecentSubmissions(limit: number = 20): Promise<RecentSubmission[]> {
     const response = await apiClient.get('/api/leetcode/recent', {
       params: { limit },

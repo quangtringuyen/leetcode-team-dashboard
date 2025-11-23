@@ -291,8 +291,8 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
     # Fetch week-over-week data from analytics module
     from backend.api.analytics import get_week_over_week_internal
     
-    # Get 4 weeks of data (1 month)
-    wow_data = get_week_over_week_internal(username, weeks=4)
+    # Get all available historical data (52 weeks = 1 year)
+    wow_data = get_week_over_week_internal(username, weeks=52)
     
     # Data rows for Week-over-Week
     for row_idx, entry in enumerate(wow_data, 2):
