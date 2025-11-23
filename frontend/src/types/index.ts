@@ -29,6 +29,9 @@ export interface TeamMember {
   avatar?: string | null;
   totalSolved: number;
   ranking?: number | null;
+  easy: number;
+  medium: number;
+  hard: number;
 }
 
 export interface AddMemberRequest {

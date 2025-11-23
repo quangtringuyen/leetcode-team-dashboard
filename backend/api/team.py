@@ -32,6 +32,9 @@ class TeamMemberResponse(BaseModel):
     avatar: Optional[str] = None
     totalSolved: int = 0
     ranking: Optional[int] = None
+    easy: int = 0
+    medium: int = 0
+    hard: int = 0
 
 @router.get("/members", response_model=List[TeamMemberResponse])
 async def get_team_members(current_user: dict = Depends(get_current_user)):
@@ -52,14 +55,20 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
                 name=member.get("name", member["username"]),
                 avatar=leetcode_data.get("avatar"),
                 totalSolved=leetcode_data.get("totalSolved", 0),
-                ranking=leetcode_data.get("ranking")
+                ranking=leetcode_data.get("ranking"),
+                easy=leetcode_data.get("easy", 0),
+                medium=leetcode_data.get("medium", 0),
+                hard=leetcode_data.get("hard", 0)
             ))
         else:
             # If fetch fails, return basic data
             result.append(TeamMemberResponse(
                 username=member["username"],
                 name=member.get("name", member["username"]),
-                totalSolved=0
+                totalSolved=0,
+                easy=0,
+                medium=0,
+                hard=0
             ))
 
     # Sort by totalSolved descending

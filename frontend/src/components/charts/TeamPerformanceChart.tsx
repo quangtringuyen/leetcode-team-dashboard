@@ -87,43 +87,21 @@ export default function TeamPerformanceChart({
     // Note: The TeamMember type currently has 'totalSolved' but might not have breakdown
     // If breakdown is missing in TeamMember, we might need to fetch it or estimate it.
     // However, the backend /api/team/members endpoint usually returns full member data including stats.
-    // Let's check the TeamMember type definition again.
-    // Looking at types/index.ts:
-    // export interface TeamMember {
-    //   username: string;
-    //   name: string;
-    //   avatar?: string | null;
-    //   totalSolved: number;
-    //   ranking?: number | null;
-    // }
-    // It seems TeamMember doesn't have the breakdown!
-    // But the backend `fetch_all_data` returns `user_data` which has `submissions` list.
-    // And `api/team.py` -> `get_members` calls `fetch_all_data`.
-    // So the response likely HAS the data, but our TypeScript interface is incomplete.
-    // I should update the TypeScript interface first, but for now I'll cast or assume data exists.
-    // Actually, looking at `backend/api/team.py`:
     // It returns `data` from `fetch_all_data`.
     // `fetch_all_data` returns list of user_data.
     // `user_data` from `fetch_user_data` has `submissions` list.
     // So we can calculate Easy/Medium/Hard from `submissions`.
 
-    const chartData = members.map((member: any) => {
-        let easy = 0, medium = 0, hard = 0;
-
-        if (member.submissions) {
-            member.submissions.forEach((sub: any) => {
-                if (sub.difficulty === 'Easy') easy = parseInt(sub.count);
-                if (sub.difficulty === 'Medium') medium = parseInt(sub.count);
-                if (sub.difficulty === 'Hard') hard = parseInt(sub.count);
-            });
-        }
-
+    const chartData = members.map((member) => {
+        const easy = member.easy ?? 0;
+        const medium = member.medium ?? 0;
+        const hard = member.hard ?? 0;
         return {
             name: member.name || member.username,
             Easy: easy,
             Medium: medium,
             Hard: hard,
-            total: easy + medium + hard
+            total: easy + medium + hard,
         };
     }).sort((a, b) => b.total - a.total); // Sort by total solved descending
 
