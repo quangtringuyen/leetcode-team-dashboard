@@ -40,6 +40,12 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       partialize: (state) => ({ token: state.token }),
+      onRehydrateStorage: () => (state) => {
+        // After rehydration, set isAuthenticated based on token presence
+        if (state?.token) {
+          state.isAuthenticated = true;
+        }
+      },
     }
   )
 );
