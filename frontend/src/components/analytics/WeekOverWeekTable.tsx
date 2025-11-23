@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
     Table,
     TableBody,
@@ -16,6 +17,26 @@ interface WeekOverWeekTableProps {
 }
 
 export default function WeekOverWeekTable({ data, isLoading }: WeekOverWeekTableProps) {
+    const [sortKey, setSortKey] = useState<keyof WeekOverWeekChange>('week');
+    const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+    const toggleSort = (key: keyof WeekOverWeekChange) => {
+        if (key === sortKey) {
+            setSortAsc(!sortAsc);
+        } else {
+            setSortKey(key);
+            setSortAsc(true);
+        }
+    };
+
+    const sortedData = [...data].sort((a, b) => {
+        const aVal = a[sortKey];
+        const bVal = b[sortKey];
+        if (aVal < bVal) return sortAsc ? -1 : 1;
+        if (aVal > bVal) return sortAsc ? 1 : -1;
+        return 0;
+    });
+
     if (isLoading) {
         return <div className="text-center p-4 text-muted-foreground">Loading...</div>;
     }
@@ -29,18 +50,18 @@ export default function WeekOverWeekTable({ data, isLoading }: WeekOverWeekTable
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-[120px]">Week</TableHead>
-                        <TableHead>Member</TableHead>
-                        <TableHead className="text-right">Previous</TableHead>
-                        <TableHead className="text-right">Current</TableHead>
-                        <TableHead className="text-right">Change</TableHead>
-                        <TableHead className="text-right">% Change</TableHead>
-                        <TableHead className="text-right">Rank</TableHead>
-                        <TableHead className="text-center">Rank Δ</TableHead>
+                        <TableHead className="w-[120px] cursor-pointer" onClick={() => toggleSort('week')}>Week {sortKey === 'week' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleSort('member')}>Member {sortKey === 'member' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('previous')}>Previous {sortKey === 'previous' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('current')}>Current {sortKey === 'current' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('change')}>Change {sortKey === 'change' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('pct_change')}>% Change {sortKey === 'pct_change' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('rank')}>Rank {sortKey === 'rank' && (sortAsc ? '▲' : '▼')}</TableHead>
+                        <TableHead className="text-center cursor-pointer" onClick={() => toggleSort('rank_delta')}>Rank Δ {sortKey === 'rank_delta' && (sortAsc ? '▲' : '▼')}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {data.map((row) => {
+                    {sortedData.map((row) => {
                         const isPositive = row.change > 0;
                         const isNegative = row.change < 0;
 
