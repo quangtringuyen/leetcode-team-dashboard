@@ -35,6 +35,12 @@ scp frontend/src/App.tsx "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/"
 echo "  → Analytics.tsx (undefined property fix)"
 scp frontend/src/pages/Analytics.tsx "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/pages/"
 
+echo "  → DifficultyPieChart.tsx (empty state fix)"
+scp frontend/src/components/charts/DifficultyPieChart.tsx "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/components/charts/"
+
+echo "  → TrendChart.tsx (empty state fix)"
+scp frontend/src/components/charts/TrendChart.tsx "$NAS_USER@$NAS_HOST:$NAS_PATH/frontend/src/components/charts/"
+
 echo "✅ Files copied successfully!"
 echo ""
 echo "🔨 Now rebuild the frontend on NAS:"
