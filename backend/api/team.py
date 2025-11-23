@@ -277,19 +277,41 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
     ws_stats.column_dimensions['B'].width = 15
     
     # Week-over-Week Analytics Sheet
-    ws_wow = wb.create_sheet("Week-over-Week Analytics")
-    ws_wow.title = "Week-over-Week Analytics"
+    ws_wow = wb.create_sheet("Week-over-Week")
+    ws_wow.title = "Week-over-Week"
 
     # Headers for Week-over-Week
-    wow_headers = ["Date", "Total Solved", "Easy Solved", "Medium Solved", "Hard Solved"]
+    wow_headers = ["Week", "Member", "Previous", "Current", "Change", "% Change", "Rank", "Rank Δ"]
     for col, header in enumerate(wow_headers, 1):
         cell = ws_wow.cell(row=1, column=col, value=header)
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
 
-    # Note: Week-over-week data would require calling analytics endpoint
-    # For now, leaving this sheet empty or you can populate with historical snapshots
+    # Fetch week-over-week data from analytics module
+    from backend.api.analytics import get_week_over_week_internal
+    
+    # Get 4 weeks of data (1 month)
+    wow_data = get_week_over_week_internal(username, weeks=4)
+    
+    # Data rows for Week-over-Week
+    for row_idx, entry in enumerate(wow_data, 2):
+        ws_wow.cell(row=row_idx, column=1, value=entry.get("week", ""))
+        ws_wow.cell(row=row_idx, column=2, value=entry.get("member", ""))
+        ws_wow.cell(row=row_idx, column=3, value=entry.get("previous", 0))
+        ws_wow.cell(row=row_idx, column=4, value=entry.get("current", 0))
+        ws_wow.cell(row=row_idx, column=5, value=entry.get("change", 0))
+        ws_wow.cell(row=row_idx, column=6, value=f"{entry.get('pct_change', 0)}%")
+        ws_wow.cell(row=row_idx, column=7, value=entry.get("rank", 0))
+        
+        # Format rank delta with + or - sign
+        rank_delta = entry.get("rank_delta", 0)
+        if rank_delta > 0:
+            ws_wow.cell(row=row_idx, column=8, value=f"+{rank_delta}")
+        elif rank_delta < 0:
+            ws_wow.cell(row=row_idx, column=8, value=str(rank_delta))
+        else:
+            ws_wow.cell(row=row_idx, column=8, value="0")
 
     # Auto-adjust column widths for Week-over-Week sheet
     for column in ws_wow.columns:
