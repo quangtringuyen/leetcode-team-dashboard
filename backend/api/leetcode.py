@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any
-from api.auth import get_current_user
-from utils.leetcodeapi import fetch_daily_challenge, fetch_recent_submissions
-from api.team import get_members
+from backend.api.auth import get_current_user
+from backend.utils.leetcodeapi import fetch_daily_challenge, fetch_recent_submissions
+
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -30,7 +30,7 @@ async def get_recent_submissions(
     """
     # Get all team members
     # We import here to avoid circular imports if any
-    from api.team import get_members_list_internal
+    from backend.api.team import get_members_list_internal
     
     members = get_members_list_internal(current_user["username"])
     
