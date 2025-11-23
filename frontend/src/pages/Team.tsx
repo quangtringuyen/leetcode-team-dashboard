@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { UserPlus, Trash2, Users } from 'lucide-react';
+import { UserPlus, Trash2, Users, Download, Upload, Database } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
+import { teamApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,6 +71,60 @@ export default function Team() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const blob = await teamApi.exportExcel();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `team-data-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setSuccess('Team data exported to Excel successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to export data');
+    }
+  };
+
+  const handleBackup = async () => {
+    try {
+      const data = await teamApi.backup();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `team-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setSuccess('Backup downloaded successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create backup');
+    }
+  };
+
+  const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      await teamApi.restore(backup);
+      setSuccess('Data restored successfully! Refreshing...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to restore backup. Please check the file format.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -81,93 +136,120 @@ export default function Team() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              Add Member
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExportExcel}>
+            <Download className="h-4 w-4" />
+            Export to Excel
+          </Button>
+
+          <Button variant="outline" className="gap-2" onClick={handleBackup}>
+            <Database className="h-4 w-4" />
+            Download Backup
+          </Button>
+
+          <label htmlFor="restore-file">
+            <Button variant="outline" className="gap-2" asChild>
+              <span>
+                <Upload className="h-4 w-4" />
+                Upload Restore
+              </span>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="glass">
-            <DialogHeader>
-              <DialogTitle>Add Team Member</DialogTitle>
-              <DialogDescription>
-                Add a new member by their LeetCode username
-              </DialogDescription>
-            </DialogHeader>
+            <input
+              id="restore-file"
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleRestore}
+            />
+          </label>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <div className="space-y-4 py-4">
-                {error && (
-                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                    {error}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="glass">
+              <DialogHeader>
+                <DialogTitle>Add Team Member</DialogTitle>
+                <DialogDescription>
+                  Add a new member by their LeetCode username
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <div className="space-y-4 py-4">
+                  {error && (
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label htmlFor="username" className="text-sm font-medium">
+                      LeetCode Username
+                    </label>
+                    <Input
+                      id="username"
+                      placeholder="e.g., john_doe"
+                      {...register('username')}
+                      className={errors.username ? 'border-destructive' : ''}
+                    />
+                    {errors.username && (
+                      <p className="text-sm text-destructive">{errors.username.message}</p>
+                    )}
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <label htmlFor="username" className="text-sm font-medium">
-                    LeetCode Username
-                  </label>
-                  <Input
-                    id="username"
-                    placeholder="e.g., john_doe"
-                    {...register('username')}
-                    className={errors.username ? 'border-destructive' : ''}
-                  />
-                  {errors.username && (
-                    <p className="text-sm text-destructive">{errors.username.message}</p>
-                  )}
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-medium">
+                      Display Name
+                    </label>
+                    <Input
+                      id="name"
+                      placeholder="e.g., John Doe"
+                      {...register('name')}
+                      className={errors.name ? 'border-destructive' : ''}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-destructive">{errors.name.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="avatar" className="text-sm font-medium">
+                      Avatar URL <span className="text-muted-foreground">(optional)</span>
+                    </label>
+                    <Input
+                      id="avatar"
+                      type="url"
+                      placeholder="https://example.com/avatar.jpg"
+                      {...register('avatar')}
+                      className={errors.avatar ? 'border-destructive' : ''}
+                    />
+                    {errors.avatar && (
+                      <p className="text-sm text-destructive">{errors.avatar.message}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="name" className="text-sm font-medium">
-                    Display Name
-                  </label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., John Doe"
-                    {...register('name')}
-                    className={errors.name ? 'border-destructive' : ''}
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-destructive">{errors.name.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="avatar" className="text-sm font-medium">
-                    Avatar URL <span className="text-muted-foreground">(optional)</span>
-                  </label>
-                  <Input
-                    id="avatar"
-                    type="url"
-                    placeholder="https://example.com/avatar.jpg"
-                    {...register('avatar')}
-                    className={errors.avatar ? 'border-destructive' : ''}
-                  />
-                  {errors.avatar && (
-                    <p className="text-sm text-destructive">{errors.avatar.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isAddingMember}>
-                  {isAddingMember ? 'Adding...' : 'Add Member'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isAddingMember}>
+                    {isAddingMember ? 'Adding...' : 'Add Member'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-
       {/* Success Message */}
       {success && (
         <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary">

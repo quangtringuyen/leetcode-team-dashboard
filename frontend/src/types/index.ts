@@ -92,3 +92,40 @@ export interface SnapshotResponse {
 export interface ApiError {
   detail: string;
 }
+
+export interface WeeklyProgressData {
+  weeks: string[];
+  members: {
+    [username: string]: {
+      name: string;
+      data: number[];
+    };
+  };
+}
+
+export interface AcceptedTrendData {
+  date: string;
+  member: string;
+  username: string;
+  accepted: number;
+}
+
+export interface DailyChallenge {
+  date: string;
+  link: string;
+  questionId: string;
+  title: string;
+  titleSlug: string;
+  difficulty: string;
+}
+
+export interface RecentSubmission {
+  title: string;
+  titleSlug: string;
+  timestamp: string;
+  date: string; // formatted date or timestamp
+  username: string;
+  name: string;
+  avatar?: string;
+  accepted: number;
+}
