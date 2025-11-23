@@ -17,6 +17,10 @@ import type {
   WeekOverWeekChange,
   SnapshotResponse,
   ApiError,
+  WeeklyProgressData,
+  AcceptedTrendData,
+  DailyChallenge,
+  RecentSubmission,
 } from '@/types';
 
 // Use same host as frontend, but on port 8090
@@ -114,6 +118,22 @@ export const teamApi = {
     const response = await apiClient.get<TeamStats>('/api/team/stats');
     return response.data;
   },
+
+  async exportExcel(): Promise<Blob> {
+    const response = await apiClient.get('/api/team/export/excel', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async backup(): Promise<any> {
+    const response = await apiClient.get('/api/team/backup');
+    return response.data;
+  },
+
+  async restore(backup: any): Promise<void> {
+    await apiClient.post('/api/team/restore', backup);
+  },
 };
 
 // ==================== Analytics ====================
@@ -138,6 +158,34 @@ export const analyticsApi = {
 
   async getWeekOverWeek(): Promise<WeekOverWeekChange[]> {
     const response = await apiClient.get<WeekOverWeekChange[]>('/api/analytics/week-over-week');
+    return response.data;
+  },
+
+  async getWeeklyProgress(weeks: number = 12): Promise<WeeklyProgressData> {
+    const response = await apiClient.get('/api/analytics/weekly-progress', {
+      params: { weeks }
+    });
+    return response.data;
+  },
+
+  async getAcceptedTrend(days: number = 30): Promise<AcceptedTrendData[]> {
+    const response = await apiClient.get('/api/analytics/accepted-trend', {
+      params: { days },
+    });
+    return response.data;
+  },
+};
+
+export const leetcodeApi = {
+  async getDailyChallenge(): Promise<DailyChallenge> {
+    const response = await apiClient.get('/api/leetcode/daily');
+    return response.data;
+  },
+
+  async getRecentSubmissions(limit: number = 20): Promise<RecentSubmission[]> {
+    const response = await apiClient.get('/api/leetcode/recent', {
+      params: { limit },
+    });
     return response.data;
   },
 };

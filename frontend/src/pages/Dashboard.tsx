@@ -4,6 +4,8 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import StatsCard from '@/components/dashboard/StatsCard';
 import Podium from '@/components/dashboard/Podium';
 import Leaderboard from '@/components/dashboard/Leaderboard';
+import DailyChallengeCard from '@/components/dashboard/DailyChallengeCard';
+import RecentSubmissionsList from '@/components/dashboard/RecentSubmissionsList';
 import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
@@ -89,11 +91,20 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Podium */}
-      <Podium members={members} isLoading={isMembersLoading} />
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column: Leaderboard & Podium */}
+        <div className="lg:col-span-2 space-y-6">
+          <Podium members={members} isLoading={isMembersLoading} />
+          <Leaderboard members={members} isLoading={isMembersLoading} />
+        </div>
 
-      {/* Leaderboard */}
-      <Leaderboard members={members} isLoading={isMembersLoading} />
+        {/* Right Column: Daily Challenge & Recent Activity */}
+        <div className="space-y-6">
+          <DailyChallengeCard />
+          <RecentSubmissionsList />
+        </div>
+      </div>
     </div>
   );
 }

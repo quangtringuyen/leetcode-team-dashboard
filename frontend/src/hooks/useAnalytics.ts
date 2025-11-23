@@ -15,11 +15,27 @@ export function useAnalytics() {
     refetchInterval: 300000, // Refetch every 5 minutes
   });
 
-  // Get trends data
+  // Get trends data (Legacy)
   const getTrends = (weeks: number = 12) =>
     useQuery({
       queryKey: ['analytics', 'trends', weeks],
       queryFn: () => analyticsApi.getTrends(weeks),
+      refetchInterval: 300000,
+    });
+
+  // Get weekly progress (New)
+  const getWeeklyProgress = (weeks: number = 12) =>
+    useQuery({
+      queryKey: ['analytics', 'weeklyProgress', weeks],
+      queryFn: () => analyticsApi.getWeeklyProgress(weeks),
+      refetchInterval: 300000,
+    });
+
+  // Get accepted trend (New)
+  const getAcceptedTrend = (days: number = 30) =>
+    useQuery({
+      queryKey: ['analytics', 'acceptedTrend', days],
+      queryFn: () => analyticsApi.getAcceptedTrend(days),
       refetchInterval: 300000,
     });
 
@@ -53,6 +69,8 @@ export function useAnalytics() {
 
     // Trends
     getTrends,
+    getWeeklyProgress,
+    getAcceptedTrend,
 
     // Week over week
     weekOverWeek,
