@@ -206,6 +206,24 @@ export const leetcodeApi = {
     });
     return response.data;
   },
+
+  async getDailyHistory(days: number = 7): Promise<{
+    history: Array<{
+      date: string;
+      title: string;
+      titleSlug: string;
+      difficulty: string;
+      link: string;
+      completedCount: number;
+      totalMembers: number;
+    }>;
+    totalMembers: number;
+  }> {
+    const response = await apiClient.get('/api/leetcode/daily/history', {
+      params: { days },
+    });
+    return response.data;
+  },
 };
 
 // ==================== Health Check ====================
