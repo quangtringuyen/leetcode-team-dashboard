@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import io
-import asyncio
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from backend.core.security import get_current_user
@@ -22,15 +21,6 @@ def get_members_list_internal(username: str) -> List[Dict[str, Any]]:
     """Helper to get members list for internal use"""
     all_members = read_json(settings.MEMBERS_FILE, default={})
     return all_members.get(username, [])
-
-# Cached fetch of a single user's LeetCode data (5‑minute TTL)
-from backend.utils.cache import async_lru_cache
-
-@async_lru_cache(ttl=300, maxsize=256)
-async def cached_user_data(username: str) -> dict:
-    """Return fresh LeetCode data for *username* or empty dict if fetch fails."""
-    data = fetch_user_data(username)
-    return data or {}
 
 class TeamMember(BaseModel):
     username: str
@@ -55,23 +45,23 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
     all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
 
-    # Fetch fresh data for each member – parallelised & cached
-    tasks = [cached_user_data(member["username"]) for member in user_members]
-    profiles = await asyncio.gather(*tasks)
+    # Fetch fresh data for each member
     result = []
-    for member, profile in zip(user_members, profiles):
-        if profile:
+    for member in user_members:
+        leetcode_data = fetch_user_data(member["username"])
+        if leetcode_data:
             result.append(TeamMemberResponse(
                 username=member["username"],
                 name=member.get("name", member["username"]),
-                avatar=profile.get("avatar"),
-                totalSolved=profile.get("totalSolved", 0),
-                ranking=profile.get("ranking"),
-                easy=profile.get("easy", 0),
-                medium=profile.get("medium", 0),
-                hard=profile.get("hard", 0)
+                avatar=leetcode_data.get("avatar"),
+                totalSolved=leetcode_data.get("totalSolved", 0),
+                ranking=leetcode_data.get("ranking"),
+                easy=leetcode_data.get("easy", 0),
+                medium=leetcode_data.get("medium", 0),
+                hard=leetcode_data.get("hard", 0)
             ))
         else:
+            # If fetch fails, return basic data
             result.append(TeamMemberResponse(
                 username=member["username"],
                 name=member.get("name", member["username"]),
@@ -171,11 +161,12 @@ async def get_team_stats(current_user: dict = Depends(get_current_user)):
             }
         }
 
-    # Fetch data for all members – parallelised & cached
-    tasks = [cached_user_data(member["username"]) for member in user_members]
-    members_data = await asyncio.gather(*tasks)
-    # Filter out empty dicts (failed fetches)
-    members_data = [m for m in members_data if m]
+    # Fetch data for all members
+    members_data = []
+    for member in user_members:
+        data = fetch_user_data(member["username"])
+        if data:
+            members_data.append(data)
 
     total_solved = sum(m.get("totalSolved", 0) for m in members_data)
     avg_solved = total_solved // len(members_data) if members_data else 0
@@ -205,20 +196,19 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
     all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
     
-    # Fetch fresh data for each member – parallelised & cached
-    tasks = [cached_user_data(member["username"]) for member in user_members]
-    profiles = await asyncio.gather(*tasks)
+    # Fetch fresh data for each member
     members_data = []
-    for member, profile in zip(user_members, profiles):
-        if profile:
+    for member in user_members:
+        leetcode_data = fetch_user_data(member["username"])
+        if leetcode_data:
             members_data.append({
                 "username": member["username"],
                 "name": member.get("name", member["username"]),
-                "totalSolved": profile.get("totalSolved", 0),
-                "easy": profile.get("easy", 0),
-                "medium": profile.get("medium", 0),
-                "hard": profile.get("hard", 0),
-                "ranking": profile.get("ranking", "N/A")
+                "totalSolved": leetcode_data.get("totalSolved", 0),
+                "easy": leetcode_data.get("easy", 0),
+                "medium": leetcode_data.get("medium", 0),
+                "hard": leetcode_data.get("hard", 0),
+                "ranking": leetcode_data.get("ranking", "N/A")
             })
     
     # Create Excel workbook
@@ -298,17 +288,8 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
 
-    # Fetch week‑over‑week data from analytics endpoint (cached inside analytics)
-    from backend.api import analytics as analytics_api
-    week_over_week_data = await analytics_api.get_week_over_week(username=username, weeks=52)
-
-    # Data rows for Week‑over‑Week (fields already match our sheet headers)
-    for row_idx, entry in enumerate(week_over_week_data, 2):
-        ws_wow.cell(row=row_idx, column=1, value=entry.get("week"))
-        ws_wow.cell(row=row_idx, column=2, value=entry.get("current"))
-        ws_wow.cell(row=row_idx, column=3, value=entry.get("easy"))
-        ws_wow.cell(row=row_idx, column=4, value=entry.get("medium"))
-        ws_wow.cell(row=row_idx, column=5, value=entry.get("hard"))
+    # Note: Week-over-week data would require calling analytics endpoint
+    # For now, leaving this sheet empty or you can populate with historical snapshots
 
     # Auto-adjust column widths for Week-over-Week sheet
     for column in ws_wow.columns:
