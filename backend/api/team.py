@@ -276,6 +276,38 @@ async def export_team_excel(current_user: dict = Depends(get_current_user)):
     ws_stats.column_dimensions['A'].width = 30
     ws_stats.column_dimensions['B'].width = 15
     
+    # Week-over-Week Analytics Sheet
+    ws_wow = wb.create_sheet("Week-over-Week Analytics")
+    ws_wow.title = "Week-over-Week Analytics"
+
+    # Headers for Week-over-Week
+    wow_headers = ["Date", "Total Solved", "Easy Solved", "Medium Solved", "Hard Solved"]
+    for col, header in enumerate(wow_headers, 1):
+        cell = ws_wow.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Fetch week-over-week data
+    week_over_week_data = await get_week_over_week_data(username)
+
+    # Data rows for Week-over-Week
+    for row_idx, entry in enumerate(week_over_week_data, 2):
+        ws_wow.cell(row=row_idx, column=1, value=entry["date"])
+        ws_wow.cell(row=row_idx, column=2, value=entry["totalSolved"])
+        ws_wow.cell(row=row_idx, column=3, value=entry["easySolved"])
+        ws_wow.cell(row=row_idx, column=4, value=entry["mediumSolved"])
+        ws_wow.cell(row=row_idx, column=5, value=entry["hardSolved"])
+
+    # Auto-adjust column widths for Week-over-Week sheet
+    for column in ws_wow.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws_wow.column_dimensions[column_letter].width = max_length + 2
+    
     # Save to BytesIO
     excel_file = io.BytesIO()
     wb.save(excel_file)
