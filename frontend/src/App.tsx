@@ -9,8 +9,12 @@ import Team from '@/pages/Team';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
 
-  if (!isAuthenticated) {
+  // Check both store and localStorage for authentication
+  const hasAuth = isAuthenticated || !!token || !!localStorage.getItem('access_token');
+
+  if (!hasAuth) {
     return <Navigate to="/login" replace />;
   }
 
