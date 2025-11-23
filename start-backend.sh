@@ -13,4 +13,4 @@ echo "Starting backend with S3 storage..."
 echo "S3 Bucket: $S3_BUCKET_NAME"
 echo "S3 Prefix: $S3_PREFIX"
 
-python3 -m uvicorn backend.main:app --reload --port 8080 --host 0.0.0.0
+python3 -m uvicorn backend.main:app --reload --port 8090 --host 0.0.0.0

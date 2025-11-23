@@ -110,55 +110,91 @@ async def get_daily_challenge_history(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get the last N days of daily challenges with completion counts.
+    Get the last N days of daily challenges with completion details.
+    Returns who completed each challenge.
     """
     from datetime import timedelta
     from backend.api.team import get_members_list_internal
-    
+    from backend.utils.leetcodeapi import fetch_daily_challenge_by_date, fetch_user_data
+
     members = get_members_list_internal(current_user["username"])
     history = []
-    
-    # For now, we'll fetch today's challenge and simulate history
-    # In a real implementation, you'd need to query LeetCode's API for historical challenges
-    # or maintain your own database of past challenges
-    
-    today_challenge = fetch_daily_challenge()
-    if today_challenge:
-        # Check completions for today
-        title_slug = today_challenge.get("titleSlug")
-        completed_count = 0
-        
-        def check_completion(member):
+
+    # Generate list of dates for the last N days
+    today = date.today()
+    date_list = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
+
+    # Track which months we need to query to minimize API calls
+    months_to_query = {}
+    for date_str in date_list:
+        year_month = date_str[:7]  # YYYY-MM
+        if year_month not in months_to_query:
+            months_to_query[year_month] = []
+        months_to_query[year_month].append(date_str)
+
+    # Fetch challenges for each date
+    for target_date in date_list:
+        challenge = fetch_daily_challenge_by_date(target_date)
+
+        if not challenge:
+            continue
+
+        title_slug = challenge.get("titleSlug")
+        completions = []
+
+        # Check which members completed this challenge
+        def check_member_completion(member):
             try:
-                submissions = fetch_recent_submissions(member["username"], limit=50)
+                submissions = fetch_recent_submissions(member["username"], limit=100)
+
                 for sub in submissions:
                     if sub.get("titleSlug") == title_slug:
                         timestamp = int(sub.get("timestamp", 0))
                         submission_date = datetime.fromtimestamp(timestamp).date()
-                        if submission_date == date.today():
-                            return 1
-                return 0
-            except:
-                return 0
-        
+                        challenge_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+
+                        # Check if submission was on the challenge date
+                        if submission_date == challenge_date:
+                            # Get user profile for avatar
+                            user_data = fetch_user_data(member["username"])
+
+                            return {
+                                "username": member["username"],
+                                "name": member.get("name", member["username"]),
+                                "avatar": user_data.get("avatar") if user_data else None,
+                                "completionTime": datetime.fromtimestamp(timestamp).strftime("%H:%M")
+                            }
+
+                return None
+            except Exception as e:
+                logger.error(f"Error checking completion for {member['username']}: {e}")
+                return None
+
+        # Check all members concurrently
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(check_completion, m) for m in members]
+            futures = [executor.submit(check_member_completion, m) for m in members]
             for future in as_completed(futures):
                 try:
-                    completed_count += future.result()
-                except:
-                    pass
-        
+                    result = future.result()
+                    if result:
+                        completions.append(result)
+                except Exception as e:
+                    logger.error(f"Error processing member completion: {e}")
+
+        # Sort by completion time
+        completions.sort(key=lambda x: x["completionTime"])
+
         history.append({
-            "date": today_challenge.get("date"),
-            "title": today_challenge.get("title"),
-            "titleSlug": today_challenge.get("titleSlug"),
-            "difficulty": today_challenge.get("difficulty"),
-            "link": today_challenge.get("link"),
-            "completedCount": completed_count,
+            "date": challenge.get("date"),
+            "title": challenge.get("title"),
+            "titleSlug": challenge.get("titleSlug"),
+            "difficulty": challenge.get("difficulty"),
+            "link": challenge.get("link"),
+            "completions": completions,
+            "completedCount": len(completions),
             "totalMembers": len(members)
         })
-    
+
     return {
         "history": history,
         "totalMembers": len(members)
