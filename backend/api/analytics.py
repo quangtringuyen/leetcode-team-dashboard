@@ -444,9 +444,11 @@ async def get_accepted_trend(
     Get daily accepted problems trend.
     Uses GraphQL API to fetch recent submissions and aggregates by day.
     """
+    import logging
     from backend.utils.leetcodeapi import fetch_recent_submissions
     from collections import defaultdict
 
+    logger = logging.getLogger(__name__)
     username = current_user["username"]
 
     # Get team members
@@ -459,6 +461,8 @@ async def get_accepted_trend(
     # Calculate date range
     end_date = date.today()
     start_date = end_date - timedelta(days=days-1)
+
+    logger.info(f"Fetching accepted trend for {len(user_members)} members from {start_date} to {end_date}")
 
     result = []
 
@@ -496,12 +500,12 @@ async def get_accepted_trend(
 
         except Exception as e:
             # Log error but continue with other members
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Error fetching submissions for {member_username}: {e}")
             continue
 
     # Sort by date
     result.sort(key=lambda x: x["date"])
+
+    logger.info(f"Returning {len(result)} daily data points. Date range: {result[0]['date'] if result else 'N/A'} to {result[-1]['date'] if result else 'N/A'}")
 
     return result
