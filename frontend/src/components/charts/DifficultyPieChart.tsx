@@ -40,6 +40,43 @@ export default function DifficultyPieChart({
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
+  // Show empty state if no data
+  if (total === 0) {
+    return (
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center h-80 text-center">
+            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
+              <svg
+                className="w-12 h-12 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
+            <p className="text-lg font-medium text-muted-foreground mb-2">
+              No problems solved yet
+            </p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Add team members and record a snapshot to see difficulty distribution
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const CustomLabel = ({
     cx,
     cy,
