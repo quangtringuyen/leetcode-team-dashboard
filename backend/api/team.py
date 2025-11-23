@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import io
+import asyncio
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from backend.core.security import get_current_user
