@@ -40,15 +40,12 @@ export function useAnalytics() {
     });
 
   // Get week-over-week changes
-  const {
-    data: weekOverWeek = [],
-    isLoading: isWeekOverWeekLoading,
-    error: weekOverWeekError,
-  } = useQuery({
-    queryKey: ['analytics', 'weekOverWeek'],
-    queryFn: analyticsApi.getWeekOverWeek,
-    refetchInterval: 300000,
-  });
+  const getWeekOverWeek = (weeks: number = 1) =>
+    useQuery({
+      queryKey: ['analytics', 'weekOverWeek', weeks],
+      queryFn: () => analyticsApi.getWeekOverWeek(weeks),
+      refetchInterval: 300000,
+    });
 
   // Record snapshot mutation
   const recordSnapshotMutation = useMutation({
@@ -73,9 +70,8 @@ export function useAnalytics() {
     getAcceptedTrend,
 
     // Week over week
-    weekOverWeek,
-    isWeekOverWeekLoading,
-    weekOverWeekError,
+    // Week over week
+    getWeekOverWeek,
 
     // Snapshot
     recordSnapshot: () => recordSnapshotMutation.mutateAsync(),

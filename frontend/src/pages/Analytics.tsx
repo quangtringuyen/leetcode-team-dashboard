@@ -10,20 +10,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Download, Camera } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { teamApi } from '@/services/api';
 
 export default function Analytics() {
   const [weeks, setWeeks] = useState(12);
   const [trendDays, setTrendDays] = useState(30);
+  const [tableWeeks, setTableWeeks] = useState(1);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   const {
-    weekOverWeek,
-    isWeekOverWeekLoading,
+    getWeekOverWeek,
     getWeeklyProgress,
     getAcceptedTrend
   } = useAnalytics();
 
   const { members, stats, isMembersLoading, isStatsLoading } = useTeam();
+
+  // Fetch data for charts
+  const {
+    data: weekOverWeek = [],
+    isLoading: isWeekOverWeekLoading,
+  } = getWeekOverWeek(tableWeeks);
 
   // Fetch data for charts
   const {
@@ -43,8 +50,22 @@ export default function Analytics() {
     { name: 'Hard', value: stats?.difficulty_breakdown?.hard || 0 },
   ];
 
-  const handleDownloadExcel = () => {
-    window.location.href = '/api/team/export/excel';
+
+
+  const handleDownloadExcel = async () => {
+    try {
+      const blob = await teamApi.exportExcel();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `team-data-${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download Excel:', error);
+    }
   };
 
   const handleCaptureScreenshot = async () => {
@@ -90,10 +111,26 @@ export default function Analytics() {
       {/* Week-over-Week Changes */}
       <Card className="glass">
         <CardHeader>
-          <CardTitle>Week-over-Week Changes</CardTitle>
-          <CardDescription>
-            Compare this week's progress to last week
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Week-over-Week Changes</CardTitle>
+              <CardDescription>
+                Compare progress over recent weeks
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              {[1, 2, 4].map((w) => (
+                <Button
+                  key={w}
+                  variant={tableWeeks === w ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTableWeeks(w)}
+                >
+                  Last {w} Week{w > 1 ? 's' : ''}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <WeekOverWeekTable
