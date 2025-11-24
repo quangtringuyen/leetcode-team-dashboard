@@ -183,7 +183,7 @@ export default function Analytics() {
           </div>
         </div>
         <AcceptedTrendChart
-          data={acceptedTrendData || null}
+          data={acceptedTrendData ?? null}
           title="Daily Accepted Problems"
           description={`Daily submissions over the last ${trendDays} days`}
           isLoading={isAcceptedTrendLoading}
