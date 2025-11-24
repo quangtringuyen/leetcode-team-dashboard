@@ -4,97 +4,97 @@
       {
         "week_start": "2025-09-08",
         "member": "quangtringuyen",
-        "totalSolved": 11,
-        "easy": 5,
+        "totalSolved": 22,
+        "easy": 11,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-09-12",
         "member": "quangtringuyen",
-        "totalSolved": 11,
-        "easy": 5,
+        "totalSolved": 22,
+        "easy": 11,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-09-15",
         "member": "quangtringuyen",
-        "totalSolved": 14,
-        "easy": 6,
-        "medium": 0,
+        "totalSolved": 28,
+        "easy": 13,
+        "medium": 1,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "quangtringuyen",
-        "totalSolved": 16,
-        "easy": 7,
-        "medium": 1,
+        "totalSolved": 32,
+        "easy": 14,
+        "medium": 2,
         "hard": 0
       },
       {
         "week_start": "2025-09-29",
         "member": "quangtringuyen",
-        "totalSolved": 20,
-        "easy": 8,
-        "medium": 2,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-06",
-        "member": "quangtringuyen",
-        "totalSolved": 24,
-        "easy": 9,
-        "medium": 3,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-13",
-        "member": "quangtringuyen",
-        "totalSolved": 28,
-        "easy": 10,
-        "medium": 4,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-20",
-        "member": "quangtringuyen",
-        "totalSolved": 31,
-        "easy": 11,
-        "medium": 4,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-27",
-        "member": "quangtringuyen",
-        "totalSolved": 34,
-        "easy": 13,
-        "medium": 4,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-11-03",
-        "member": "quangtringuyen",
-        "totalSolved": 38,
-        "easy": 14,
-        "medium": 4,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-11-10",
-        "member": "quangtringuyen",
-        "totalSolved": 41,
+        "totalSolved": 40,
         "easy": 16,
         "medium": 4,
         "hard": 0
       },
       {
+        "week_start": "2025-10-06",
+        "member": "quangtringuyen",
+        "totalSolved": 48,
+        "easy": 18,
+        "medium": 6,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-13",
+        "member": "quangtringuyen",
+        "totalSolved": 56,
+        "easy": 20,
+        "medium": 8,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-20",
+        "member": "quangtringuyen",
+        "totalSolved": 62,
+        "easy": 23,
+        "medium": 8,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-27",
+        "member": "quangtringuyen",
+        "totalSolved": 68,
+        "easy": 26,
+        "medium": 8,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-11-03",
+        "member": "quangtringuyen",
+        "totalSolved": 76,
+        "easy": 29,
+        "medium": 9,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-11-10",
+        "member": "quangtringuyen",
+        "totalSolved": 82,
+        "easy": 32,
+        "medium": 9,
+        "hard": 0
+      },
+      {
         "week_start": "2025-11-17",
         "member": "quangtringuyen",
-        "totalSolved": 45,
-        "easy": 17,
-        "medium": 5,
+        "totalSolved": 90,
+        "easy": 35,
+        "medium": 10,
         "hard": 0
       }
     ],
@@ -102,195 +102,195 @@
       {
         "week_start": "2025-09-12",
         "member": "vutrinh",
-        "totalSolved": 38,
-        "easy": 7,
-        "medium": 10,
-        "hard": 1
+        "totalSolved": 76,
+        "easy": 14,
+        "medium": 21,
+        "hard": 3
       },
       {
         "week_start": "2025-09-08",
         "member": "vutrinh",
-        "totalSolved": 38,
-        "easy": 7,
-        "medium": 10,
-        "hard": 1
+        "totalSolved": 76,
+        "easy": 14,
+        "medium": 21,
+        "hard": 3
       },
       {
         "week_start": "2025-09-15",
         "member": "vutrinh",
-        "totalSolved": 46,
-        "easy": 8,
-        "medium": 13,
-        "hard": 2
+        "totalSolved": 92,
+        "easy": 16,
+        "medium": 26,
+        "hard": 4
       },
       {
         "week_start": "2025-09-22",
         "member": "vutrinh",
-        "totalSolved": 48,
-        "easy": 8,
-        "medium": 13,
-        "hard": 2
+        "totalSolved": 96,
+        "easy": 16,
+        "medium": 27,
+        "hard": 5
       },
       {
         "week_start": "2025-09-29",
         "member": "vutrinh",
-        "totalSolved": 65,
-        "easy": 13,
-        "medium": 17,
-        "hard": 2
+        "totalSolved": 130,
+        "easy": 26,
+        "medium": 34,
+        "hard": 5
       },
       {
         "week_start": "2025-10-06",
         "member": "vutrinh",
-        "totalSolved": 70,
-        "easy": 13,
-        "medium": 19,
-        "hard": 2
+        "totalSolved": 140,
+        "easy": 26,
+        "medium": 39,
+        "hard": 5
       },
       {
         "week_start": "2025-10-13",
         "member": "vutrinh",
-        "totalSolved": 76,
-        "easy": 13,
-        "medium": 22,
-        "hard": 3
+        "totalSolved": 152,
+        "easy": 26,
+        "medium": 44,
+        "hard": 6
       },
       {
         "week_start": "2025-10-20",
         "member": "vutrinh",
-        "totalSolved": 80,
-        "easy": 14,
-        "medium": 23,
-        "hard": 3
+        "totalSolved": 160,
+        "easy": 28,
+        "medium": 46,
+        "hard": 6
       },
       {
         "week_start": "2025-10-27",
         "member": "vutrinh",
-        "totalSolved": 84,
-        "easy": 15,
-        "medium": 23,
-        "hard": 3
+        "totalSolved": 168,
+        "easy": 31,
+        "medium": 47,
+        "hard": 6
       },
       {
         "week_start": "2025-11-03",
         "member": "vutrinh",
-        "totalSolved": 88,
-        "easy": 17,
-        "medium": 24,
-        "hard": 3
+        "totalSolved": 176,
+        "easy": 34,
+        "medium": 48,
+        "hard": 6
       },
       {
         "week_start": "2025-11-10",
         "member": "vutrinh",
-        "totalSolved": 89,
-        "easy": 17,
-        "medium": 24,
-        "hard": 3
+        "totalSolved": 178,
+        "easy": 35,
+        "medium": 48,
+        "hard": 6
       },
       {
         "week_start": "2025-11-17",
         "member": "vutrinh",
-        "totalSolved": 91,
-        "easy": 17,
-        "medium": 25,
-        "hard": 3
+        "totalSolved": 182,
+        "easy": 35,
+        "medium": 50,
+        "hard": 6
       }
     ],
     "huynt": [
       {
         "week_start": "2025-09-12",
         "member": "huynt",
-        "totalSolved": 11,
-        "easy": 2,
-        "medium": 3,
+        "totalSolved": 22,
+        "easy": 5,
+        "medium": 6,
         "hard": 0
       },
       {
         "week_start": "2025-09-08",
         "member": "huynt",
-        "totalSolved": 11,
-        "easy": 2,
-        "medium": 3,
+        "totalSolved": 22,
+        "easy": 5,
+        "medium": 6,
         "hard": 0
       },
       {
         "week_start": "2025-09-15",
         "member": "huynt",
-        "totalSolved": 17,
-        "easy": 3,
-        "medium": 5,
+        "totalSolved": 34,
+        "easy": 7,
+        "medium": 10,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "huynt",
-        "totalSolved": 19,
-        "easy": 4,
-        "medium": 5,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-09-29",
-        "member": "huynt",
-        "totalSolved": 29,
-        "easy": 6,
-        "medium": 8,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-06",
-        "member": "huynt",
-        "totalSolved": 39,
+        "totalSolved": 38,
         "easy": 8,
         "medium": 11,
         "hard": 0
       },
       {
+        "week_start": "2025-09-29",
+        "member": "huynt",
+        "totalSolved": 58,
+        "easy": 13,
+        "medium": 16,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-06",
+        "member": "huynt",
+        "totalSolved": 78,
+        "easy": 17,
+        "medium": 22,
+        "hard": 0
+      },
+      {
         "week_start": "2025-10-13",
         "member": "huynt",
-        "totalSolved": 48,
-        "easy": 9,
-        "medium": 14,
+        "totalSolved": 96,
+        "easy": 19,
+        "medium": 29,
         "hard": 0
       },
       {
         "week_start": "2025-10-20",
         "member": "huynt",
-        "totalSolved": 56,
-        "easy": 10,
-        "medium": 17,
+        "totalSolved": 112,
+        "easy": 21,
+        "medium": 35,
         "hard": 0
       },
       {
         "week_start": "2025-10-27",
         "member": "huynt",
-        "totalSolved": 64,
-        "easy": 12,
-        "medium": 19,
+        "totalSolved": 128,
+        "easy": 25,
+        "medium": 39,
         "hard": 0
       },
       {
         "week_start": "2025-11-03",
         "member": "huynt",
-        "totalSolved": 72,
-        "easy": 14,
-        "medium": 22,
+        "totalSolved": 144,
+        "easy": 28,
+        "medium": 44,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "huynt",
-        "totalSolved": 75,
-        "easy": 14,
-        "medium": 23,
+        "totalSolved": 150,
+        "easy": 29,
+        "medium": 46,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "huynt",
-        "totalSolved": 80,
-        "easy": 15,
-        "medium": 24,
+        "totalSolved": 160,
+        "easy": 31,
+        "medium": 49,
         "hard": 0
       }
     ],
@@ -298,195 +298,195 @@
       {
         "week_start": "2025-09-12",
         "member": "qvanphong",
-        "totalSolved": 30,
-        "easy": 8,
-        "medium": 6,
-        "hard": 0
+        "totalSolved": 60,
+        "easy": 17,
+        "medium": 12,
+        "hard": 1
       },
       {
         "week_start": "2025-09-08",
         "member": "qvanphong",
-        "totalSolved": 30,
-        "easy": 8,
-        "medium": 6,
-        "hard": 0
+        "totalSolved": 60,
+        "easy": 17,
+        "medium": 12,
+        "hard": 1
       },
       {
         "week_start": "2025-09-15",
         "member": "qvanphong",
-        "totalSolved": 32,
-        "easy": 9,
-        "medium": 6,
-        "hard": 0
+        "totalSolved": 64,
+        "easy": 18,
+        "medium": 13,
+        "hard": 1
       },
       {
         "week_start": "2025-09-22",
         "member": "qvanphong",
-        "totalSolved": 33,
-        "easy": 9,
-        "medium": 7,
-        "hard": 0
+        "totalSolved": 66,
+        "easy": 18,
+        "medium": 14,
+        "hard": 1
       },
       {
         "week_start": "2025-09-29",
         "member": "qvanphong",
-        "totalSolved": 35,
-        "easy": 10,
-        "medium": 7,
-        "hard": 0
+        "totalSolved": 70,
+        "easy": 20,
+        "medium": 14,
+        "hard": 1
       },
       {
         "week_start": "2025-10-06",
         "member": "qvanphong",
-        "totalSolved": 37,
-        "easy": 10,
-        "medium": 7,
-        "hard": 0
+        "totalSolved": 74,
+        "easy": 21,
+        "medium": 15,
+        "hard": 1
       },
       {
         "week_start": "2025-10-13",
         "member": "qvanphong",
-        "totalSolved": 40,
-        "easy": 11,
-        "medium": 8,
-        "hard": 0
+        "totalSolved": 80,
+        "easy": 22,
+        "medium": 17,
+        "hard": 1
       },
       {
         "week_start": "2025-10-20",
         "member": "qvanphong",
-        "totalSolved": 42,
-        "easy": 11,
-        "medium": 9,
-        "hard": 0
+        "totalSolved": 84,
+        "easy": 23,
+        "medium": 18,
+        "hard": 1
       },
       {
         "week_start": "2025-10-27",
         "member": "qvanphong",
-        "totalSolved": 45,
-        "easy": 12,
-        "medium": 9,
-        "hard": 0
+        "totalSolved": 90,
+        "easy": 25,
+        "medium": 19,
+        "hard": 1
       },
       {
         "week_start": "2025-11-03",
         "member": "qvanphong",
-        "totalSolved": 45,
-        "easy": 12,
-        "medium": 9,
-        "hard": 0
+        "totalSolved": 90,
+        "easy": 25,
+        "medium": 19,
+        "hard": 1
       },
       {
         "week_start": "2025-11-10",
         "member": "qvanphong",
-        "totalSolved": 45,
-        "easy": 12,
-        "medium": 9,
-        "hard": 0
+        "totalSolved": 90,
+        "easy": 25,
+        "medium": 19,
+        "hard": 1
       },
       {
         "week_start": "2025-11-17",
         "member": "qvanphong",
-        "totalSolved": 45,
-        "easy": 12,
-        "medium": 9,
-        "hard": 0
+        "totalSolved": 90,
+        "easy": 25,
+        "medium": 19,
+        "hard": 1
       }
     ],
     "PandaReveluv": [
       {
         "week_start": "2025-09-12",
         "member": "PandaReveluv",
-        "totalSolved": 5,
-        "easy": 2,
-        "medium": 0,
+        "totalSolved": 10,
+        "easy": 4,
+        "medium": 1,
         "hard": 0
       },
       {
         "week_start": "2025-09-08",
         "member": "PandaReveluv",
-        "totalSolved": 5,
-        "easy": 2,
-        "medium": 0,
+        "totalSolved": 10,
+        "easy": 4,
+        "medium": 1,
         "hard": 0
       },
       {
         "week_start": "2025-09-15",
         "member": "PandaReveluv",
-        "totalSolved": 11,
-        "easy": 3,
-        "medium": 2,
+        "totalSolved": 22,
+        "easy": 7,
+        "medium": 4,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "PandaReveluv",
-        "totalSolved": 12,
-        "easy": 3,
-        "medium": 2,
+        "totalSolved": 24,
+        "easy": 7,
+        "medium": 5,
         "hard": 0
       },
       {
         "week_start": "2025-09-29",
         "member": "PandaReveluv",
-        "totalSolved": 17,
-        "easy": 5,
-        "medium": 3,
+        "totalSolved": 34,
+        "easy": 10,
+        "medium": 7,
         "hard": 0
       },
       {
         "week_start": "2025-10-06",
         "member": "PandaReveluv",
-        "totalSolved": 21,
-        "easy": 5,
-        "medium": 5,
+        "totalSolved": 42,
+        "easy": 11,
+        "medium": 10,
         "hard": 0
       },
       {
         "week_start": "2025-10-13",
         "member": "PandaReveluv",
-        "totalSolved": 26,
-        "easy": 6,
-        "medium": 7,
+        "totalSolved": 52,
+        "easy": 12,
+        "medium": 14,
         "hard": 0
       },
       {
         "week_start": "2025-10-20",
         "member": "PandaReveluv",
-        "totalSolved": 29,
-        "easy": 7,
-        "medium": 7,
+        "totalSolved": 58,
+        "easy": 14,
+        "medium": 15,
         "hard": 0
       },
       {
         "week_start": "2025-10-27",
         "member": "PandaReveluv",
-        "totalSolved": 32,
-        "easy": 8,
-        "medium": 7,
+        "totalSolved": 64,
+        "easy": 17,
+        "medium": 15,
         "hard": 0
       },
       {
         "week_start": "2025-11-03",
         "member": "PandaReveluv",
-        "totalSolved": 36,
-        "easy": 10,
-        "medium": 8,
+        "totalSolved": 72,
+        "easy": 20,
+        "medium": 16,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "PandaReveluv",
-        "totalSolved": 39,
-        "easy": 11,
-        "medium": 8,
+        "totalSolved": 78,
+        "easy": 22,
+        "medium": 17,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "PandaReveluv",
-        "totalSolved": 42,
-        "easy": 12,
-        "medium": 9,
+        "totalSolved": 84,
+        "easy": 24,
+        "medium": 18,
         "hard": 0
       }
     ],
@@ -494,45 +494,21 @@
       {
         "week_start": "2025-09-12",
         "member": "dieptung9197",
-        "totalSolved": 4,
-        "easy": 0,
-        "medium": 1,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-09-08",
-        "member": "dieptung9197",
-        "totalSolved": 4,
-        "easy": 0,
-        "medium": 1,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-09-15",
-        "member": "dieptung9197",
-        "totalSolved": 9,
+        "totalSolved": 8,
         "easy": 1,
         "medium": 3,
         "hard": 0
       },
       {
-        "week_start": "2025-09-22",
+        "week_start": "2025-09-08",
         "member": "dieptung9197",
-        "totalSolved": 10,
-        "easy": 2,
+        "totalSolved": 8,
+        "easy": 1,
         "medium": 3,
         "hard": 0
       },
       {
-        "week_start": "2025-09-29",
-        "member": "dieptung9197",
-        "totalSolved": 14,
-        "easy": 2,
-        "medium": 4,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-06",
+        "week_start": "2025-09-15",
         "member": "dieptung9197",
         "totalSolved": 18,
         "easy": 3,
@@ -540,51 +516,75 @@
         "hard": 0
       },
       {
-        "week_start": "2025-10-13",
+        "week_start": "2025-09-22",
         "member": "dieptung9197",
-        "totalSolved": 21,
-        "easy": 3,
-        "medium": 7,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-20",
-        "member": "dieptung9197",
-        "totalSolved": 24,
+        "totalSolved": 20,
         "easy": 4,
-        "medium": 8,
+        "medium": 6,
         "hard": 0
       },
       {
-        "week_start": "2025-10-27",
+        "week_start": "2025-09-29",
         "member": "dieptung9197",
-        "totalSolved": 29,
+        "totalSolved": 28,
         "easy": 5,
         "medium": 9,
         "hard": 0
       },
       {
+        "week_start": "2025-10-06",
+        "member": "dieptung9197",
+        "totalSolved": 36,
+        "easy": 6,
+        "medium": 12,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-13",
+        "member": "dieptung9197",
+        "totalSolved": 42,
+        "easy": 6,
+        "medium": 15,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-20",
+        "member": "dieptung9197",
+        "totalSolved": 48,
+        "easy": 8,
+        "medium": 16,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-27",
+        "member": "dieptung9197",
+        "totalSolved": 58,
+        "easy": 10,
+        "medium": 19,
+        "hard": 0
+      },
+      {
         "week_start": "2025-11-03",
         "member": "dieptung9197",
-        "totalSolved": 34,
-        "easy": 7,
-        "medium": 10,
+        "totalSolved": 68,
+        "easy": 14,
+        "medium": 20,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "dieptung9197",
-        "totalSolved": 39,
-        "easy": 7,
-        "medium": 12,
+        "totalSolved": 78,
+        "easy": 15,
+        "medium": 24,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "dieptung9197",
-        "totalSolved": 42,
-        "easy": 8,
-        "medium": 13,
+        "totalSolved": 84,
+        "easy": 16,
+        "medium": 26,
         "hard": 0
       }
     ],
@@ -592,343 +592,343 @@
       {
         "week_start": "2025-09-12",
         "member": "FiddlerBB",
-        "totalSolved": 35,
-        "easy": 13,
-        "medium": 3,
-        "hard": 1
+        "totalSolved": 70,
+        "easy": 26,
+        "medium": 7,
+        "hard": 2
       },
       {
         "week_start": "2025-09-08",
         "member": "FiddlerBB",
-        "totalSolved": 35,
-        "easy": 13,
-        "medium": 3,
-        "hard": 1
+        "totalSolved": 70,
+        "easy": 26,
+        "medium": 7,
+        "hard": 2
       },
       {
         "week_start": "2025-09-15",
         "member": "FiddlerBB",
-        "totalSolved": 40,
-        "easy": 14,
-        "medium": 4,
-        "hard": 1
+        "totalSolved": 80,
+        "easy": 29,
+        "medium": 9,
+        "hard": 2
       },
       {
         "week_start": "2025-09-22",
         "member": "FiddlerBB",
-        "totalSolved": 41,
-        "easy": 14,
-        "medium": 5,
-        "hard": 1
+        "totalSolved": 82,
+        "easy": 29,
+        "medium": 10,
+        "hard": 2
       },
       {
         "week_start": "2025-09-29",
         "member": "FiddlerBB",
-        "totalSolved": 54,
-        "easy": 18,
-        "medium": 8,
-        "hard": 1
+        "totalSolved": 108,
+        "easy": 36,
+        "medium": 16,
+        "hard": 2
       },
       {
         "week_start": "2025-10-06",
         "member": "FiddlerBB",
-        "totalSolved": 61,
-        "easy": 19,
-        "medium": 10,
-        "hard": 1
+        "totalSolved": 122,
+        "easy": 38,
+        "medium": 21,
+        "hard": 2
       },
       {
         "week_start": "2025-10-13",
         "member": "FiddlerBB",
-        "totalSolved": 65,
-        "easy": 19,
-        "medium": 12,
-        "hard": 1
+        "totalSolved": 130,
+        "easy": 38,
+        "medium": 25,
+        "hard": 2
       },
       {
         "week_start": "2025-10-20",
         "member": "FiddlerBB",
-        "totalSolved": 69,
-        "easy": 20,
-        "medium": 13,
-        "hard": 1
+        "totalSolved": 138,
+        "easy": 41,
+        "medium": 26,
+        "hard": 2
       },
       {
         "week_start": "2025-10-27",
         "member": "FiddlerBB",
-        "totalSolved": 72,
-        "easy": 22,
-        "medium": 13,
-        "hard": 1
+        "totalSolved": 144,
+        "easy": 44,
+        "medium": 26,
+        "hard": 2
       },
       {
         "week_start": "2025-11-03",
         "member": "FiddlerBB",
-        "totalSolved": 76,
-        "easy": 23,
-        "medium": 14,
-        "hard": 1
+        "totalSolved": 152,
+        "easy": 46,
+        "medium": 28,
+        "hard": 2
       },
       {
         "week_start": "2025-11-10",
         "member": "FiddlerBB",
-        "totalSolved": 78,
-        "easy": 23,
-        "medium": 14,
-        "hard": 1
+        "totalSolved": 156,
+        "easy": 47,
+        "medium": 29,
+        "hard": 2
       },
       {
         "week_start": "2025-11-17",
         "member": "FiddlerBB",
-        "totalSolved": 82,
-        "easy": 25,
-        "medium": 15,
-        "hard": 1
+        "totalSolved": 164,
+        "easy": 50,
+        "medium": 30,
+        "hard": 2
       }
     ],
     "tommy84": [
       {
         "week_start": "2025-09-15",
         "member": "tommy84",
-        "totalSolved": 8,
-        "easy": 1,
-        "medium": 2,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-09-22",
-        "member": "tommy84",
-        "totalSolved": 10,
-        "easy": 1,
-        "medium": 3,
-        "hard": 1
-      },
-      {
-        "week_start": "2025-09-29",
-        "member": "tommy84",
-        "totalSolved": 18,
-        "easy": 3,
+        "totalSolved": 16,
+        "easy": 2,
         "medium": 5,
         "hard": 1
       },
       {
-        "week_start": "2025-10-06",
+        "week_start": "2025-09-22",
         "member": "tommy84",
-        "totalSolved": 25,
-        "easy": 3,
-        "medium": 7,
-        "hard": 1
+        "totalSolved": 20,
+        "easy": 2,
+        "medium": 6,
+        "hard": 2
       },
       {
-        "week_start": "2025-10-13",
+        "week_start": "2025-09-29",
         "member": "tommy84",
-        "totalSolved": 33,
-        "easy": 4,
+        "totalSolved": 36,
+        "easy": 6,
         "medium": 10,
         "hard": 2
       },
       {
+        "week_start": "2025-10-06",
+        "member": "tommy84",
+        "totalSolved": 50,
+        "easy": 7,
+        "medium": 15,
+        "hard": 3
+      },
+      {
+        "week_start": "2025-10-13",
+        "member": "tommy84",
+        "totalSolved": 66,
+        "easy": 8,
+        "medium": 20,
+        "hard": 5
+      },
+      {
         "week_start": "2025-10-20",
         "member": "tommy84",
-        "totalSolved": 40,
-        "easy": 5,
-        "medium": 12,
-        "hard": 3
+        "totalSolved": 80,
+        "easy": 10,
+        "medium": 24,
+        "hard": 6
       },
       {
         "week_start": "2025-10-27",
         "member": "tommy84",
-        "totalSolved": 45,
-        "easy": 6,
-        "medium": 13,
-        "hard": 3
+        "totalSolved": 90,
+        "easy": 12,
+        "medium": 26,
+        "hard": 7
       },
       {
         "week_start": "2025-11-03",
         "member": "tommy84",
-        "totalSolved": 49,
-        "easy": 7,
-        "medium": 13,
-        "hard": 3
+        "totalSolved": 98,
+        "easy": 15,
+        "medium": 27,
+        "hard": 7
       },
       {
         "week_start": "2025-11-10",
         "member": "tommy84",
-        "totalSolved": 51,
-        "easy": 8,
-        "medium": 14,
-        "hard": 3
+        "totalSolved": 102,
+        "easy": 16,
+        "medium": 28,
+        "hard": 7
       },
       {
         "week_start": "2025-11-17",
         "member": "tommy84",
-        "totalSolved": 53,
-        "easy": 9,
-        "medium": 14,
-        "hard": 3
+        "totalSolved": 106,
+        "easy": 18,
+        "medium": 28,
+        "hard": 7
       }
     ],
     "YGMMi6ZM1w": [
       {
         "week_start": "2025-09-15",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 40,
-        "easy": 10,
-        "medium": 9,
+        "totalSolved": 80,
+        "easy": 21,
+        "medium": 19,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 44,
-        "easy": 11,
-        "medium": 11,
+        "totalSolved": 88,
+        "easy": 22,
+        "medium": 22,
         "hard": 0
       },
       {
         "week_start": "2025-09-29",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 71,
-        "easy": 17,
-        "medium": 17,
-        "hard": 0
+        "totalSolved": 142,
+        "easy": 35,
+        "medium": 35,
+        "hard": 1
       },
       {
         "week_start": "2025-10-06",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 83,
-        "easy": 22,
-        "medium": 18,
-        "hard": 1
+        "totalSolved": 166,
+        "easy": 44,
+        "medium": 37,
+        "hard": 2
       },
       {
         "week_start": "2025-10-13",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 92,
-        "easy": 25,
-        "medium": 20,
-        "hard": 1
+        "totalSolved": 184,
+        "easy": 50,
+        "medium": 40,
+        "hard": 2
       },
       {
         "week_start": "2025-10-20",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 98,
-        "easy": 27,
-        "medium": 21,
-        "hard": 1
+        "totalSolved": 196,
+        "easy": 54,
+        "medium": 42,
+        "hard": 2
       },
       {
         "week_start": "2025-10-27",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 102,
-        "easy": 28,
-        "medium": 21,
-        "hard": 1
+        "totalSolved": 204,
+        "easy": 57,
+        "medium": 43,
+        "hard": 2
       },
       {
         "week_start": "2025-11-03",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 109,
-        "easy": 31,
-        "medium": 22,
-        "hard": 1
+        "totalSolved": 218,
+        "easy": 62,
+        "medium": 45,
+        "hard": 2
       },
       {
         "week_start": "2025-11-10",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 112,
-        "easy": 32,
-        "medium": 23,
-        "hard": 1
+        "totalSolved": 224,
+        "easy": 64,
+        "medium": 46,
+        "hard": 2
       },
       {
         "week_start": "2025-11-17",
         "member": "YGMMi6ZM1w",
-        "totalSolved": 115,
-        "easy": 32,
-        "medium": 24,
-        "hard": 1
+        "totalSolved": 230,
+        "easy": 64,
+        "medium": 49,
+        "hard": 2
       }
     ],
     "voduythao56": [
       {
         "week_start": "2025-09-15",
         "member": "voduythao56",
-        "totalSolved": 13,
-        "easy": 4,
-        "medium": 2,
+        "totalSolved": 26,
+        "easy": 9,
+        "medium": 4,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "voduythao56",
-        "totalSolved": 15,
-        "easy": 4,
-        "medium": 3,
+        "totalSolved": 30,
+        "easy": 9,
+        "medium": 6,
         "hard": 0
       },
       {
         "week_start": "2025-09-29",
         "member": "voduythao56",
-        "totalSolved": 20,
-        "easy": 6,
-        "medium": 4,
+        "totalSolved": 40,
+        "easy": 12,
+        "medium": 8,
         "hard": 0
       },
       {
         "week_start": "2025-10-06",
         "member": "voduythao56",
-        "totalSolved": 24,
-        "easy": 6,
-        "medium": 5,
+        "totalSolved": 48,
+        "easy": 13,
+        "medium": 11,
         "hard": 0
       },
       {
         "week_start": "2025-10-13",
         "member": "voduythao56",
-        "totalSolved": 27,
-        "easy": 6,
-        "medium": 7,
+        "totalSolved": 54,
+        "easy": 13,
+        "medium": 14,
         "hard": 0
       },
       {
         "week_start": "2025-10-20",
         "member": "voduythao56",
-        "totalSolved": 30,
-        "easy": 7,
-        "medium": 7,
+        "totalSolved": 60,
+        "easy": 15,
+        "medium": 15,
         "hard": 0
       },
       {
         "week_start": "2025-10-27",
         "member": "voduythao56",
-        "totalSolved": 32,
-        "easy": 7,
-        "medium": 8,
+        "totalSolved": 64,
+        "easy": 15,
+        "medium": 17,
         "hard": 0
       },
       {
         "week_start": "2025-11-03",
         "member": "voduythao56",
-        "totalSolved": 35,
-        "easy": 8,
-        "medium": 9,
+        "totalSolved": 70,
+        "easy": 16,
+        "medium": 19,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "voduythao56",
-        "totalSolved": 38,
-        "easy": 9,
-        "medium": 10,
+        "totalSolved": 76,
+        "easy": 18,
+        "medium": 20,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "voduythao56",
-        "totalSolved": 39,
-        "easy": 9,
-        "medium": 10,
+        "totalSolved": 78,
+        "easy": 18,
+        "medium": 21,
         "hard": 0
       }
     ],
@@ -936,81 +936,81 @@
       {
         "week_start": "2025-09-15",
         "member": "thienhieuho",
-        "totalSolved": 7,
-        "easy": 3,
+        "totalSolved": 14,
+        "easy": 7,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "thienhieuho",
-        "totalSolved": 10,
-        "easy": 5,
+        "totalSolved": 20,
+        "easy": 10,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-09-29",
         "member": "thienhieuho",
-        "totalSolved": 13,
-        "easy": 6,
+        "totalSolved": 26,
+        "easy": 13,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-10-06",
         "member": "thienhieuho",
-        "totalSolved": 16,
-        "easy": 7,
-        "medium": 0,
+        "totalSolved": 32,
+        "easy": 15,
+        "medium": 1,
         "hard": 0
       },
       {
         "week_start": "2025-10-13",
         "member": "thienhieuho",
-        "totalSolved": 17,
-        "easy": 7,
-        "medium": 1,
+        "totalSolved": 34,
+        "easy": 15,
+        "medium": 2,
         "hard": 0
       },
       {
         "week_start": "2025-10-20",
         "member": "thienhieuho",
-        "totalSolved": 17,
-        "easy": 7,
-        "medium": 1,
+        "totalSolved": 34,
+        "easy": 15,
+        "medium": 2,
         "hard": 0
       },
       {
         "week_start": "2025-10-27",
         "member": "thienhieuho",
-        "totalSolved": 21,
-        "easy": 9,
-        "medium": 1,
+        "totalSolved": 42,
+        "easy": 18,
+        "medium": 3,
         "hard": 0
       },
       {
         "week_start": "2025-11-03",
         "member": "thienhieuho",
-        "totalSolved": 24,
-        "easy": 10,
-        "medium": 2,
+        "totalSolved": 48,
+        "easy": 20,
+        "medium": 4,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "thienhieuho",
-        "totalSolved": 26,
-        "easy": 10,
-        "medium": 2,
+        "totalSolved": 52,
+        "easy": 21,
+        "medium": 5,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "thienhieuho",
-        "totalSolved": 28,
-        "easy": 10,
-        "medium": 3,
+        "totalSolved": 56,
+        "easy": 21,
+        "medium": 7,
         "hard": 0
       }
     ],
@@ -1018,29 +1018,13 @@
       {
         "week_start": "2025-09-15",
         "member": "tnguyenngocqa",
-        "totalSolved": 8,
-        "easy": 4,
+        "totalSolved": 16,
+        "easy": 8,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
-        "member": "tnguyenngocqa",
-        "totalSolved": 8,
-        "easy": 4,
-        "medium": 0,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-09-29",
-        "member": "tnguyenngocqa",
-        "totalSolved": 10,
-        "easy": 5,
-        "medium": 0,
-        "hard": 0
-      },
-      {
-        "week_start": "2025-10-06",
         "member": "tnguyenngocqa",
         "totalSolved": 16,
         "easy": 8,
@@ -1048,50 +1032,66 @@
         "hard": 0
       },
       {
+        "week_start": "2025-09-29",
+        "member": "tnguyenngocqa",
+        "totalSolved": 20,
+        "easy": 10,
+        "medium": 0,
+        "hard": 0
+      },
+      {
+        "week_start": "2025-10-06",
+        "member": "tnguyenngocqa",
+        "totalSolved": 32,
+        "easy": 16,
+        "medium": 0,
+        "hard": 0
+      },
+      {
         "week_start": "2025-10-13",
         "member": "tnguyenngocqa",
-        "totalSolved": 19,
-        "easy": 9,
+        "totalSolved": 38,
+        "easy": 19,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-10-20",
         "member": "tnguyenngocqa",
-        "totalSolved": 21,
-        "easy": 10,
+        "totalSolved": 42,
+        "easy": 21,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-10-27",
         "member": "tnguyenngocqa",
-        "totalSolved": 22,
-        "easy": 11,
+        "totalSolved": 44,
+        "easy": 22,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-11-03",
         "member": "tnguyenngocqa",
-        "totalSolved": 23,
-        "easy": 11,
+        "totalSolved": 46,
+        "easy": 23,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "tnguyenngocqa",
-        "totalSolved": 24,
-        "easy": 12,
+        "totalSolved": 48,
+        "easy": 24,
         "medium": 0,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "tnguyenngocqa",
-        "totalSolved": 24,
-        "easy": 12,
+        "totalSolved": 48,
+        "easy": 24,
         "medium": 0,
         "hard": 0
       }
@@ -1100,81 +1100,81 @@
       {
         "week_start": "2025-09-15",
         "member": "haiminh731989",
-        "totalSolved": 26,
-        "easy": 9,
-        "medium": 3,
+        "totalSolved": 52,
+        "easy": 19,
+        "medium": 7,
         "hard": 0
       },
       {
         "week_start": "2025-09-22",
         "member": "haiminh731989",
-        "totalSolved": 27,
-        "easy": 9,
-        "medium": 4,
+        "totalSolved": 54,
+        "easy": 19,
+        "medium": 8,
         "hard": 0
       },
       {
         "week_start": "2025-09-29",
         "member": "haiminh731989",
-        "totalSolved": 34,
-        "easy": 11,
-        "medium": 5,
+        "totalSolved": 68,
+        "easy": 23,
+        "medium": 11,
         "hard": 0
       },
       {
         "week_start": "2025-10-06",
         "member": "haiminh731989",
-        "totalSolved": 38,
-        "easy": 12,
-        "medium": 7,
+        "totalSolved": 76,
+        "easy": 24,
+        "medium": 14,
         "hard": 0
       },
       {
         "week_start": "2025-10-13",
         "member": "haiminh731989",
-        "totalSolved": 42,
-        "easy": 12,
-        "medium": 9,
+        "totalSolved": 84,
+        "easy": 24,
+        "medium": 18,
         "hard": 0
       },
       {
         "week_start": "2025-10-20",
         "member": "haiminh731989",
-        "totalSolved": 45,
-        "easy": 13,
-        "medium": 9,
+        "totalSolved": 90,
+        "easy": 26,
+        "medium": 19,
         "hard": 0
       },
       {
         "week_start": "2025-10-27",
         "member": "haiminh731989",
-        "totalSolved": 48,
-        "easy": 14,
-        "medium": 10,
+        "totalSolved": 96,
+        "easy": 28,
+        "medium": 20,
         "hard": 0
       },
       {
         "week_start": "2025-11-03",
         "member": "haiminh731989",
-        "totalSolved": 51,
-        "easy": 15,
-        "medium": 10,
+        "totalSolved": 102,
+        "easy": 30,
+        "medium": 21,
         "hard": 0
       },
       {
         "week_start": "2025-11-10",
         "member": "haiminh731989",
-        "totalSolved": 54,
-        "easy": 16,
-        "medium": 11,
+        "totalSolved": 108,
+        "easy": 32,
+        "medium": 22,
         "hard": 0
       },
       {
         "week_start": "2025-11-17",
         "member": "haiminh731989",
-        "totalSolved": 56,
-        "easy": 16,
-        "medium": 12,
+        "totalSolved": 112,
+        "easy": 32,
+        "medium": 24,
         "hard": 0
       }
     ],
@@ -1182,66 +1182,66 @@
       {
         "week_start": "2025-09-29",
         "member": "honganhle0a",
-        "totalSolved": 92,
-        "easy": 28,
-        "medium": 16,
-        "hard": 1
+        "totalSolved": 184,
+        "easy": 57,
+        "medium": 32,
+        "hard": 3
       },
       {
         "week_start": "2025-10-06",
         "member": "honganhle0a",
-        "totalSolved": 103,
-        "easy": 31,
-        "medium": 18,
-        "hard": 2
+        "totalSolved": 206,
+        "easy": 62,
+        "medium": 37,
+        "hard": 4
       },
       {
         "week_start": "2025-10-13",
         "member": "honganhle0a",
-        "totalSolved": 106,
-        "easy": 31,
-        "medium": 19,
-        "hard": 2
+        "totalSolved": 212,
+        "easy": 63,
+        "medium": 39,
+        "hard": 4
       },
       {
         "week_start": "2025-10-20",
         "member": "honganhle0a",
-        "totalSolved": 114,
-        "easy": 33,
-        "medium": 22,
-        "hard": 2
+        "totalSolved": 228,
+        "easy": 66,
+        "medium": 44,
+        "hard": 4
       },
       {
         "week_start": "2025-10-27",
         "member": "honganhle0a",
-        "totalSolved": 119,
-        "easy": 34,
-        "medium": 23,
-        "hard": 2
+        "totalSolved": 238,
+        "easy": 69,
+        "medium": 46,
+        "hard": 4
       },
       {
         "week_start": "2025-11-03",
         "member": "honganhle0a",
-        "totalSolved": 136,
-        "easy": 39,
-        "medium": 26,
-        "hard": 2
+        "totalSolved": 272,
+        "easy": 79,
+        "medium": 53,
+        "hard": 4
       },
       {
         "week_start": "2025-11-10",
         "member": "honganhle0a",
-        "totalSolved": 154,
-        "easy": 46,
-        "medium": 28,
-        "hard": 2
+        "totalSolved": 308,
+        "easy": 93,
+        "medium": 57,
+        "hard": 4
       },
       {
         "week_start": "2025-11-17",
         "member": "honganhle0a",
-        "totalSolved": 170,
-        "easy": 51,
-        "medium": 32,
-        "hard": 2
+        "totalSolved": 340,
+        "easy": 102,
+        "medium": 64,
+        "hard": 4
       }
     ]
   }
