@@ -38,7 +38,7 @@ export function useAnalytics() {
       queryFn: () => analyticsApi.getAcceptedTrend(days),
       refetchInterval: 300000,
       staleTime: 0, // Always consider data stale
-      cacheTime: 0, // Don't cache
+      gcTime: 0, // Don't cache (formerly cacheTime in React Query v4)
     });
 
   // Get week-over-week changes
