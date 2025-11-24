@@ -75,9 +75,10 @@ def fetch_user_data(username: str) -> Optional[Dict[str, Any]]:
         for stat in ac_submissions:
             difficulty = stat.get("difficulty", "").lower()
             count = stat.get("count", 0)
-            total_solved += count
 
-            if difficulty == "easy":
+            if difficulty == "all":
+                total_solved = count  # Use the "All" count as total
+            elif difficulty == "easy":
                 easy = count
             elif difficulty == "medium":
                 medium = count
