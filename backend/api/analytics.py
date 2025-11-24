@@ -77,11 +77,10 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
             )
 
             if not exists:
-                # Extract difficulty counts
-                submissions = data.get("submissions", [])
-                easy = next((s["count"] for s in submissions if s.get("difficulty") == "Easy"), 0)
-                medium = next((s["count"] for s in submissions if s.get("difficulty") == "Medium"), 0)
-                hard = next((s["count"] for s in submissions if s.get("difficulty") == "Hard"), 0)
+                # Extract difficulty counts directly from data (returned by fetch_user_data)
+                easy = data.get("easy", 0)
+                medium = data.get("medium", 0)
+                hard = data.get("hard", 0)
 
                 snapshot = {
                     "week_start": week_start_str,
@@ -139,9 +138,10 @@ async def get_trends(
                 trends[member_username].append({
                     "week": week_start,
                     "total": snapshot.get("totalSolved", 0),
-                    "easy": snapshot.get("easy", 0),
-                    "medium": snapshot.get("medium", 0),
-                    "hard": snapshot.get("hard", 0)
+                    # Handle both old (capitalized) and new (lowercase) keys
+                    "easy": snapshot.get("easy", snapshot.get("Easy", 0)),
+                    "medium": snapshot.get("medium", snapshot.get("Medium", 0)),
+                    "hard": snapshot.get("hard", snapshot.get("Hard", 0))
                 })
 
     # Get unique weeks
