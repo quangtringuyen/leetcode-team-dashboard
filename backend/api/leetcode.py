@@ -83,8 +83,8 @@ async def get_daily_challenge_completions(current_user: dict = Depends(get_curre
             logger.error(f"Error checking completion for {member['username']}: {e}")
             return None
     
-    # Check all members concurrently
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Check all members concurrently (reduced workers to avoid rate limiting)
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = [executor.submit(check_member_completion, m) for m in members]
         for future in as_completed(futures):
             try:
@@ -170,8 +170,8 @@ async def get_daily_challenge_history(
                 logger.error(f"Error checking completion for {member['username']}: {e}")
                 return None
 
-        # Check all members concurrently
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        # Check all members concurrently (reduced workers to avoid rate limiting)
+        with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [executor.submit(check_member_completion, m) for m in members]
             for future in as_completed(futures):
                 try:
@@ -218,8 +218,8 @@ async def get_recent_submissions(
     
     all_submissions = []
     
-    # Fetch submissions concurrently
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Fetch submissions concurrently (reduced workers to avoid rate limiting)
+    with ThreadPoolExecutor(max_workers=3) as executor:
         future_to_user = {
             executor.submit(fetch_recent_submissions, m["username"], 20): m 
             for m in members
