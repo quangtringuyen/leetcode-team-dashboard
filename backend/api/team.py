@@ -88,8 +88,8 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
                 hard=0
             )
 
-    # Fetch all member data in parallel
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Fetch all member data in parallel (reduced workers to avoid rate limiting)
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = [executor.submit(fetch_member_data, member) for member in user_members]
 
         for future in as_completed(futures):
@@ -191,16 +191,25 @@ async def get_team_stats(current_user: dict = Depends(get_current_user)):
             }
         }
 
-    # Fetch data for all members
+    # Fetch data for all members - PARALLELIZED
     members_data = []
-    for member in user_members:
-        data = fetch_user_data(member["username"])
-        if data:
-            members_data.append(data)
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(fetch_user_data, member["username"]) for member in user_members]
+
+        for future in as_completed(futures):
+            try:
+                data = future.result()
+                if data:
+                    members_data.append(data)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching member data: {e}")
 
     total_solved = sum(m.get("totalSolved", 0) for m in members_data)
     avg_solved = total_solved // len(members_data) if members_data else 0
-    
+
     # Aggregate difficulty breakdown
     total_easy = sum(m.get("easy", 0) for m in members_data)
     total_medium = sum(m.get("medium", 0) for m in members_data)
