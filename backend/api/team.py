@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -45,31 +46,60 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
     all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
 
-    # Fetch fresh data for each member
+    # Fetch fresh data for each member - PARALLELIZED
     result = []
-    for member in user_members:
-        leetcode_data = fetch_user_data(member["username"])
-        if leetcode_data:
-            result.append(TeamMemberResponse(
-                username=member["username"],
-                name=member.get("name", member["username"]),
-                avatar=leetcode_data.get("avatar"),
-                totalSolved=leetcode_data.get("totalSolved", 0),
-                ranking=leetcode_data.get("ranking"),
-                easy=leetcode_data.get("easy", 0),
-                medium=leetcode_data.get("medium", 0),
-                hard=leetcode_data.get("hard", 0)
-            ))
-        else:
-            # If fetch fails, return basic data
-            result.append(TeamMemberResponse(
+
+    def fetch_member_data(member):
+        """Helper function to fetch data for a single member"""
+        try:
+            leetcode_data = fetch_user_data(member["username"])
+            if leetcode_data:
+                return TeamMemberResponse(
+                    username=member["username"],
+                    name=member.get("name", member["username"]),
+                    avatar=leetcode_data.get("avatar"),
+                    totalSolved=leetcode_data.get("totalSolved", 0),
+                    ranking=leetcode_data.get("ranking"),
+                    easy=leetcode_data.get("easy", 0),
+                    medium=leetcode_data.get("medium", 0),
+                    hard=leetcode_data.get("hard", 0)
+                )
+            else:
+                # If fetch fails, return basic data
+                return TeamMemberResponse(
+                    username=member["username"],
+                    name=member.get("name", member["username"]),
+                    totalSolved=0,
+                    easy=0,
+                    medium=0,
+                    hard=0
+                )
+        except Exception as e:
+            # If error, return basic data
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching data for {member['username']}: {e}")
+            return TeamMemberResponse(
                 username=member["username"],
                 name=member.get("name", member["username"]),
                 totalSolved=0,
                 easy=0,
                 medium=0,
                 hard=0
-            ))
+            )
+
+    # Fetch all member data in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(fetch_member_data, member) for member in user_members]
+
+        for future in as_completed(futures):
+            try:
+                member_response = future.result()
+                result.append(member_response)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error processing member data: {e}")
 
     # Sort by totalSolved descending
     result.sort(key=lambda x: x.totalSolved, reverse=True)
