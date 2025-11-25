@@ -46,12 +46,18 @@ def fetch_user_data(username: str) -> Optional[Dict[str, Any]]:
     """
 
     try:
+        import time
+        start_time = time.time()
+
         response = requests.post(
             LEETCODE_API_URL,
             json={"query": query, "variables": {"username": username}},
             headers={"Content-Type": "application/json"},
-            timeout=10
+            timeout=30  # Increased timeout to 30 seconds
         )
+
+        elapsed = time.time() - start_time
+        logger.info(f"fetch_user_data({username}): {elapsed:.2f}s - Status: {response.status_code}")
 
         if response.status_code != 200:
             logger.error(f"LeetCode API returned status {response.status_code}")

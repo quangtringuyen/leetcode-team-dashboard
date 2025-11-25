@@ -64,8 +64,8 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
     # Record snapshot for each member - PARALLELIZED
     snapshots_added = 0
 
-    # Fetch all member data in parallel
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Fetch all member data in parallel (reduced workers to avoid rate limiting)
+    with ThreadPoolExecutor(max_workers=3) as executor:
         # Submit all fetch tasks
         future_to_member = {
             executor.submit(fetch_user_data, member["username"]): member
@@ -527,8 +527,8 @@ async def get_accepted_trend(
 
         return member_results
 
-    # Fetch all member submissions in parallel
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Fetch all member submissions in parallel (reduced workers to avoid rate limiting)
+    with ThreadPoolExecutor(max_workers=3) as executor:
         # Submit all tasks
         futures = [executor.submit(process_member_submissions, member) for member in user_members]
 
