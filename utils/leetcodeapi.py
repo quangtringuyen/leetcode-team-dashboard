@@ -109,7 +109,14 @@ def fetch_user_data(username):
             data = response_data["data"]["matchedUser"]
             profile = data["profile"]
             submissions = data["submitStatsGlobal"]["acSubmissionNum"]
-            total_solved = sum([s["count"] for s in submissions])
+
+            # FIXED: Only use "All" count instead of summing all entries (which doubles the value)
+            total_solved = 0
+            for s in submissions:
+                if s.get("difficulty", "").lower() == "all":
+                    total_solved = s["count"]
+                    break
+
             total_attempted = sum([s.get("submissions", 0) for s in submissions])
 
             # Calculate acceptance rate

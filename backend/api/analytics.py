@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from datetime import date, datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
 from backend.core.config import settings
@@ -60,39 +61,59 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
         history[username] = {}
     user_history = history[username]
 
-    # Record snapshot for each member
+    # Record snapshot for each member - PARALLELIZED
     snapshots_added = 0
-    for member in user_members:
-        member_username = member["username"]
-        data = fetch_user_data(member_username)
-        if data:
-            # Initialize member's history if not exists
-            if member_username not in user_history:
-                user_history[member_username] = []
 
-            # Check if snapshot already exists for this week/member
-            exists = any(
-                s.get("week_start") == week_start_str
-                for s in user_history[member_username]
-            )
+    # Fetch all member data in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all fetch tasks
+        future_to_member = {
+            executor.submit(fetch_user_data, member["username"]): member
+            for member in user_members
+        }
 
-            if not exists:
-                # Extract difficulty counts directly from data (returned by fetch_user_data)
-                easy = data.get("easy", 0)
-                medium = data.get("medium", 0)
-                hard = data.get("hard", 0)
+        # Process results as they complete
+        for future in as_completed(future_to_member):
+            member = future_to_member[future]
+            member_username = member["username"]
 
-                snapshot = {
-                    "week_start": week_start_str,
-                    "member": member_username,
-                    "totalSolved": data.get("totalSolved", 0),
-                    "easy": int(easy),
-                    "medium": int(medium),
-                    "hard": int(hard),
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-                user_history[member_username].append(snapshot)
-                snapshots_added += 1
+            try:
+                data = future.result()
+
+                if data:
+                    # Initialize member's history if not exists
+                    if member_username not in user_history:
+                        user_history[member_username] = []
+
+                    # Check if snapshot already exists for this week/member
+                    exists = any(
+                        s.get("week_start") == week_start_str
+                        for s in user_history[member_username]
+                    )
+
+                    if not exists:
+                        # Extract difficulty counts directly from data (returned by fetch_user_data)
+                        easy = data.get("easy", 0)
+                        medium = data.get("medium", 0)
+                        hard = data.get("hard", 0)
+
+                        snapshot = {
+                            "week_start": week_start_str,
+                            "member": member_username,
+                            "totalSolved": data.get("totalSolved", 0),
+                            "easy": int(easy),
+                            "medium": int(medium),
+                            "hard": int(hard),
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        user_history[member_username].append(snapshot)
+                        snapshots_added += 1
+
+            except Exception as e:
+                # Log error but continue with other members
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching data for {member_username}: {e}")
 
     # Save history
     history[username] = user_history
@@ -466,10 +487,12 @@ async def get_accepted_trend(
 
     result = []
 
-    # Fetch submissions for each member
-    for member in user_members:
+    # Fetch submissions for each member - PARALLELIZED
+    def process_member_submissions(member):
+        """Helper function to process a single member's submissions"""
         member_username = member["username"]
         member_name = member.get("name", member_username)
+        member_results = []
 
         try:
             # Fetch recent submissions (increased limit to cover more days)
@@ -491,7 +514,7 @@ async def get_accepted_trend(
 
             # Convert to result format
             for submission_date, problems in daily_counts.items():
-                result.append({
+                member_results.append({
                     "date": submission_date.isoformat(),
                     "member": member_name,
                     "username": member_username,
@@ -501,7 +524,21 @@ async def get_accepted_trend(
         except Exception as e:
             # Log error but continue with other members
             logger.error(f"Error fetching submissions for {member_username}: {e}")
-            continue
+
+        return member_results
+
+    # Fetch all member submissions in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all tasks
+        futures = [executor.submit(process_member_submissions, member) for member in user_members]
+
+        # Collect results as they complete
+        for future in as_completed(futures):
+            try:
+                member_results = future.result()
+                result.extend(member_results)
+            except Exception as e:
+                logger.error(f"Error processing member results: {e}")
 
     # Sort by date
     result.sort(key=lambda x: x["date"])
