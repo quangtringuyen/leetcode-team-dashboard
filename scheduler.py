@@ -101,7 +101,8 @@ class DataScheduler:
 
     def run_scheduler(self):
         """Run the scheduler loop."""
-        # Schedule the job for every Monday at midnight
+        # Schedule the job for every Monday at midnight (00:00) in system's local timezone
+        # If system is in Vietnam time (UTC+7), this will run at Mon 00:00 Vietnam time
         schedule.every().monday.at("00:00").do(self.fetch_and_record_all_teams)
 
         logger.info("Scheduler started. Waiting for scheduled tasks...")

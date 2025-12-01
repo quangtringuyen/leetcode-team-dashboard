@@ -8,8 +8,8 @@ from typing import Any, Callable, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import inspect
 
-# Thread pool for running sync functions (reduced workers to avoid rate limiting)
-_executor = ThreadPoolExecutor(max_workers=3)
+# Thread pool for running sync functions
+_executor = ThreadPoolExecutor(max_workers=10)
 
 def async_lru_cache(maxsize: int = 128, ttl: int = 300):
     """Wrap a sync or async function with an LRU cache that expires after *ttl* seconds.

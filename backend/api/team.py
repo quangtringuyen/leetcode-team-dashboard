@@ -88,8 +88,8 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
                 hard=0
             )
 
-    # Fetch all member data in parallel (reduced workers to avoid rate limiting)
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    # Fetch all member data in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(fetch_member_data, member) for member in user_members]
 
         for future in as_completed(futures):
