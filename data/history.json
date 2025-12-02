@@ -456,12 +456,12 @@
       },
       {
         "week_start": "2025-12-01",
-        "member": "qvanphong",
+        "username": "qvanphong",
+        "name": "qvanphong",
         "totalSolved": 45,
         "easy": 25,
         "medium": 19,
-        "hard": 1,
-        "timestamp": "2025-12-01T00:00:24.068685"
+        "hard": 1
       }
     ],
     "PandaReveluv": [
