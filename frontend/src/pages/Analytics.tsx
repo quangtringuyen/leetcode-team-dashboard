@@ -6,6 +6,9 @@ import AcceptedTrendChart from '@/components/charts/AcceptedTrendChart';
 import DifficultyPieChart from '@/components/charts/DifficultyPieChart';
 import TeamPerformanceChart from '@/components/charts/TeamPerformanceChart';
 import WeekOverWeekTable from '@/components/analytics/WeekOverWeekTable';
+import DifficultyDistribution from '@/components/analytics/DifficultyDistribution';
+import TeamTagHeatmap from '@/components/analytics/TeamTagHeatmap';
+import MemberTagCoverage from '@/components/analytics/MemberTagCoverage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, Camera } from 'lucide-react';
@@ -206,6 +209,15 @@ export default function Analytics() {
           isLoading={isStatsLoading}
         />
       </div>
+
+      {/* Difficulty Trends & Tag Analysis */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <DifficultyDistribution />
+        <TeamTagHeatmap />
+      </div>
+
+      {/* Member Tag Coverage - Full Width */}
+      <MemberTagCoverage />
     </div>
   );
 }
