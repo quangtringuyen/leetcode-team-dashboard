@@ -290,3 +290,117 @@ def fetch_daily_challenge_by_date(target_date: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error fetching daily challenge for {target_date}: {e}")
         return None
+
+
+def fetch_submissions_with_tags(username: str, limit: int = 100) -> List[Dict[str, Any]]:
+    """
+    Fetch recent accepted submissions with problem tags.
+    
+    Args:
+        username: LeetCode username
+        limit: Number of submissions to fetch
+        
+    Returns:
+        List of submissions with tags
+    """
+    query = """
+    query getRecentSubmissions($username: String!, $limit: Int!) {
+        recentAcSubmissionList(username: $username, limit: $limit) {
+            title
+            titleSlug
+            timestamp
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            LEETCODE_API_URL,
+            json={"query": query, "variables": {"username": username, "limit": limit}},
+            headers={"Content-Type": "application/json"},
+            timeout=15
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"LeetCode API returned status {response.status_code}")
+            return []
+        
+        data = response.json()
+        submissions = data.get("data", {}).get("recentAcSubmissionList", [])
+        
+        # For each submission, fetch problem details including tags
+        submissions_with_tags = []
+        for sub in submissions:
+            title_slug = sub.get("titleSlug")
+            if title_slug:
+                # Fetch problem details (tags are available via problem query)
+                problem_data = _fetch_problem_details(title_slug)
+                if problem_data:
+                    submissions_with_tags.append({
+                        "title": sub.get("title"),
+                        "titleSlug": title_slug,
+                        "timestamp": sub.get("timestamp"),
+                        "tags": problem_data.get("tags", []),
+                        "difficulty": problem_data.get("difficulty")
+                    })
+        
+        return submissions_with_tags
+        
+    except Exception as e:
+        logger.error(f"Error fetching submissions with tags for {username}: {e}")
+        return []
+
+
+def _fetch_problem_details(title_slug: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch problem details including tags (internal helper).
+    
+    Args:
+        title_slug: Problem title slug
+        
+    Returns:
+        Dict with problem details or None
+    """
+    query = """
+    query questionData($titleSlug: String!) {
+        question(titleSlug: $titleSlug) {
+            questionId
+            title
+            difficulty
+            topicTags {
+                name
+                slug
+            }
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            LEETCODE_API_URL,
+            json={"query": query, "variables": {"titleSlug": title_slug}},
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            return None
+        
+        data = response.json()
+        question = data.get("data", {}).get("question")
+        
+        if not question:
+            return None
+        
+        tags = [tag.get("name") for tag in question.get("topicTags", [])]
+        
+        return {
+            "questionId": question.get("questionId"),
+            "title": question.get("title"),
+            "difficulty": question.get("difficulty"),
+            "tags": tags
+        }
+        
+    except Exception as e:
+        logger.warning(f"Error fetching problem details for {title_slug}: {e}")
+        return None
