@@ -1,15 +1,28 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, Code2, Menu } from 'lucide-react';
+import { LogOut, Code2, Menu, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   const navigation = [
     { name: 'Dashboard', path: '/' },
@@ -33,8 +46,8 @@ export default function Header() {
               key={item.path}
               to={item.path}
               className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === item.path
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
+                ? 'text-foreground'
+                : 'text-muted-foreground'
                 }`}
             >
               {item.name}
@@ -44,6 +57,21 @@ export default function Header() {
 
         {/* User menu */}
         <div className="flex items-center gap-4">
+          {/* Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDarkMode(!darkMode)}
+            className="gap-2"
+            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {darkMode ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
+
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
@@ -72,8 +100,8 @@ export default function Header() {
                       to={item.path}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent ${location.pathname === item.path
-                          ? 'bg-accent text-accent-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                       {item.name}
