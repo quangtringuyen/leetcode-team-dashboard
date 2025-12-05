@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     MEMBERS_FILE: str = "members.json"
     HISTORY_FILE: str = "history.json"
     USERS_FILE: str = "users.json"
+    LAST_STATE_FILE: str = "last_state.json"
 
     # Notifications
     DISCORD_WEBHOOK_URL: str = os.getenv("DISCORD_WEBHOOK_URL", "")

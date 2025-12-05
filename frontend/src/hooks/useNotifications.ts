@@ -63,6 +63,20 @@ export function useSendDailyDigest() {
     });
 }
 
+export function useCheckSubmissions() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async () => {
+            const response = await api.post('/notifications/check-submissions');
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        },
+    });
+}
+
 export function useClearNotifications() {
     const queryClient = useQueryClient();
 
