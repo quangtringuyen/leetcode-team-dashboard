@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 router = APIRouter()
 
 
-@router.get("/notifications")
+@router.get("")
 async def get_notifications(
     limit: int = 50,
     current_user: dict = Depends(get_current_user)
@@ -40,7 +40,7 @@ async def get_notifications(
     }
 
 
-@router.post("/notifications/check-streaks")
+@router.post("/check-streaks")
 async def check_streak_notifications(current_user: dict = Depends(get_current_user)):
     """
     Check for streak-related notifications and create them.
@@ -76,7 +76,7 @@ async def check_streak_notifications(current_user: dict = Depends(get_current_us
     }
 
 
-@router.post("/notifications/check-submissions")
+@router.post("/check-submissions")
 async def check_new_submissions(current_user: dict = Depends(get_current_user)):
     """
     Check for new problem submissions and create notifications.
@@ -158,7 +158,7 @@ async def check_new_submissions(current_user: dict = Depends(get_current_user)):
     }
 
 
-@router.post("/notifications/send-digest")
+@router.post("/send-digest")
 async def send_daily_digest(current_user: dict = Depends(get_current_user)):
     """
     Generate and send daily digest notification.
@@ -207,7 +207,7 @@ async def send_daily_digest(current_user: dict = Depends(get_current_user)):
     }
 
 
-@router.delete("/notifications")
+@router.delete("")
 async def clear_notifications(current_user: dict = Depends(get_current_user)):
     """
     Clear all notifications.
@@ -217,7 +217,7 @@ async def clear_notifications(current_user: dict = Depends(get_current_user)):
     return {"message": "All notifications cleared"}
 
 
-@router.get("/notifications/settings")
+@router.get("/settings")
 async def get_notification_settings(current_user: dict = Depends(get_current_user)):
     """
     Get notification settings for the current user.
@@ -235,7 +235,7 @@ async def get_notification_settings(current_user: dict = Depends(get_current_use
     }
 
 
-@router.put("/notifications/settings")
+@router.put("/settings")
 async def update_notification_settings(
     settings_data: Dict[str, Any],
     current_user: dict = Depends(get_current_user)
