@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, AlertTriangle, Award, Calendar, X } from 'lucide-react';
-import { useNotifications, useClearNotifications } from '@/hooks/useNotifications';
+import { Bell, AlertTriangle, Award, Calendar, X, RefreshCw } from 'lucide-react';
+import { useNotifications, useClearNotifications, useCheckSubmissions } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function NotificationCenter() {
     const { data, isLoading } = useNotifications(20);
     const clearMutation = useClearNotifications();
+    const checkSubmissionsMutation = useCheckSubmissions();
 
     if (isLoading) {
         return (
@@ -41,6 +42,8 @@ export default function NotificationCenter() {
                 return <Calendar className="h-4 w-4 text-blue-500" />;
             case 'daily_digest':
                 return <Bell className="h-4 w-4 text-purple-500" />;
+            case 'problem_solved':
+                return <Award className="h-4 w-4 text-blue-500" />;
             default:
                 return <Bell className="h-4 w-4 text-gray-500" />;
         }
@@ -70,17 +73,31 @@ export default function NotificationCenter() {
                             </span>
                         )}
                     </div>
-                    {notifications.length > 0 && (
+
+                    <div className="flex items-center gap-2">
+                        {/* Check Updates Button */}
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => clearMutation.mutate()}
-                            disabled={clearMutation.isPending}
+                            onClick={() => checkSubmissionsMutation.mutate()}
+                            disabled={checkSubmissionsMutation.isPending}
+                            title="Check for new submissions"
                         >
-                            <X className="h-4 w-4 mr-1" />
-                            Clear All
+                            <RefreshCw className={`h-4 w-4 ${checkSubmissionsMutation.isPending ? 'animate-spin' : ''}`} />
                         </Button>
-                    )}
+
+                        {notifications.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => clearMutation.mutate()}
+                                disabled={clearMutation.isPending}
+                            >
+                                <X className="h-4 w-4 mr-1" />
+                                Clear All
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>

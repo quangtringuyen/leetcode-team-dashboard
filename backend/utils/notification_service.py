@@ -79,6 +79,35 @@ class NotificationService:
             "action": "Start with an Easy problem to warm up",
             "created_at": datetime.utcnow().isoformat()
         }
+
+    def create_problem_solved_notification(
+        self,
+        member: str,
+        member_name: str,
+        count: int,
+        difficulty_breakdown: Dict[str, int]
+    ) -> Dict[str, Any]:
+        """Create notification for new problems solved"""
+        # Determine message based on difficulty
+        details = []
+        if difficulty_breakdown.get("easy"):
+            details.append(f"{difficulty_breakdown['easy']} Easy")
+        if difficulty_breakdown.get("medium"):
+            details.append(f"{difficulty_breakdown['medium']} Medium")
+        if difficulty_breakdown.get("hard"):
+            details.append(f"{difficulty_breakdown['hard']} Hard")
+        
+        detail_str = ", ".join(details)
+        
+        return {
+            "type": "problem_solved",
+            "member": member,
+            "member_name": member_name,
+            "title": f"🚀 {member_name} solved {count} new problem{'s' if count > 1 else ''}!",
+            "message": f"{member_name} just solved {count} problem{'s' if count > 1 else ''} ({detail_str}). Keep it up!",
+            "priority": "low",
+            "created_at": datetime.utcnow().isoformat()
+        }
     
     def create_daily_digest(
         self,
@@ -262,4 +291,54 @@ def check_and_notify_milestones(
         notification_service.send_notification(notification, channels=["in_app", "discord"])
         notifications.append(notification)
     
+    return notifications
+
+
+def check_and_notify_new_submissions(
+    current_data: Dict[str, int],
+    previous_data: Dict[str, int],
+    member: str,
+    member_name: str
+) -> List[Dict[str, Any]]:
+    """
+    Check for new submissions and create notifications.
+    
+    Args:
+        current_data: Current problem counts
+        previous_data: Previous problem counts
+        member: Member username
+        member_name: Member display name
+        
+    Returns:
+        List of created notifications
+    """
+    notifications = []
+    
+    current_total = current_data.get("totalSolved", 0)
+    previous_total = previous_data.get("totalSolved", 0)
+    
+    diff = current_total - previous_total
+    
+    if diff > 0:
+        # Calculate difficulty breakdown of new problems
+        easy_diff = current_data.get("easy", 0) - previous_data.get("easy", 0)
+        medium_diff = current_data.get("medium", 0) - previous_data.get("medium", 0)
+        hard_diff = current_data.get("hard", 0) - previous_data.get("hard", 0)
+        
+        difficulty_breakdown = {
+            "easy": max(0, easy_diff),
+            "medium": max(0, medium_diff),
+            "hard": max(0, hard_diff)
+        }
+        
+        notification = notification_service.create_problem_solved_notification(
+            member=member,
+            member_name=member_name,
+            count=diff,
+            difficulty_breakdown=difficulty_breakdown
+        )
+        # Send to Discord and In-App
+        notification_service.send_notification(notification, channels=["in_app", "discord"])
+        notifications.append(notification)
+        
     return notifications

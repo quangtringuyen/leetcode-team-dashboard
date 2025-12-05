@@ -5,14 +5,17 @@ Notifications API endpoints
 from fastapi import APIRouter, Depends
 from typing import List, Dict, Any
 from backend.core.security import get_current_user
-from backend.core.storage import read_json
+from backend.core.storage import read_json, write_json
 from backend.core.config import settings
 from backend.utils.notification_service import (
     notification_service,
     check_and_notify_streaks,
-    check_and_notify_milestones
+    check_and_notify_milestones,
+    check_and_notify_new_submissions
 )
 from backend.utils.streak_tracker import get_team_streaks
+from backend.utils.leetcodeapi import fetch_user_data
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 router = APIRouter()
 
@@ -70,6 +73,88 @@ async def check_streak_notifications(current_user: dict = Depends(get_current_us
         "notifications": notifications,
         "count": len(notifications),
         "message": f"Created {len(notifications)} streak notifications"
+    }
+
+
+@router.post("/notifications/check-submissions")
+async def check_new_submissions(current_user: dict = Depends(get_current_user)):
+    """
+    Check for new problem submissions and create notifications.
+    Compares current data with last checked state.
+    """
+    username = current_user["username"]
+    
+    # Load team members
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    
+    if not user_members:
+        return {"notifications": [], "count": 0}
+    
+    # Load last state
+    last_state = read_json(settings.LAST_STATE_FILE, default={})
+    user_last_state = last_state.get(username, {})
+    
+    notifications = []
+    new_state = {}
+    
+    # Fetch current data in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_member = {
+            executor.submit(fetch_user_data, member["username"]): member
+            for member in user_members
+        }
+        
+        for future in as_completed(future_to_member):
+            member = future_to_member[future]
+            member_username = member["username"]
+            member_name = member.get("name", member_username)
+            
+            try:
+                current_data = future.result()
+                if not current_data:
+                    continue
+                
+                # Save to new state
+                new_state[member_username] = current_data
+                
+                # Compare with previous state
+                if member_username in user_last_state:
+                    previous_data = user_last_state[member_username]
+                    
+                    # Check for new submissions
+                    new_notifs = check_and_notify_new_submissions(
+                        current_data,
+                        previous_data,
+                        member_username,
+                        member_name
+                    )
+                    notifications.extend(new_notifs)
+                    
+                    # Check for milestones
+                    milestone_notifs = check_and_notify_milestones(
+                        current_data,
+                        previous_data,
+                        member_username,
+                        member_name
+                    )
+                    notifications.extend(milestone_notifs)
+            
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error checking submissions for {member_username}: {e}")
+    
+    # Update last state
+    # Merge with existing state to preserve members who weren't fetched successfully
+    user_last_state.update(new_state)
+    last_state[username] = user_last_state
+    write_json(settings.LAST_STATE_FILE, last_state)
+    
+    return {
+        "notifications": notifications,
+        "count": len(notifications),
+        "message": f"Created {len(notifications)} notifications"
     }
 
 
