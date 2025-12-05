@@ -7,6 +7,8 @@ import Leaderboard from '@/components/dashboard/Leaderboard';
 import DailyChallengeCard from '@/components/dashboard/DailyChallengeCard';
 import RecentSubmissionsList from '@/components/dashboard/RecentSubmissionsList';
 import DailyChallengeCompletions from '@/components/dashboard/DailyChallengeCompletions';
+import StreakLeaderboard from '@/components/dashboard/StreakLeaderboard';
+import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
@@ -100,8 +102,10 @@ export default function Dashboard() {
           <Leaderboard members={members} isLoading={isMembersLoading} />
         </div>
 
-        {/* Right Column: Daily Challenge & Recent Activity */}
-        <div className="space-y-8">
+        {/* Right Column: Streaks, Daily Challenge & Recent Activity */}
+        <div className="space-y-6">
+          <StreakAtRiskAlert />
+          <StreakLeaderboard />
           <DailyChallengeCard />
           <RecentSubmissionsList />
         </div>
