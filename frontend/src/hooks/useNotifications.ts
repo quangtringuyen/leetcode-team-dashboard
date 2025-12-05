@@ -28,7 +28,7 @@ export function useNotifications(limit: number = 50) {
     return useQuery<{ notifications: Notification[]; count: number; unread_count: number }>({
         queryKey: ['notifications', limit],
         queryFn: async () => {
-            const response = await api.get(`/notifications?limit=${limit}`);
+            const response = await api.get(`/api/notifications?limit=${limit}`);
             return response.data;
         },
         refetchInterval: 60000, // Refetch every minute
@@ -40,7 +40,7 @@ export function useCheckStreakNotifications() {
 
     return useMutation({
         mutationFn: async () => {
-            const response = await api.post('/notifications/check-streaks');
+            const response = await api.post('/api/notifications/check-streaks');
             return response.data;
         },
         onSuccess: () => {
@@ -54,7 +54,7 @@ export function useSendDailyDigest() {
 
     return useMutation({
         mutationFn: async () => {
-            const response = await api.post('/notifications/send-digest');
+            const response = await api.post('/api/notifications/send-digest');
             return response.data;
         },
         onSuccess: () => {
@@ -68,7 +68,7 @@ export function useCheckSubmissions() {
 
     return useMutation({
         mutationFn: async () => {
-            const response = await api.post('/notifications/check-submissions');
+            const response = await api.post('/api/notifications/check-submissions');
             return response.data;
         },
         onSuccess: () => {
@@ -82,7 +82,7 @@ export function useClearNotifications() {
 
     return useMutation({
         mutationFn: async () => {
-            const response = await api.delete('/notifications');
+            const response = await api.delete('/api/notifications');
             return response.data;
         },
         onSuccess: () => {
@@ -95,7 +95,7 @@ export function useNotificationSettings() {
     return useQuery<NotificationSettings>({
         queryKey: ['notification-settings'],
         queryFn: async () => {
-            const response = await api.get('/notifications/settings');
+            const response = await api.get('/api/notifications/settings');
             return response.data;
         },
     });
