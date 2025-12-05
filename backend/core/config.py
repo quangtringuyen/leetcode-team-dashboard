@@ -60,4 +60,7 @@ class Settings(BaseSettings):
     HISTORY_FILE: str = "history.json"
     USERS_FILE: str = "users.json"
 
+    # Notifications
+    DISCORD_WEBHOOK_URL: str = os.getenv("DISCORD_WEBHOOK_URL", "")
+
 settings = Settings()

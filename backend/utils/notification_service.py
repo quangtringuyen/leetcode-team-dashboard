@@ -6,6 +6,7 @@ Sends notifications for streaks, milestones, and inactivity
 from typing import Dict, List, Any, Optional
 from datetime import date, datetime, timedelta
 import logging
+from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -126,10 +127,29 @@ class NotificationService:
             logger.info(f"Would send to Slack: {notification['title']}")
             # TODO: Integrate with Slack webhook
         
-        # Discord integration (placeholder)
-        if "discord" in channels:
-            logger.info(f"Would send to Discord: {notification['title']}")
-            # TODO: Integrate with Discord webhook
+        # Discord integration
+        if "discord" in channels and settings.DISCORD_WEBHOOK_URL:
+            try:
+                import requests
+                from backend.core.config import settings
+                
+                # Format message for Discord
+                discord_payload = {
+                    "username": "LeetCode Dashboard",
+                    "avatar_url": "https://leetcode.com/static/images/LeetCode_logo_rvs.png",
+                    "embeds": [{
+                        "title": notification["title"],
+                        "description": notification["message"],
+                        "color": 16753920 if notification["priority"] == "high" else 5814783,  # Orange or Blue
+                        "footer": {"text": "LeetCode Team Dashboard"},
+                        "timestamp": notification["created_at"]
+                    }]
+                }
+                
+                requests.post(settings.DISCORD_WEBHOOK_URL, json=discord_payload, timeout=5)
+                logger.info(f"Sent Discord notification: {notification['title']}")
+            except Exception as e:
+                logger.error(f"Failed to send Discord notification: {str(e)}")
         
         return True
     
@@ -185,7 +205,7 @@ def check_and_notify_streaks(team_streaks: List[Dict[str, Any]]) -> List[Dict[st
                 current_streak=streak["current_streak"],
                 last_active_date=streak.get("last_active_date", "unknown")
             )
-            notification_service.send_notification(notification, channels=["in_app"])
+            notification_service.send_notification(notification, channels=["in_app", "discord"])
             notifications.append(notification)
     
     return notifications
@@ -225,7 +245,7 @@ def check_and_notify_milestones(
                 milestone_type="total_solved",
                 milestone_value=milestone
             )
-            notification_service.send_notification(notification, channels=["in_app"])
+            notification_service.send_notification(notification, channels=["in_app", "discord"])
             notifications.append(notification)
     
     # Check for first hard problem
@@ -239,7 +259,7 @@ def check_and_notify_milestones(
             milestone_type="first_hard",
             milestone_value=1
         )
-        notification_service.send_notification(notification, channels=["in_app"])
+        notification_service.send_notification(notification, channels=["in_app", "discord"])
         notifications.append(notification)
     
     return notifications
