@@ -10,7 +10,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
 from backend.core.config import settings
-from backend.utils.leetcodeapi import fetch_user_data
+from backend.utils.leetcodeapi import fetch_user_data, fetch_submissions_with_tags
+from backend.utils.streak_tracker import get_team_streaks, get_streak_leaderboard, get_members_at_risk
+from backend.utils.difficulty_analyzer import get_team_difficulty_trends, get_stuck_members
+from backend.utils.tag_analyzer import get_team_tag_analysis, get_team_tag_heatmap, recommend_problems_by_weak_tags
 
 router = APIRouter()
 
@@ -361,7 +364,7 @@ async def get_week_over_week(
     # If we append in order, they are grouped by week.
     # But we want to sort strictly.
     # Let's rely on the fact that we generate them in order.
-    # We just need to sort by rank within each block?
+    # We just need to sort by rank WITHIN each block?
     # Actually, simpler: just sort by current total descending, but that mixes weeks?
     # No, we want to see Week 1 grouped, then Week 2 grouped.
     # Since we append w=0 first, then w=1, the list is implicitly ordered by week descending.
@@ -376,7 +379,7 @@ async def get_week_over_week(
     # Let's re-sort properly.
     # We need a sortable date.
     # Let's add `week_start_iso` to the dict for sorting, then remove it? Or just keep it.
-    # Or just sort by `current` descending, and rely on stable sort?
+    # Or just sort by `current` desc, and rely on stable sort?
     # If we sort by `current` desc, we lose the week grouping.
     
     # Correct approach:
@@ -546,3 +549,316 @@ async def get_accepted_trend(
     logger.info(f"Returning {len(result)} daily data points. Date range: {result[0]['date'] if result else 'N/A'} to {result[-1]['date'] if result else 'N/A'}")
 
     return result
+
+
+# ==================== NEW STREAK TRACKING ENDPOINTS ====================
+
+@router.get("/streaks")
+async def get_streaks(current_user: dict = Depends(get_current_user)):
+    """
+    Get streak data for all team members.
+    Returns current streak, longest streak, and streak status for each member.
+    """
+    username = current_user["username"]
+    
+    # Load history
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+    
+    if not user_history_dict:
+        return []
+    
+    # Calculate streaks for all members
+    team_streaks = get_team_streaks(user_history_dict)
+    
+    # Get member names
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    
+    # Add names to streak data
+    for streak in team_streaks:
+        streak["name"] = member_names.get(streak["member"], streak["member"])
+    
+    return team_streaks
+
+
+@router.get("/streaks/leaderboard")
+async def get_streaks_leaderboard(
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get streak leaderboard showing top members by current streak.
+    """
+    username = current_user["username"]
+    
+    # Load history
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+    
+    if not user_history_dict:
+        return []
+    
+    # Calculate streaks
+    team_streaks = get_team_streaks(user_history_dict)
+    leaderboard = get_streak_leaderboard(team_streaks, limit)
+    
+    # Get member names
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    
+    # Add names and rank
+    for i, streak in enumerate(leaderboard):
+        streak["name"] = member_names.get(streak["member"], streak["member"])
+        streak["rank"] = i + 1
+    
+    return leaderboard
+
+
+@router.get("/streaks/at-risk")
+async def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
+    """
+    Get members whose streaks are about to break (haven't solved in 1-2 weeks).
+    """
+    username = current_user["username"]
+    
+    # Load history
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+    
+    if not user_history_dict:
+        return []
+    
+    # Calculate streaks
+    team_streaks = get_team_streaks(user_history_dict)
+    at_risk = get_members_at_risk(team_streaks)
+    
+    # Get member names
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    
+    # Add names
+    for streak in at_risk:
+        streak["name"] = member_names.get(streak["member"], streak["member"])
+    
+    return at_risk
+
+
+# ==================== DIFFICULTY TRENDS ENDPOINTS ====================
+
+@router.get("/difficulty-trends")
+async def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
+    """
+    Get difficulty distribution trends for all team members.
+    Shows progression through Easy → Medium → Hard problems.
+    """
+    username = current_user["username"]
+    
+    # Load history
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+    
+    if not user_history_dict:
+        return []
+    
+    # Calculate difficulty trends for all members
+    team_trends = get_team_difficulty_trends(user_history_dict)
+    
+    # Get member names
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    
+    # Add names to trend data
+    for trend in team_trends:
+        trend["name"] = member_names.get(trend["member"], trend["member"])
+    
+    return team_trends
+
+
+@router.get("/difficulty-trends/stuck")
+async def get_stuck_on_difficulty(current_user: dict = Depends(get_current_user)):
+    """
+    Get members who are stuck on a particular difficulty level.
+    Returns members who need to progress to harder problems.
+    """
+    username = current_user["username"]
+    
+    # Load history
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+    
+    if not user_history_dict:
+        return []
+    
+    # Calculate difficulty trends
+    team_trends = get_team_difficulty_trends(user_history_dict)
+    stuck_members = get_stuck_members(team_trends)
+    
+    # Get member names
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    
+    # Add names
+    for member in stuck_members:
+        member["name"] = member_names.get(member["member"], member["member"])
+    
+    return stuck_members
+
+
+# ==================== PROBLEM TAGS ANALYSIS ENDPOINTS ====================
+
+@router.get("/tags/analysis")
+async def get_tags_analysis(
+    limit: int = 100,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get problem tags analysis for all team members.
+    Shows which topics members are solving and identifies skill gaps.
+    
+    Note: This endpoint fetches recent submissions with tags, which may take longer.
+    """
+    username = current_user["username"]
+    
+    # Get team members
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    
+    if not user_members:
+        return []
+    
+    # Fetch submissions with tags for each member (parallelized)
+    member_submissions = {}
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_member = {
+            executor.submit(fetch_submissions_with_tags, member["username"], limit): member
+            for member in user_members
+        }
+        
+        for future in as_completed(future_to_member):
+            member = future_to_member[future]
+            member_username = member["username"]
+            
+            try:
+                submissions = future.result()
+                member_submissions[member_username] = submissions
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching tags for {member_username}: {e}")
+                member_submissions[member_username] = []
+    
+    # Analyze tags for all members
+    team_analysis = get_team_tag_analysis(member_submissions)
+    
+    # Add member names
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    for analysis in team_analysis:
+        analysis["name"] = member_names.get(analysis["member"], analysis["member"])
+    
+    return team_analysis
+
+
+@router.get("/tags/heatmap")
+async def get_tags_heatmap(
+    limit: int = 100,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get team-wide tag coverage heatmap.
+    Shows collective strengths and weaknesses across all members.
+    """
+    username = current_user["username"]
+    
+    # Get team members
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    
+    if not user_members:
+        return {
+            "team_strengths": [],
+            "team_weaknesses": [],
+            "team_coverage_score": 0,
+            "total_unique_tags": 0,
+            "total_problems": 0
+        }
+    
+    # Fetch submissions with tags for each member
+    member_submissions = {}
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_member = {
+            executor.submit(fetch_submissions_with_tags, member["username"], limit): member
+            for member in user_members
+        }
+        
+        for future in as_completed(future_to_member):
+            member = future_to_member[future]
+            member_username = member["username"]
+            
+            try:
+                submissions = future.result()
+                member_submissions[member_username] = submissions
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching tags for {member_username}: {e}")
+                member_submissions[member_username] = []
+    
+    # Analyze tags
+    team_analysis = get_team_tag_analysis(member_submissions)
+    heatmap = get_team_tag_heatmap(team_analysis)
+    
+    return heatmap
+
+
+@router.get("/tags/recommendations/{member_username}")
+async def get_tag_recommendations(
+    member_username: str,
+    difficulty: str = "medium",
+    limit: int = 100,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get problem recommendations based on a member's weak tags.
+    
+    Args:
+        member_username: Username of the member
+        difficulty: Preferred difficulty (easy/medium/hard)
+        limit: Number of submissions to analyze
+    """
+    username = current_user["username"]
+    
+    # Verify member belongs to user's team
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_usernames = [m["username"] for m in user_members]
+    
+    if member_username not in member_usernames:
+        return {"error": "Member not found in your team"}
+    
+    # Fetch submissions with tags
+    submissions = fetch_submissions_with_tags(member_username, limit)
+    
+    # Analyze tags
+    from backend.utils.tag_analyzer import analyze_problem_tags
+    analysis = analyze_problem_tags(submissions)
+    
+    # Generate recommendations
+    recommendations = recommend_problems_by_weak_tags(
+        analysis.get("weak_tags", []),
+        difficulty
+    )
+    
+    return {
+        "member": member_username,
+        "weak_tags": analysis.get("weak_tags", []),
+        "recommendations": recommendations,
+        "coverage_score": analysis.get("coverage_score", 0)
+    }
