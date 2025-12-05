@@ -33,7 +33,7 @@ export function useDifficultyTrends() {
     return useQuery<DifficultyAnalysis[]>({
         queryKey: ['difficulty-trends'],
         queryFn: async () => {
-            const response = await api.get('/analytics/difficulty-trends');
+            const response = await api.get('/api/analytics/difficulty-trends');
             return response.data;
         },
         staleTime: 5 * 60 * 1000,
@@ -44,7 +44,7 @@ export function useStuckMembers() {
     return useQuery<DifficultyAnalysis[]>({
         queryKey: ['difficulty-trends', 'stuck'],
         queryFn: async () => {
-            const response = await api.get('/analytics/difficulty-trends/stuck');
+            const response = await api.get('/api/analytics/difficulty-trends/stuck');
             return response.data;
         },
         staleTime: 5 * 60 * 1000,

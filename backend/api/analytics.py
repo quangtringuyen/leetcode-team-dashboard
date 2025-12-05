@@ -38,7 +38,16 @@ async def get_history(current_user: dict = Depends(get_current_user)):
     # Flatten all snapshots from all members
     all_snapshots = []
     for member_username, snapshots in user_history_dict.items():
-        all_snapshots.extend(snapshots)
+        if isinstance(snapshots, list):
+            for snapshot in snapshots:
+                try:
+                    # Validate snapshot data
+                    if isinstance(snapshot, dict):
+                        # Ensure required fields exist
+                        if "week_start" in snapshot and "member" in snapshot:
+                            all_snapshots.append(snapshot)
+                except Exception:
+                    continue
 
     return [WeeklySnapshot(**snapshot) for snapshot in all_snapshots]
 
