@@ -14,6 +14,7 @@ from backend.utils.leetcodeapi import fetch_user_data, fetch_submissions_with_ta
 from backend.utils.streak_tracker import get_team_streaks, get_streak_leaderboard, get_members_at_risk
 from backend.utils.difficulty_analyzer import get_team_difficulty_trends, get_stuck_members
 from backend.utils.tag_analyzer import get_team_tag_analysis, get_team_tag_heatmap, recommend_problems_by_weak_tags
+from backend.utils.problem_recommender import get_personalized_recommendations, recommend_by_company
 
 router = APIRouter()
 
@@ -861,4 +862,79 @@ async def get_tag_recommendations(
         "weak_tags": analysis.get("weak_tags", []),
         "recommendations": recommendations,
         "coverage_score": analysis.get("coverage_score", 0)
+    }
+
+
+# ==================== PROBLEM RECOMMENDATIONS ENDPOINTS ====================
+
+@router.get("/recommendations/{member_username}")
+async def get_member_recommendations(
+    member_username: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get personalized problem recommendations for a member.
+    Combines tag analysis and difficulty progression for comprehensive suggestions.
+    """
+    username = current_user["username"]
+    
+    # Verify member belongs to user's team
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    member_usernames = [m["username"] for m in user_members]
+    
+    if member_username not in member_usernames:
+        return {"error": "Member not found in your team"}
+    
+    # Get tag analysis
+    submissions = fetch_submissions_with_tags(member_username, limit=100)
+    from backend.utils.tag_analyzer import analyze_problem_tags
+    tag_analysis = analyze_problem_tags(submissions)
+    
+    # Get difficulty trends
+    history = read_json(settings.HISTORY_FILE, default={})
+    user_history_dict = history.get(username, {})
+    member_history = user_history_dict.get(member_username, [])
+    
+    from backend.utils.difficulty_analyzer import calculate_difficulty_trends
+    difficulty_analysis = calculate_difficulty_trends(member_history)
+    
+    # Combine data for recommendations
+    member_data = {
+        "weak_tags": tag_analysis.get("weak_tags", []),
+        "current_distribution": difficulty_analysis.get("current_distribution", {}),
+        "progression_status": difficulty_analysis.get("progression_status", "")
+    }
+    
+    # Generate recommendations
+    recommendations = get_personalized_recommendations(member_data)
+    
+    return {
+        "member": member_username,
+        **recommendations
+    }
+
+
+@router.get("/recommendations/company/{company}")
+async def get_company_recommendations(
+    company: str,
+    difficulty: str = "all",
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get company-specific problem recommendations.
+    
+    Args:
+        company: Company name (Google, Meta, Amazon, Microsoft)
+        difficulty: Filter by difficulty (easy/medium/hard/all)
+        limit: Number of problems
+    """
+    problems = recommend_by_company(company, difficulty, limit)
+    
+    return {
+        "company": company,
+        "difficulty": difficulty,
+        "problems": problems,
+        "count": len(problems)
     }
