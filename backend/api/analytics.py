@@ -45,6 +45,11 @@ async def get_history(current_user: dict = Depends(get_current_user)):
                     if isinstance(snapshot, dict):
                         # Ensure required fields exist
                         if "week_start" in snapshot and "member" in snapshot:
+                            # Ensure numeric fields are ints
+                            snapshot["totalSolved"] = int(snapshot.get("totalSolved", 0))
+                            snapshot["easy"] = int(snapshot.get("easy", 0))
+                            snapshot["medium"] = int(snapshot.get("medium", 0))
+                            snapshot["hard"] = int(snapshot.get("hard", 0))
                             all_snapshots.append(snapshot)
                 except Exception:
                     continue
