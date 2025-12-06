@@ -157,28 +157,36 @@ class NotificationService:
             # TODO: Integrate with Slack webhook
         
         # Discord integration
-        if "discord" in channels and settings.DISCORD_WEBHOOK_URL:
-            try:
-                import requests
-                from backend.core.config import settings
-                
-                # Format message for Discord
-                discord_payload = {
-                    "username": "LeetCode Dashboard",
-                    "avatar_url": "https://leetcode.com/static/images/LeetCode_logo_rvs.png",
-                    "embeds": [{
-                        "title": notification["title"],
-                        "description": notification["message"],
-                        "color": 16753920 if notification["priority"] == "high" else 5814783,  # Orange or Blue
-                        "footer": {"text": "LeetCode Team Dashboard"},
-                        "timestamp": notification["created_at"]
-                    }]
-                }
-                
-                requests.post(settings.DISCORD_WEBHOOK_URL, json=discord_payload, timeout=5)
-                logger.info(f"Sent Discord notification: {notification['title']}")
-            except Exception as e:
-                logger.error(f"Failed to send Discord notification: {str(e)}")
+        if "discord" in channels:
+            if not settings.DISCORD_WEBHOOK_URL:
+                logger.warning("Discord channel requested but DISCORD_WEBHOOK_URL not set")
+            else:
+                try:
+                    import requests
+                    
+                    # Format message for Discord
+                    discord_payload = {
+                        "username": "LeetCode Dashboard",
+                        "avatar_url": "https://leetcode.com/static/images/LeetCode_logo_rvs.png",
+                        "embeds": [{
+                            "title": notification["title"],
+                            "description": notification["message"],
+                            "color": 16753920 if notification.get("priority") == "high" else 5814783,
+                            "footer": {"text": "LeetCode Team Dashboard"},
+                            "timestamp": notification.get("created_at", datetime.utcnow().isoformat())
+                        }]
+                    }
+                    
+                    logger.info(f"Sending Discord webhook to {settings.DISCORD_WEBHOOK_URL[:10]}...")
+                    response = requests.post(settings.DISCORD_WEBHOOK_URL, json=discord_payload, timeout=10)
+                    
+                    if response.status_code not in [200, 204]:
+                        logger.error(f"Discord API error {response.status_code}: {response.text}")
+                    else:
+                        logger.info(f"Sent Discord notification: {notification['title']}")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to send Discord notification: {str(e)}")
         
         return True
     

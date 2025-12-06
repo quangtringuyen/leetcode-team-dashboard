@@ -1,0 +1,73 @@
+# ===========================================
+# AWS S3 STORAGE CONFIGURATION
+# ===========================================
+# Leave empty to use local file storage instead of S3
+# Uncomment to use S3 storage:
+
+# ===========================================
+# SECURITY (REQUIRED FOR FASTAPI BACKEND)
+# ===========================================
+# JWT token signing key - KEEP THIS SECRET!
+# Generated using: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY=7Sj_WCbTO6YBISwDachdPlijS82L8W6dMcm8MQ4oKbg
+
+# ===========================================
+# FASTAPI APPLICATION SETTINGS
+# ===========================================
+ENVIRONMENT=production
+LOG_LEVEL=info
+
+# ===========================================
+# CORS CONFIGURATION
+# ===========================================
+# CORS Origins (comma-separated list of allowed origins)
+# Production domains with HTTPS (updated with correct subdomain)
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8090,https://quangtringuyen.cloud,http://quangtringuyen.cloud,https://api.quangtringuyen.cloud,http://api.quangtringuyen.cloud,https://leetcode.quangtringuyen.cloud
+
+# JWT Token expiration time in minutes
+# Default: 10080 minutes = 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
+# ===========================================
+# FRONTEND API URL CONFIGURATION
+# ===========================================
+# This is the URL the frontend will use to call the backend API
+# For production deployment with domain:
+VITE_API_URL=https://api.quangtringuyen.cloud
+# For local development, use:
+# VITE_API_URL=http://localhost:8090
+
+# ===========================================
+# SCHEDULER CONFIGURATION
+# ===========================================
+# Run snapshot on startup (true/false)
+RUN_ON_STARTUP=false
+
+# ===========================================
+# LEGACY STREAMLIT CONFIGURATION (for reference)
+# ===========================================
+# These are kept for backward compatibility if needed
+COOKIE_NAME=leetdash_auth
+COOKIE_KEY=leetcode_dashboard_signature_key_2024
+COOKIE_EXPIRY_DAYS=30
+
+ADMIN_EMAIL=admin@leetcode-dashboard.local
+ADMIN_NAME=Administrator
+ADMIN_PASSWORD_HASH=$2b$12$KIXqF6qKN5vZ0rJ0yGxYJ.VHqGxqN5vZ0rJ0yGxYJ.VHqGxqN5vZ0.
+
+STREAMLIT_SERVER_PORT=8501
+STREAMLIT_SERVER_ADDRESS=0.0.0.0
+STREAMLIT_SERVER_HEADLESS=true
+STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+# ===========================================
+# FILE PATHS (Optional - defaults work for Docker)
+# ===========================================
+# Uncomment to customize file storage locations
+# USERS_FILE=data/users.json
+# MEMBERS_FILE=data/members.json
+# HISTORY_FILE=data/history.json
+# SNAPSHOTS_FILE=data/snapshots.json
+
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1446508967034359971/QMKxZK-YJHT7M4nRXyoWLM95z50pXGTva6KxF1a3GfXGh9OqBBKvGt2phgSzHzbFbGdu
+
