@@ -19,6 +19,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 router = APIRouter()
 
+@router.get("/health")
+async def notifications_health():
+    return {"status": "ok"}
+
 
 @router.get("/")
 async def get_notifications(

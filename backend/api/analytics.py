@@ -32,8 +32,13 @@ async def get_history(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
 
     history = read_json(settings.HISTORY_FILE, default={})
+    if not isinstance(history, dict):
+        history = {}
+        
     # History structure: {owner: {member_username: [snapshots]}}
     user_history_dict = history.get(username, {})
+    if not isinstance(user_history_dict, dict):
+        user_history_dict = {}
 
     # Flatten all snapshots from all members
     all_snapshots = []
