@@ -26,9 +26,10 @@ class WeeklySnapshot(BaseModel):
     medium: int
     hard: int
 
-@router.get("/history", response_model=List[WeeklySnapshot])
+@router.get("/history")
 async def get_history(current_user: dict = Depends(get_current_user)):
     """Get historical weekly snapshots"""
+    print(f"get_history called for {current_user.get('username')}")
     try:
         username = current_user["username"]
 
