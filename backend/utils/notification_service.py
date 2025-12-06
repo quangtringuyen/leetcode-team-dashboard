@@ -339,12 +339,35 @@ def check_and_notify_new_submissions(
             "hard": max(0, hard_diff)
         }
         
+        # Fetch recent submissions to get the actual timestamp
+        from backend.utils.leetcodeapi import fetch_recent_submissions
+        recent_subs = fetch_recent_submissions(member, limit=5)
+        
+        # Default to now if no submissions found (fallback)
+        resolved_at = datetime.now(timezone.utc).isoformat()
+        
+        if recent_subs:
+            # Sort by timestamp descending just in case
+            recent_subs.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+            latest_sub = recent_subs[0]
+            timestamp = latest_sub.get("timestamp")
+            if timestamp:
+                try:
+                    # Convert timestamp (seconds) to ISO format
+                    resolved_at = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).isoformat()
+                except Exception:
+                    pass
+        
         notification = notification_service.create_problem_solved_notification(
             member=member,
             member_name=member_name,
             count=diff,
             difficulty_breakdown=difficulty_breakdown
         )
+        
+        # Override created_at with actual resolved time
+        notification["created_at"] = resolved_at
+        
         # Send to Discord and In-App
         notification_service.send_notification(notification, channels=["in_app", "discord"])
         notifications.append(notification)
