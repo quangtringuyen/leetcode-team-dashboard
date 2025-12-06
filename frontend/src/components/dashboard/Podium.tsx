@@ -15,9 +15,9 @@ export default function Podium({ members, isLoading }: PodiumProps) {
     return (
       <Card className="glass p-6">
         <div className="flex items-end justify-center gap-4 h-64">
-          <Skeleton className="h-40 w-32 rounded-lg" />
-          <Skeleton className="h-52 w-32 rounded-lg" />
-          <Skeleton className="h-36 w-32 rounded-lg" />
+          <Skeleton className="h-40 w-24 sm:w-32 rounded-lg" />
+          <Skeleton className="h-52 w-24 sm:w-32 rounded-lg" />
+          <Skeleton className="h-36 w-24 sm:w-32 rounded-lg" />
         </div>
       </Card>
     );
@@ -64,7 +64,7 @@ export default function Podium({ members, isLoading }: PodiumProps) {
           </Badge>
         </div>
         <div
-          className={`w-32 rounded-t-lg bg-gradient-to-br ${colors[position as keyof typeof colors]} flex items-center justify-center text-white font-bold text-2xl shadow-lg`}
+          className={`w-24 sm:w-32 rounded-t-lg bg-gradient-to-br ${colors[position as keyof typeof colors]} flex items-center justify-center text-white font-bold text-2xl shadow-lg`}
           style={{ height }}
         >
           {position}
