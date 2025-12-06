@@ -29,40 +29,44 @@ class WeeklySnapshot(BaseModel):
 @router.get("/history", response_model=List[WeeklySnapshot])
 async def get_history(current_user: dict = Depends(get_current_user)):
     """Get historical weekly snapshots"""
-    username = current_user["username"]
+    try:
+        username = current_user["username"]
 
-    history = read_json(settings.HISTORY_FILE, default={})
-    if not isinstance(history, dict):
-        history = {}
-        
-    # History structure: {owner: {member_username: [snapshots]}}
-    user_history_dict = history.get(username, {})
-    if not isinstance(user_history_dict, dict):
-        user_history_dict = {}
+        history = read_json(settings.HISTORY_FILE, default={})
+        if not isinstance(history, dict):
+            history = {}
+            
+        # History structure: {owner: {member_username: [snapshots]}}
+        user_history_dict = history.get(username, {})
+        if not isinstance(user_history_dict, dict):
+            user_history_dict = {}
 
-    # Flatten all snapshots from all members
-    valid_snapshots = []
-    for member_username, snapshots in user_history_dict.items():
-        if isinstance(snapshots, list):
-            for snapshot in snapshots:
-                try:
-                    # Validate snapshot data
-                    if isinstance(snapshot, dict):
-                        # Ensure required fields exist
-                        if "week_start" in snapshot and "member" in snapshot:
-                            # Ensure numeric fields are ints
-                            snapshot["totalSolved"] = int(snapshot.get("totalSolved", 0))
-                            snapshot["easy"] = int(snapshot.get("easy", 0))
-                            snapshot["medium"] = int(snapshot.get("medium", 0))
-                            snapshot["hard"] = int(snapshot.get("hard", 0))
-                            
-                            # Try to create Pydantic model here to catch validation errors
-                            model = WeeklySnapshot(**snapshot)
-                            valid_snapshots.append(model)
-                except Exception:
-                    continue
+        # Flatten all snapshots from all members
+        valid_snapshots = []
+        for member_username, snapshots in user_history_dict.items():
+            if isinstance(snapshots, list):
+                for snapshot in snapshots:
+                    try:
+                        # Validate snapshot data
+                        if isinstance(snapshot, dict):
+                            # Ensure required fields exist
+                            if "week_start" in snapshot and "member" in snapshot:
+                                # Ensure numeric fields are ints
+                                snapshot["totalSolved"] = int(snapshot.get("totalSolved", 0))
+                                snapshot["easy"] = int(snapshot.get("easy", 0))
+                                snapshot["medium"] = int(snapshot.get("medium", 0))
+                                snapshot["hard"] = int(snapshot.get("hard", 0))
+                                
+                                # Try to create Pydantic model here to catch validation errors
+                                model = WeeklySnapshot(**snapshot)
+                                valid_snapshots.append(model)
+                    except Exception:
+                        continue
 
-    return valid_snapshots
+        return valid_snapshots
+    except Exception as e:
+        print(f"Error in get_history: {e}")
+        return []
 
 @router.post("/snapshot")
 async def record_snapshot(current_user: dict = Depends(get_current_user)):

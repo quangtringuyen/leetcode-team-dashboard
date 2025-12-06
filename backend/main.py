@@ -39,6 +39,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(team.router, prefix="/api/team", tags=["Team Management"])
 app.include_router(leetcode.router, prefix="/api/leetcode", tags=["LeetCode Data"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+print("Loading notifications router...")
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 
 @app.get("/")
