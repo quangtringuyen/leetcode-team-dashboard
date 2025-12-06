@@ -85,7 +85,8 @@ class NotificationService:
         member: str,
         member_name: str,
         count: int,
-        difficulty_breakdown: Dict[str, int]
+        difficulty_breakdown: Dict[str, int],
+        problem_names: List[str] = []
     ) -> Dict[str, Any]:
         """Create notification for new problems solved"""
         # Determine message based on difficulty
@@ -99,12 +100,22 @@ class NotificationService:
         
         detail_str = ", ".join(details)
         
+        # Add problem names if available
+        problem_str = ""
+        if problem_names:
+            if len(problem_names) == 1:
+                problem_str = f": **{problem_names[0]}**"
+            elif len(problem_names) <= 3:
+                problem_str = f": {', '.join([f'**{name}**' for name in problem_names])}"
+            else:
+                problem_str = f": {', '.join([f'**{name}**' for name in problem_names[:3]])} and {len(problem_names)-3} more"
+        
         return {
             "type": "problem_solved",
             "member": member,
             "member_name": member_name,
             "title": f"🚀 {member_name} solved {count} new problem{'s' if count > 1 else ''}!",
-            "message": f"{member_name} just solved {count} problem{'s' if count > 1 else ''} ({detail_str}). Keep it up!",
+            "message": f"{member_name} just solved {count} problem{'s' if count > 1 else ''} ({detail_str}){problem_str}. Keep it up!",
             "priority": "low",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -339,16 +350,20 @@ def check_and_notify_new_submissions(
             "hard": max(0, hard_diff)
         }
         
-        # Fetch recent submissions to get the actual timestamp
+        # Fetch recent submissions to get the actual timestamp and problem names
         from backend.utils.leetcodeapi import fetch_recent_submissions
-        recent_subs = fetch_recent_submissions(member, limit=5)
+        # Fetch enough submissions to cover the diff
+        recent_subs = fetch_recent_submissions(member, limit=max(5, diff))
         
         # Default to now if no submissions found (fallback)
         resolved_at = datetime.now(timezone.utc).isoformat()
+        problem_names = []
         
         if recent_subs:
             # Sort by timestamp descending just in case
             recent_subs.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+            
+            # Get the latest timestamp
             latest_sub = recent_subs[0]
             timestamp = latest_sub.get("timestamp")
             if timestamp:
@@ -357,12 +372,21 @@ def check_and_notify_new_submissions(
                     resolved_at = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).isoformat()
                 except Exception:
                     pass
+            
+            # Get problem names for the new problems
+            # We assume the top 'diff' submissions are the new ones
+            # This is an approximation but usually correct if checked frequently
+            for i in range(min(diff, len(recent_subs))):
+                title = recent_subs[i].get("title")
+                if title:
+                    problem_names.append(title)
         
         notification = notification_service.create_problem_solved_notification(
             member=member,
             member_name=member_name,
             count=diff,
-            difficulty_breakdown=difficulty_breakdown
+            difficulty_breakdown=difficulty_breakdown,
+            problem_names=problem_names
         )
         
         # Override created_at with actual resolved time
