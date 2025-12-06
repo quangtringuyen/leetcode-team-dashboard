@@ -6,6 +6,7 @@ from datetime import date, datetime
 
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from backend.core.database import get_cached_data, set_cached_data
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -117,24 +118,65 @@ async def get_daily_challenge_history(
     from backend.api.team import get_members_list_internal
     from backend.utils.leetcodeapi import fetch_daily_challenge_by_date, fetch_user_data
 
-    members = get_members_list_internal(current_user["username"])
+    username = current_user["username"]
+    
+    # Check cache
+    cache_key = f"daily_history_{username}_{days}"
+    cached_result = get_cached_data(cache_key, ttl_seconds=900) # 15 mins cache
+    if cached_result:
+        return cached_result
+
+    members = get_members_list_internal(username)
     history = []
 
     # Generate list of dates for the last N days
     today = date.today()
     date_list = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
 
-    # Track which months we need to query to minimize API calls
-    months_to_query = {}
-    for date_str in date_list:
-        year_month = date_str[:7]  # YYYY-MM
-        if year_month not in months_to_query:
-            months_to_query[year_month] = []
-        months_to_query[year_month].append(date_str)
+    # 1. Fetch all member submissions and profiles in parallel (ONCE)
+    member_data_map = {} # {username: {submissions: [], avatar: str, name: str}}
+    
+    def fetch_member_info(member):
+        try:
+            # Fetch recent submissions (limit 100 to cover last 7 days)
+            submissions = fetch_recent_submissions(member["username"], limit=100)
+            # Fetch user profile for avatar
+            user_data = fetch_user_data(member["username"])
+            
+            return {
+                "username": member["username"],
+                "name": member.get("name", member["username"]),
+                "avatar": user_data.get("avatar") if user_data else None,
+                "submissions": submissions
+            }
+        except Exception as e:
+            logger.error(f"Error fetching info for {member['username']}: {e}")
+            return None
 
-    # Fetch challenges for each date
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(fetch_member_info, m) for m in members]
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                member_data_map[result["username"]] = result
+
+    # 2. Fetch challenges for each date (can also be parallelized if needed)
+    # Since fetch_daily_challenge_by_date is fast (or should be cached internally), we do it sequentially or parallel
+    # Let's parallelize it too
+    challenges_map = {}
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_date = {executor.submit(fetch_daily_challenge_by_date, d): d for d in date_list}
+        for future in as_completed(future_to_date):
+            d = future_to_date[future]
+            try:
+                challenges_map[d] = future.result()
+            except Exception:
+                challenges_map[d] = None
+
+    # 3. Process history in memory
     for target_date in date_list:
-        challenge = fetch_daily_challenge_by_date(target_date)
+        challenge = challenges_map.get(target_date)
 
         if not challenge:
             continue
@@ -142,44 +184,26 @@ async def get_daily_challenge_history(
         title_slug = challenge.get("titleSlug")
         completions = []
 
-        # Check which members completed this challenge
-        def check_member_completion(member):
-            try:
-                submissions = fetch_recent_submissions(member["username"], limit=100)
+        # Check each member against this challenge
+        for username, data in member_data_map.items():
+            submissions = data["submissions"]
+            
+            for sub in submissions:
+                if sub.get("titleSlug") == title_slug:
+                    timestamp = int(sub.get("timestamp", 0))
+                    submission_date = datetime.fromtimestamp(timestamp).date()
+                    challenge_date = datetime.strptime(target_date, "%Y-%m-%d").date()
 
-                for sub in submissions:
-                    if sub.get("titleSlug") == title_slug:
-                        timestamp = int(sub.get("timestamp", 0))
-                        submission_date = datetime.fromtimestamp(timestamp).date()
-                        challenge_date = datetime.strptime(target_date, "%Y-%m-%d").date()
-
-                        # Check if submission was on the challenge date
-                        if submission_date == challenge_date:
-                            # Get user profile for avatar
-                            user_data = fetch_user_data(member["username"])
-
-                            return {
-                                "username": member["username"],
-                                "name": member.get("name", member["username"]),
-                                "avatar": user_data.get("avatar") if user_data else None,
-                                "completionTime": datetime.fromtimestamp(timestamp).strftime("%H:%M")
-                            }
-
-                return None
-            except Exception as e:
-                logger.error(f"Error checking completion for {member['username']}: {e}")
-                return None
-
-        # Check all members concurrently
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(check_member_completion, m) for m in members]
-            for future in as_completed(futures):
-                try:
-                    result = future.result()
-                    if result:
-                        completions.append(result)
-                except Exception as e:
-                    logger.error(f"Error processing member completion: {e}")
+                    # Check if submission was on the challenge date (or later? usually on date)
+                    # Relaxed check: just check if they solved it? No, daily challenge implies solved on that day.
+                    if submission_date == challenge_date:
+                        completions.append({
+                            "username": username,
+                            "name": data["name"],
+                            "avatar": data["avatar"],
+                            "completionTime": datetime.fromtimestamp(timestamp).strftime("%H:%M")
+                        })
+                        break # Found completion for this member
 
         # Sort by completion time
         completions.sort(key=lambda x: x["completionTime"])
@@ -194,11 +218,16 @@ async def get_daily_challenge_history(
             "completedCount": len(completions),
             "totalMembers": len(members)
         })
-
-    return {
+    
+    result = {
         "history": history,
         "totalMembers": len(members)
     }
+    
+    # Save to cache
+    set_cached_data(cache_key, result)
+    
+    return result
 
 
 @router.get("/recent")
