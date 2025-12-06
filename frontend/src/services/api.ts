@@ -135,6 +135,14 @@ export const teamApi = {
   async restore(backup: any): Promise<void> {
     await apiClient.post('/api/team/restore', backup);
   },
+
+  async uploadScreenshot(formData: FormData): Promise<void> {
+    await apiClient.post('/api/notifications/upload-screenshot', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 // ==================== Analytics ====================
