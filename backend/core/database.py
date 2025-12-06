@@ -65,6 +65,9 @@ def init_db():
         # Insert default settings if not exist
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('weekly_goal', '100')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('team_name', '\"LeetCode Team\"')")
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_day', '\"monday\"')")
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_time', '\"00:00\"')")
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('notification_check_interval', '15')")
         
         conn.commit()
         logger.info("Database initialized successfully")
