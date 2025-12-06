@@ -24,7 +24,7 @@ async def notifications_health():
     return {"status": "ok"}
 
 
-@router.get("/")
+@router.get("")
 async def get_notifications(
     limit: int = 50,
     current_user: dict = Depends(get_current_user)
@@ -211,7 +211,7 @@ async def send_daily_digest(current_user: dict = Depends(get_current_user)):
     }
 
 
-@router.delete("/")
+@router.delete("")
 async def clear_notifications(current_user: dict = Depends(get_current_user)):
     """
     Clear all notifications.
