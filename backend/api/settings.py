@@ -36,7 +36,14 @@ def update_setting(setting: SettingUpdate, current_user: dict = Depends(get_curr
     """Update a system setting"""
     
     # Only allow certain keys for now to prevent abuse
-    ALLOWED_KEYS = ["weekly_goal", "team_name", "refresh_interval"]
+    ALLOWED_KEYS = [
+        "weekly_goal", 
+        "team_name", 
+        "refresh_interval",
+        "snapshot_schedule_day",
+        "snapshot_schedule_time",
+        "notification_check_interval"
+    ]
     
     if setting.key not in ALLOWED_KEYS:
         raise HTTPException(status_code=400, detail=f"Setting key '{setting.key}' is not allowed")

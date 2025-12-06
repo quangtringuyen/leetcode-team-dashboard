@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectItem } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Save, Settings as SettingsIcon } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Clock, Bell } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -14,6 +15,9 @@ export default function Settings() {
     const queryClient = useQueryClient();
     const [weeklyGoal, setWeeklyGoal] = useState<string>('100');
     const [teamName, setTeamName] = useState<string>('LeetCode Team');
+    const [snapshotDay, setSnapshotDay] = useState<string>('monday');
+    const [snapshotTime, setSnapshotTime] = useState<string>('00:00');
+    const [notificationInterval, setNotificationInterval] = useState<string>('15');
 
     // Fetch settings
     const { data: settings, isLoading } = useQuery({
@@ -32,6 +36,9 @@ export default function Settings() {
         if (settings) {
             if (settings.weekly_goal) setWeeklyGoal(settings.weekly_goal.toString());
             if (settings.team_name) setTeamName(settings.team_name);
+            if (settings.snapshot_schedule_day) setSnapshotDay(settings.snapshot_schedule_day);
+            if (settings.snapshot_schedule_time) setSnapshotTime(settings.snapshot_schedule_time);
+            if (settings.notification_check_interval) setNotificationInterval(settings.notification_check_interval.toString());
         }
     }, [settings]);
 
@@ -56,6 +63,9 @@ export default function Settings() {
         try {
             await updateSetting.mutateAsync({ key: 'weekly_goal', value: parseInt(weeklyGoal) });
             await updateSetting.mutateAsync({ key: 'team_name', value: teamName });
+            await updateSetting.mutateAsync({ key: 'snapshot_schedule_day', value: snapshotDay });
+            await updateSetting.mutateAsync({ key: 'snapshot_schedule_time', value: snapshotTime });
+            await updateSetting.mutateAsync({ key: 'notification_check_interval', value: parseInt(notificationInterval) });
         } catch (error) {
             // Error handled in mutation
         }
@@ -109,6 +119,78 @@ export default function Settings() {
                         />
                         <p className="text-xs text-muted-foreground">
                             The target number of problems for the team to solve collectively each week.
+                        </p>
+                    </div>
+
+                    <Button onClick={handleSave} disabled={updateSetting.isPending} className="mt-4">
+                        <Save className="mr-2 h-4 w-4" />
+                        {updateSetting.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </CardContent>
+            </Card>
+
+            <Card className="glass">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Scheduler Settings
+                    </CardTitle>
+                    <CardDescription>
+                        Configure automatic data collection and notifications
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="snapshot-day">Snapshot Day</Label>
+                            <Select
+                                id="snapshot-day"
+                                value={snapshotDay}
+                                onChange={(e) => setSnapshotDay(e.target.value)}
+                            >
+                                <SelectItem value="monday">Monday</SelectItem>
+                                <SelectItem value="tuesday">Tuesday</SelectItem>
+                                <SelectItem value="wednesday">Wednesday</SelectItem>
+                                <SelectItem value="thursday">Thursday</SelectItem>
+                                <SelectItem value="friday">Friday</SelectItem>
+                                <SelectItem value="saturday">Saturday</SelectItem>
+                                <SelectItem value="sunday">Sunday</SelectItem>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Day of the week to automatically record team snapshots.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="snapshot-time">Snapshot Time</Label>
+                            <Input
+                                id="snapshot-time"
+                                type="time"
+                                value={snapshotTime}
+                                onChange={(e) => setSnapshotTime(e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Time of day to record snapshots (24-hour format).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="notification-interval" className="flex items-center gap-2">
+                            <Bell className="h-4 w-4" />
+                            Notification Check Interval (minutes)
+                        </Label>
+                        <Input
+                            id="notification-interval"
+                            type="number"
+                            min="1"
+                            max="1440"
+                            value={notificationInterval}
+                            onChange={(e) => setNotificationInterval(e.target.value)}
+                            placeholder="15"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            How often to check for new submissions and send Discord notifications (1-1440 minutes).
                         </p>
                     </div>
 
