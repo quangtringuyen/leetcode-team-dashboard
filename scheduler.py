@@ -191,11 +191,57 @@ class DataScheduler:
 
     def run_scheduler(self):
         """Run the scheduler loop."""
-        # Schedule the job for every Monday at midnight (00:00)
-        schedule.every().monday.at("00:00").do(self.fetch_and_record_all_teams)
+        from backend.core.database import get_db_connection
+        import json
         
-        # Schedule submission check every 15 minutes
-        schedule.every(15).minutes.do(self.check_new_submissions)
+        # Load settings from database
+        def get_setting(key: str, default):
+            try:
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT value FROM system_settings WHERE key = ?", (key,))
+                    row = cursor.fetchone()
+                    if row:
+                        try:
+                            return json.loads(row["value"])
+                        except:
+                            return row["value"]
+                return default
+            except Exception as e:
+                logger.warning(f"Failed to load setting {key}, using default: {e}")
+                return default
+        
+        # Get scheduler settings
+        snapshot_day = get_setting("snapshot_schedule_day", "monday").lower()
+        snapshot_time = get_setting("snapshot_schedule_time", "00:00")
+        notification_interval = int(get_setting("notification_check_interval", 15))
+        
+        logger.info(f"Configuring scheduler with settings from database:")
+        logger.info(f"  - Snapshot: Every {snapshot_day} at {snapshot_time}")
+        logger.info(f"  - Notifications: Every {notification_interval} minutes")
+        
+        # Clear any existing jobs
+        schedule.clear()
+        
+        # Schedule the snapshot job based on settings
+        day_mapping = {
+            "monday": schedule.every().monday,
+            "tuesday": schedule.every().tuesday,
+            "wednesday": schedule.every().wednesday,
+            "thursday": schedule.every().thursday,
+            "friday": schedule.every().friday,
+            "saturday": schedule.every().saturday,
+            "sunday": schedule.every().sunday,
+        }
+        
+        if snapshot_day in day_mapping:
+            day_mapping[snapshot_day].at(snapshot_time).do(self.fetch_and_record_all_teams)
+        else:
+            logger.warning(f"Invalid snapshot day '{snapshot_day}', defaulting to Monday")
+            schedule.every().monday.at(snapshot_time).do(self.fetch_and_record_all_teams)
+        
+        # Schedule submission check based on settings
+        schedule.every(notification_interval).minutes.do(self.check_new_submissions)
 
         logger.info("Scheduler started. Waiting for scheduled tasks...")
         logger.info("Scheduled jobs:")
