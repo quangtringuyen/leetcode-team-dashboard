@@ -53,6 +53,19 @@ def init_db():
         )
         """)
         
+        # System Settings table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Insert default settings if not exist
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('weekly_goal', '100')")
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('team_name', '\"LeetCode Team\"')")
+        
         conn.commit()
         logger.info("Database initialized successfully")
 

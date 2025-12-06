@@ -1,6 +1,8 @@
 import { Users, TrendingUp, Target, Calendar } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import StatsCard from '@/components/dashboard/StatsCard';
 import Podium from '@/components/dashboard/Podium';
 import Leaderboard from '@/components/dashboard/Leaderboard';
@@ -12,9 +14,23 @@ import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import { Button } from '@/components/ui/button';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
 export default function Dashboard() {
   const { members, stats, isMembersLoading, isStatsLoading } = useTeam();
   const { recordSnapshot, isRecordingSnapshot, lastSnapshot } = useAnalytics();
+
+  // Fetch settings
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/settings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    }
+  });
 
   const handleRecordSnapshot = async () => {
     try {
@@ -28,7 +44,7 @@ export default function Dashboard() {
   const totalMembers = members.length;
   const totalSolved = stats?.total_problems_solved || 0;
   const averageSolved = totalMembers > 0 ? Math.round(totalSolved / totalMembers) : 0;
-  const weeklyGoal = 100; // Could be configurable
+  const weeklyGoal = settings?.weekly_goal || 100;
   const goalProgress = Math.min((totalSolved / weeklyGoal) * 100, 100);
 
   return (
