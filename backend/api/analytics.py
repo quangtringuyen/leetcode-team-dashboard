@@ -41,7 +41,7 @@ async def get_history(current_user: dict = Depends(get_current_user)):
         user_history_dict = {}
 
     # Flatten all snapshots from all members
-    all_snapshots = []
+    valid_snapshots = []
     for member_username, snapshots in user_history_dict.items():
         if isinstance(snapshots, list):
             for snapshot in snapshots:
@@ -55,11 +55,14 @@ async def get_history(current_user: dict = Depends(get_current_user)):
                             snapshot["easy"] = int(snapshot.get("easy", 0))
                             snapshot["medium"] = int(snapshot.get("medium", 0))
                             snapshot["hard"] = int(snapshot.get("hard", 0))
-                            all_snapshots.append(snapshot)
+                            
+                            # Try to create Pydantic model here to catch validation errors
+                            model = WeeklySnapshot(**snapshot)
+                            valid_snapshots.append(model)
                 except Exception:
                     continue
 
-    return [WeeklySnapshot(**snapshot) for snapshot in all_snapshots]
+    return valid_snapshots
 
 @router.post("/snapshot")
 async def record_snapshot(current_user: dict = Depends(get_current_user)):
