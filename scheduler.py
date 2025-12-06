@@ -23,6 +23,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from backend.core.config import settings
+from backend.core.storage import read_json, write_json
+from backend.utils.notification_service import (
+    check_and_notify_new_submissions,
+    check_and_notify_milestones
+)
+
 class DataScheduler:
     """Handles automatic data fetching and recording on schedule."""
 
@@ -31,6 +39,88 @@ class DataScheduler:
         self.members_service = MembersService(self.storage)
         self.history_service = HistoryService(self.storage)
         logger.info(f"Initialized DataScheduler with {type(self.storage).__name__}")
+
+    def check_new_submissions(self):
+        """Check for new submissions and send notifications."""
+        logger.info("Checking for new submissions...")
+        
+        try:
+            # Load team members
+            all_members = read_json(settings.MEMBERS_FILE, default={})
+            
+            # Flatten members list (handle multiple teams if any, though usually it's by owner)
+            # Structure is {owner: [members]}
+            user_members = []
+            for owner, members in all_members.items():
+                user_members.extend(members)
+                
+            if not user_members:
+                return
+            
+            # Load last state
+            last_state = read_json(settings.LAST_STATE_FILE, default={})
+            # Flatten last state? No, last_state is {owner: {username: data}}
+            # Wait, api/notifications.py assumes last_state is {username: {username: data}} which is weird.
+            # Let's check how it's stored.
+            # In api/notifications.py: last_state.get(username, {}) where username is current_user.
+            # So last_state is keyed by OWNER username.
+            
+            # We need to process per owner to update the correct state file structure
+            for owner, members in all_members.items():
+                user_last_state = last_state.get(owner, {})
+                new_state = {}
+                
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    future_to_member = {
+                        executor.submit(fetch_user_data, member["username"]): member
+                        for member in members
+                    }
+                    
+                    for future in as_completed(future_to_member):
+                        member = future_to_member[future]
+                        member_username = member["username"]
+                        member_name = member.get("name", member_username)
+                        
+                        try:
+                            current_data = future.result()
+                            if not current_data:
+                                continue
+                            
+                            # Save to new state
+                            new_state[member_username] = current_data
+                            
+                            # Compare with previous state
+                            if member_username in user_last_state:
+                                previous_data = user_last_state[member_username]
+                                
+                                # Check for new submissions
+                                check_and_notify_new_submissions(
+                                    current_data,
+                                    previous_data,
+                                    member_username,
+                                    member_name
+                                )
+                                
+                                # Check for milestones
+                                check_and_notify_milestones(
+                                    current_data,
+                                    previous_data,
+                                    member_username,
+                                    member_name
+                                )
+                        except Exception as e:
+                            logger.error(f"Error checking submissions for {member_username}: {e}")
+                
+                # Update last state for this owner
+                user_last_state.update(new_state)
+                last_state[owner] = user_last_state
+                
+            # Save updated state
+            write_json(settings.LAST_STATE_FILE, last_state)
+            logger.info("Submission check completed.")
+            
+        except Exception as e:
+            logger.error(f"Error in check_new_submissions: {e}", exc_info=True)
 
     def fetch_and_record_all_teams(self):
         """Fetch data for all teams and record to history."""
@@ -101,9 +191,11 @@ class DataScheduler:
 
     def run_scheduler(self):
         """Run the scheduler loop."""
-        # Schedule the job for every Monday at midnight (00:00) in system's local timezone
-        # If system is in Vietnam time (UTC+7), this will run at Mon 00:00 Vietnam time
+        # Schedule the job for every Monday at midnight (00:00)
         schedule.every().monday.at("00:00").do(self.fetch_and_record_all_teams)
+        
+        # Schedule submission check every 15 minutes
+        schedule.every(15).minutes.do(self.check_new_submissions)
 
         logger.info("Scheduler started. Waiting for scheduled tasks...")
         logger.info("Scheduled jobs:")
@@ -114,12 +206,12 @@ class DataScheduler:
         if os.environ.get("RUN_ON_STARTUP", "false").lower() == "true":
             logger.info("RUN_ON_STARTUP enabled, running initial fetch...")
             self.fetch_and_record_all_teams()
+            self.check_new_submissions()
 
         # Keep the scheduler running
         while True:
             schedule.run_pending()
             time.sleep(60)  # Check every minute
-
 
 def main():
     """Main entry point for the scheduler service."""
@@ -138,7 +230,6 @@ def main():
     except Exception as e:
         logger.error(f"Scheduler crashed: {e}", exc_info=True)
         raise
-
 
 if __name__ == "__main__":
     main()
