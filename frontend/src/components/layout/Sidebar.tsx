@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, Users } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Sidebar() {
@@ -20,6 +20,11 @@ export default function Sidebar() {
       name: 'Team',
       path: '/team',
       icon: Users,
+    },
+    {
+      name: 'Settings',
+      path: '/settings',
+      icon: Settings,
     },
   ];
 

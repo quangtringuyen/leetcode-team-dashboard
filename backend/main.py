@@ -10,8 +10,8 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 
-from backend.api import auth, team, leetcode, analytics, notifications
-from backend.core.config import settings
+from backend.api import auth, team, leetcode, analytics, notifications, settings
+from backend.core.config import settings as config_settings
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +28,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=config_settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +39,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(team.router, prefix="/api/team", tags=["Team Management"])
 app.include_router(leetcode.router, prefix="/api/leetcode", tags=["LeetCode Data"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(settings.router, prefix="/api/settings", tags=["System Settings"])
 print("Loading notifications router...")
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 
