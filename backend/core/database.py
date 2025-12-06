@@ -44,6 +44,15 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_username ON snapshots(username)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_week ON snapshots(week_start)")
         
+        # API Cache table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS api_cache (
+            key TEXT PRIMARY KEY,
+            data TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
         conn.commit()
         logger.info("Database initialized successfully")
 
@@ -101,3 +110,43 @@ def get_user_history_from_db(owner_username: str) -> dict:
             history[username].append(snapshot)
             
     return history
+
+def get_cached_data(key: str, ttl_seconds: int = 3600) -> dict | list | None:
+    """Get data from cache if valid"""
+    import json
+    from datetime import datetime, timedelta
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT data, timestamp FROM api_cache WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        
+        if row:
+            # Check expiry
+            # timestamp is string in SQLite usually
+            cached_time = datetime.fromisoformat(row["timestamp"])
+            if datetime.now() - cached_time < timedelta(seconds=ttl_seconds):
+                try:
+                    return json.loads(row["data"])
+                except:
+                    return None
+            else:
+                # Expired
+                return None
+    return None
+
+def set_cached_data(key: str, data: dict | list):
+    """Save data to cache"""
+    import json
+    from datetime import datetime
+    
+    json_data = json.dumps(data)
+    now = datetime.now().isoformat()
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT OR REPLACE INTO api_cache (key, data, timestamp)
+        VALUES (?, ?, ?)
+        """, (key, json_data, now))
+        conn.commit()
