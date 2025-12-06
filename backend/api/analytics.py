@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
+from backend.core.database import get_user_history_from_db, get_db_connection
 from backend.core.config import settings
 from backend.utils.leetcodeapi import fetch_user_data, fetch_submissions_with_tags
 from backend.utils.streak_tracker import get_team_streaks, get_streak_leaderboard, get_members_at_risk
@@ -33,14 +34,10 @@ def get_history(current_user: dict = Depends(get_current_user)):
     try:
         username = current_user["username"]
 
-        history = read_json(settings.HISTORY_FILE, default={})
-        if not isinstance(history, dict):
-            history = {}
-            
-        # History structure: {owner: {member_username: [snapshots]}}
-        user_history_dict = history.get(username, {})
-        if not isinstance(user_history_dict, dict):
-            user_history_dict = {}
+        username = current_user["username"]
+        
+        # Fetch history from DB
+        user_history_dict = get_user_history_from_db(username)
 
         # Flatten all snapshots from all members
         valid_snapshots = []
@@ -86,13 +83,6 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
     week_start = today - timedelta(days=today.weekday())
     week_start_str = week_start.isoformat()
 
-    # Load history - Structure: {owner: {member_username: [snapshots]}}
-    history = read_json(settings.HISTORY_FILE, default={})
-    if username not in history:
-        history[username] = {}
-    user_history = history[username]
-
-    # Record snapshot for each member - PARALLELIZED
     snapshots_added = 0
 
     # Fetch all member data in parallel
@@ -104,51 +94,52 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
         }
 
         # Process results as they complete
-        for future in as_completed(future_to_member):
-            member = future_to_member[future]
-            member_username = member["username"]
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            for future in as_completed(future_to_member):
+                member = future_to_member[future]
+                member_username = member["username"]
 
-            try:
-                data = future.result()
+                try:
+                    data = future.result()
 
-                if data:
-                    # Initialize member's history if not exists
-                    if member_username not in user_history:
-                        user_history[member_username] = []
-
-                    # Check if snapshot already exists for this week/member
-                    exists = any(
-                        s.get("week_start") == week_start_str
-                        for s in user_history[member_username]
-                    )
-
-                    if not exists:
-                        # Extract difficulty counts directly from data (returned by fetch_user_data)
+                    if data:
+                        # Extract difficulty counts
                         easy = data.get("easy", 0)
                         medium = data.get("medium", 0)
                         hard = data.get("hard", 0)
+                        total = data.get("totalSolved", 0)
 
-                        snapshot = {
-                            "week_start": week_start_str,
-                            "member": member_username,
-                            "totalSolved": data.get("totalSolved", 0),
-                            "easy": int(easy),
-                            "medium": int(medium),
-                            "hard": int(hard),
-                            "timestamp": datetime.utcnow().isoformat()
-                        }
-                        user_history[member_username].append(snapshot)
-                        snapshots_added += 1
+                        # Insert into DB (IGNORE if exists for this week)
+                        try:
+                            cursor.execute("""
+                            INSERT OR IGNORE INTO snapshots 
+                            (username, week_start, total_solved, easy, medium, hard, timestamp)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                member_username,
+                                week_start_str,
+                                total,
+                                int(easy),
+                                int(medium),
+                                int(hard),
+                                datetime.utcnow().isoformat()
+                            ))
+                            
+                            if cursor.rowcount > 0:
+                                snapshots_added += 1
+                                
+                        except Exception as e:
+                            print(f"Error inserting snapshot for {member_username}: {e}")
 
-            except Exception as e:
-                # Log error but continue with other members
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error fetching data for {member_username}: {e}")
-
-    # Save history
-    history[username] = user_history
-    write_json(settings.HISTORY_FILE, history)
+                except Exception as e:
+                    # Log error but continue with other members
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error fetching data for {member_username}: {e}")
+            
+            conn.commit()
 
     return {
         "message": f"Recorded {snapshots_added} snapshots for week {week_start_str}",
@@ -297,9 +288,8 @@ def get_week_over_week(
     """Get week-over-week changes for team members"""
     username = current_user["username"]
 
-    history = read_json(settings.HISTORY_FILE, default={})
-    # History structure: {owner: {member_username: [snapshots]}}
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
 
     if not user_history_dict:
         return []
@@ -437,8 +427,8 @@ def get_weekly_progress(
     username = current_user["username"]
     
     # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return {"weeks": [], "members": {}}
@@ -590,8 +580,8 @@ def get_streaks(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
     
     # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return []
@@ -622,8 +612,8 @@ def get_streaks_leaderboard(
     username = current_user["username"]
     
     # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return []
@@ -653,8 +643,8 @@ def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
     
     # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return []
@@ -686,8 +676,8 @@ def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
     
     # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return []
@@ -716,8 +706,8 @@ def get_stuck_on_difficulty(current_user: dict = Depends(get_current_user)):
     username = current_user["username"]
     
     # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return []
