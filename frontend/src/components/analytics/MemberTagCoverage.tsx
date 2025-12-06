@@ -65,7 +65,7 @@ export default function MemberTagCoverage() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {analysis.slice(0, 5).map((member) => (
+                    {analysis.map((member) => (
                         <div
                             key={member.member}
                             className={`p-4 rounded-lg border ${getCoverageBg(member.coverage_score)}`}

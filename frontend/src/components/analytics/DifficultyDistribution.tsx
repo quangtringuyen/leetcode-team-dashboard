@@ -57,7 +57,7 @@ export default function DifficultyDistribution() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {trends.slice(0, 5).map((trend) => (
+                    {trends.map((trend) => (
                         <div key={trend.member} className="space-y-2">
                             {/* Member Name and Status */}
                             <div className="flex items-center justify-between">
