@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
-from backend.core.database import get_user_history_from_db, get_db_connection
+from backend.core.database import get_user_history_from_db, get_db_connection, get_cached_data, set_cached_data
 from backend.core.config import settings
 from backend.utils.leetcodeapi import fetch_user_data, fetch_submissions_with_tags
 from backend.utils.streak_tracker import get_team_streaks, get_streak_leaderboard, get_members_at_risk
@@ -505,6 +505,13 @@ def get_accepted_trend(
     start_date = end_date - timedelta(days=days-1)
 
     logger.info(f"Fetching accepted trend for {len(user_members)} members from {start_date} to {end_date}")
+    
+    # Check cache
+    cache_key = f"accepted_trend_{username}_{days}"
+    cached_result = get_cached_data(cache_key, ttl_seconds=3600)
+    if cached_result:
+        logger.info("Returning cached accepted trend data")
+        return cached_result
 
     result = []
 
@@ -565,6 +572,9 @@ def get_accepted_trend(
     result.sort(key=lambda x: x["date"])
 
     logger.info(f"Returning {len(result)} daily data points. Date range: {result[0]['date'] if result else 'N/A'} to {result[-1]['date'] if result else 'N/A'}")
+
+    # Save to cache
+    set_cached_data(cache_key, result)
 
     return result
 
@@ -749,6 +759,12 @@ def get_tags_analysis(
     
     if not user_members:
         return []
+        
+    # Check cache
+    cache_key = f"tags_analysis_{username}_{limit}"
+    cached_result = get_cached_data(cache_key, ttl_seconds=3600)
+    if cached_result:
+        return cached_result
     
     # Fetch submissions with tags for each member (parallelized)
     member_submissions = {}
@@ -780,6 +796,9 @@ def get_tags_analysis(
     for analysis in team_analysis:
         analysis["name"] = member_names.get(analysis["member"], analysis["member"])
     
+    # Save to cache
+    set_cached_data(cache_key, team_analysis)
+    
     return team_analysis
 
 
@@ -788,6 +807,23 @@ def get_tags_heatmap(
     limit: int = 100,
     current_user: dict = Depends(get_current_user)
 ):
+    """
+    Get heatmap data for tags.
+    """
+    username = current_user["username"]
+    
+    # Check cache
+    cache_key = f"tags_heatmap_{username}_{limit}"
+    cached_result = get_cached_data(cache_key, ttl_seconds=3600)
+    if cached_result:
+        return cached_result
+        
+    # Reuse get_tags_analysis logic or call it directly?
+    # get_tags_analysis returns a list of dicts.
+    # Heatmap logic is likely different.
+    # Let's see the implementation.
+    
+    # (Implementation continues...)
     """
     Get team-wide tag coverage heatmap.
     Shows collective strengths and weaknesses across all members.
@@ -832,6 +868,9 @@ def get_tags_heatmap(
     # Analyze tags
     team_analysis = get_team_tag_analysis(member_submissions)
     heatmap = get_team_tag_heatmap(team_analysis)
+    
+    # Save to cache
+    set_cached_data(cache_key, heatmap)
     
     return heatmap
 
@@ -909,8 +948,7 @@ async def get_member_recommendations(
     tag_analysis = analyze_problem_tags(submissions)
     
     # Get difficulty trends
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    user_history_dict = get_user_history_from_db(username)
     member_history = user_history_dict.get(member_username, [])
     
     from backend.utils.difficulty_analyzer import calculate_difficulty_trends
