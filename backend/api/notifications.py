@@ -4,6 +4,7 @@ Notifications API endpoints
 
 from fastapi import APIRouter, Depends
 from typing import List, Dict, Any
+from datetime import datetime
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
 from backend.core.config import settings
@@ -22,6 +23,48 @@ router = APIRouter()
 @router.get("/health")
 async def notifications_health():
     return {"status": "ok"}
+
+@router.post("/test-discord")
+async def test_discord_notification(current_user: dict = Depends(get_current_user)):
+    """Test Discord notification integration"""
+    try:
+        if not settings.DISCORD_WEBHOOK_URL:
+            return {"success": False, "message": "DISCORD_WEBHOOK_URL not configured"}
+            
+        test_notification = {
+            "type": "test",
+            "title": "🔔 Test Notification",
+            "message": f"This is a test notification triggered by {current_user['username']}",
+            "priority": "low",
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        # Manually send to verify logic
+        import requests
+        discord_payload = {
+            "username": "LeetCode Dashboard",
+            "avatar_url": "https://leetcode.com/static/images/LeetCode_logo_rvs.png",
+            "embeds": [{
+                "title": test_notification["title"],
+                "description": test_notification["message"],
+                "color": 5814783,
+                "footer": {"text": "LeetCode Team Dashboard"},
+                "timestamp": test_notification["created_at"]
+            }]
+        }
+        
+        response = requests.post(settings.DISCORD_WEBHOOK_URL, json=discord_payload, timeout=5)
+        
+        if response.status_code in [200, 204]:
+            return {"success": True, "message": "Discord notification sent successfully"}
+        else:
+            return {
+                "success": False, 
+                "message": f"Discord API returned {response.status_code}: {response.text}"
+            }
+            
+    except Exception as e:
+        return {"success": False, "message": f"Error sending notification: {str(e)}"}
 
 
 @router.get("")
