@@ -4,7 +4,7 @@ Sends notifications for streaks, milestones, and inactivity
 """
 
 from typing import Dict, List, Any, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import logging
 from backend.core.config import settings
 
@@ -33,7 +33,7 @@ class NotificationService:
             "message": f"{member_name} hasn't solved problems since {last_active_date}. Their {current_streak}-week streak is about to break!",
             "priority": "high",
             "action": "Solve a problem to maintain your streak",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     
     def create_milestone_notification(
@@ -59,7 +59,7 @@ class NotificationService:
             "title": messages.get(milestone_type, f"Milestone achieved: {milestone_value}"),
             "message": f"Congratulations to {member_name} on this achievement!",
             "priority": "medium",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     
     def create_inactivity_notification(
@@ -77,7 +77,7 @@ class NotificationService:
             "message": f"We haven't seen {member_name} solve problems in {days_inactive} days. Time to get back on track!",
             "priority": "low",
             "action": "Start with an Easy problem to warm up",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
 
     def create_problem_solved_notification(
@@ -106,7 +106,7 @@ class NotificationService:
             "title": f"🚀 {member_name} solved {count} new problem{'s' if count > 1 else ''}!",
             "message": f"{member_name} just solved {count} problem{'s' if count > 1 else ''} ({detail_str}). Keep it up!",
             "priority": "low",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     
     def create_daily_digest(
@@ -173,7 +173,7 @@ class NotificationService:
                             "description": notification["message"],
                             "color": 16753920 if notification.get("priority") == "high" else 5814783,
                             "footer": {"text": "LeetCode Team Dashboard"},
-                            "timestamp": notification.get("created_at", datetime.utcnow().isoformat())
+                            "timestamp": notification.get("created_at", datetime.now(timezone.utc).isoformat())
                         }]
                     }
                     
