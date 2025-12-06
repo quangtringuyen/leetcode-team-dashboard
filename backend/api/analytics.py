@@ -27,7 +27,7 @@ class WeeklySnapshot(BaseModel):
     hard: int
 
 @router.get("/history", response_model=List[WeeklySnapshot])
-async def get_history(current_user: dict = Depends(get_current_user)):
+def get_history(current_user: dict = Depends(get_current_user)):
     """Get historical weekly snapshots"""
     # print(f"get_history called for {current_user.get('username')}")
     try:
@@ -157,7 +157,7 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
     }
 
 @router.get("/trends")
-async def get_trends(
+def get_trends(
     weeks: int = 12,
     current_user: dict = Depends(get_current_user)
 ):
@@ -290,7 +290,7 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
     return changes
 
 @router.get("/week-over-week")
-async def get_week_over_week(
+def get_week_over_week(
     weeks: int = 1,
     current_user: dict = Depends(get_current_user)
 ):
@@ -426,7 +426,7 @@ async def get_week_over_week(
     return changes
 
 @router.get("/weekly-progress")
-async def get_weekly_progress(
+def get_weekly_progress(
     weeks: int = 12,
     current_user: dict = Depends(get_current_user)
 ):
@@ -488,7 +488,7 @@ async def get_weekly_progress(
     }
 
 @router.get("/accepted-trend")
-async def get_accepted_trend(
+def get_accepted_trend(
     days: int = 30,
     current_user: dict = Depends(get_current_user)
 ):
@@ -582,7 +582,7 @@ async def get_accepted_trend(
 # ==================== NEW STREAK TRACKING ENDPOINTS ====================
 
 @router.get("/streaks")
-async def get_streaks(current_user: dict = Depends(get_current_user)):
+def get_streaks(current_user: dict = Depends(get_current_user)):
     """
     Get streak data for all team members.
     Returns current streak, longest streak, and streak status for each member.
@@ -612,7 +612,7 @@ async def get_streaks(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/streaks/leaderboard")
-async def get_streaks_leaderboard(
+def get_streaks_leaderboard(
     limit: int = 10,
     current_user: dict = Depends(get_current_user)
 ):
@@ -646,7 +646,7 @@ async def get_streaks_leaderboard(
 
 
 @router.get("/streaks/at-risk")
-async def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
+def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
     """
     Get members whose streaks are about to break (haven't solved in 1-2 weeks).
     """
@@ -678,7 +678,7 @@ async def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
 # ==================== DIFFICULTY TRENDS ENDPOINTS ====================
 
 @router.get("/difficulty-trends")
-async def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
+def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
     """
     Get difficulty distribution trends for all team members.
     Shows progression through Easy → Medium → Hard problems.
@@ -708,7 +708,7 @@ async def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/difficulty-trends/stuck")
-async def get_stuck_on_difficulty(current_user: dict = Depends(get_current_user)):
+def get_stuck_on_difficulty(current_user: dict = Depends(get_current_user)):
     """
     Get members who are stuck on a particular difficulty level.
     Returns members who need to progress to harder problems.
@@ -741,7 +741,7 @@ async def get_stuck_on_difficulty(current_user: dict = Depends(get_current_user)
 # ==================== PROBLEM TAGS ANALYSIS ENDPOINTS ====================
 
 @router.get("/tags/analysis")
-async def get_tags_analysis(
+def get_tags_analysis(
     limit: int = 100,
     current_user: dict = Depends(get_current_user)
 ):
@@ -794,7 +794,7 @@ async def get_tags_analysis(
 
 
 @router.get("/tags/heatmap")
-async def get_tags_heatmap(
+def get_tags_heatmap(
     limit: int = 100,
     current_user: dict = Depends(get_current_user)
 ):
