@@ -71,23 +71,39 @@ export default function Analytics() {
     }
   };
 
+  const isPageLoading =
+    isWeekOverWeekLoading ||
+    isWeeklyProgressLoading ||
+    isAcceptedTrendLoading ||
+    isMembersLoading ||
+    isStatsLoading;
+
   const handleCaptureScreenshot = async () => {
+    if (isPageLoading) {
+      alert("Please wait for all data to load before capturing.");
+      return;
+    }
+
     if (chartsRef.current) {
       try {
+        // Add a small delay to ensure charts are fully rendered/animated
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         const canvas = await html2canvas(chartsRef.current, {
-          backgroundColor: '#ffffff', // Ensure white background
-          scale: 2, // Higher quality
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true, // Important for external images (avatars)
+          logging: false,
+          windowWidth: 1920, // Force desktop width
         });
 
         canvas.toBlob(async (blob) => {
           if (!blob) return;
 
-          // Create FormData
           const formData = new FormData();
           formData.append('file', blob, `dashboard-${new Date().toISOString().split('T')[0]}.png`);
 
           try {
-            // Send to backend
             await teamApi.uploadScreenshot(formData);
             alert('Screenshot sent to Discord successfully! 📸');
           } catch (error) {
@@ -95,7 +111,6 @@ export default function Analytics() {
             alert('Failed to send screenshot to Discord.');
           }
 
-          // Also download locally as backup
           const link = document.createElement('a');
           link.download = `analytics-dashboard-${new Date().toISOString().split('T')[0]}.png`;
           link.href = canvas.toDataURL('image/png');
@@ -119,9 +134,13 @@ export default function Analytics() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleCaptureScreenshot}>
+          <Button
+            variant="outline"
+            onClick={handleCaptureScreenshot}
+            disabled={isPageLoading}
+          >
             <Camera className="mr-2 h-4 w-4" />
-            Capture
+            {isPageLoading ? 'Loading...' : 'Capture'}
           </Button>
           <Button onClick={handleDownloadExcel}>
             <Download className="mr-2 h-4 w-4" />
