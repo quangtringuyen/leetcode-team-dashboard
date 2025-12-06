@@ -4,7 +4,7 @@ Notifications API endpoints
 
 from fastapi import APIRouter, Depends
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
 from backend.core.config import settings
@@ -36,7 +36,7 @@ async def test_discord_notification(current_user: dict = Depends(get_current_use
             "title": "🔔 Test Notification",
             "message": f"This is a test notification triggered by {current_user['username']}",
             "priority": "low",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Manually send to verify logic
@@ -65,6 +65,53 @@ async def test_discord_notification(current_user: dict = Depends(get_current_use
             
     except Exception as e:
         return {"success": False, "message": f"Error sending notification: {str(e)}"}
+
+from fastapi import UploadFile, File
+
+@router.post("/upload-screenshot")
+async def upload_screenshot(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload screenshot and send to Discord"""
+    if not settings.DISCORD_WEBHOOK_URL:
+        return {"success": False, "message": "DISCORD_WEBHOOK_URL not configured"}
+        
+    try:
+        import requests
+        
+        # Read file content
+        content = await file.read()
+        
+        # Prepare multipart/form-data for Discord
+        files = {
+            "file": (file.filename, content, file.content_type)
+        }
+        
+        payload = {
+            "username": "LeetCode Dashboard",
+            "avatar_url": "https://leetcode.com/static/images/LeetCode_logo_rvs.png",
+            "content": f"📸 **Dashboard Snapshot** captured by {current_user['username']}"
+        }
+        
+        # Send to Discord
+        response = requests.post(
+            settings.DISCORD_WEBHOOK_URL,
+            data=payload,
+            files=files,
+            timeout=30
+        )
+        
+        if response.status_code in [200, 204]:
+            return {"success": True, "message": "Screenshot sent to Discord"}
+        else:
+            return {
+                "success": False, 
+                "message": f"Discord API error {response.status_code}: {response.text}"
+            }
+            
+    except Exception as e:
+        return {"success": False, "message": f"Error uploading screenshot: {str(e)}"}
 
 
 @router.get("")

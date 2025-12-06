@@ -79,10 +79,29 @@ export default function Analytics() {
           scale: 2, // Higher quality
         });
 
-        const link = document.createElement('a');
-        link.download = `analytics-dashboard-${new Date().toISOString().split('T')[0]}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+
+          // Create FormData
+          const formData = new FormData();
+          formData.append('file', blob, `dashboard-${new Date().toISOString().split('T')[0]}.png`);
+
+          try {
+            // Send to backend
+            await teamApi.uploadScreenshot(formData);
+            alert('Screenshot sent to Discord successfully! 📸');
+          } catch (error) {
+            console.error('Failed to upload screenshot:', error);
+            alert('Failed to send screenshot to Discord.');
+          }
+
+          // Also download locally as backup
+          const link = document.createElement('a');
+          link.download = `analytics-dashboard-${new Date().toISOString().split('T')[0]}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }, 'image/png');
+
       } catch (error) {
         console.error('Failed to capture screenshot:', error);
       }
