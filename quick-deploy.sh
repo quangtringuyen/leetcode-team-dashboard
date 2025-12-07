@@ -10,8 +10,8 @@ echo "========================================"
 echo ""
 
 # Check if we're in the right directory
-if [ ! -f "docker-compose.yml" ]; then
-    echo "❌ Error: docker-compose.yml not found in current directory"
+if [ ! -f "docker-compose.fullstack.yml" ]; then
+    echo "❌ Error: docker-compose.fullstack.yml not found in current directory"
     echo "Please navigate to your leetcode-team-dashboard directory first"
     exit 1
 fi
@@ -21,53 +21,47 @@ echo ""
 
 # Pull latest changes
 echo "📥 Pulling latest changes from git..."
-git pull
+git pull origin master
 echo "✅ Git pull completed"
-echo ""
-
-# Stop containers
-echo "🛑 Stopping containers..."
-docker-compose down
-echo "✅ Containers stopped"
 echo ""
 
 # Rebuild scheduler container without cache
 echo "🔨 Rebuilding scheduler container..."
-docker-compose build --no-cache scheduler
+sudo docker-compose -f docker-compose.fullstack.yml build --no-cache scheduler
 echo "✅ Rebuild completed"
 echo ""
 
-# Start containers
-echo "▶️  Starting containers..."
-docker-compose up -d
-echo "✅ Containers started"
+# Restart scheduler
+echo "▶️  Starting scheduler..."
+sudo docker-compose -f docker-compose.fullstack.yml up -d scheduler
+echo "✅ Scheduler started"
 echo ""
 
-# Wait for containers to initialize
-echo "⏳ Waiting 10 seconds for containers to initialize..."
-sleep 10
+# Wait for container to initialize
+echo "⏳ Waiting 5 seconds for container to initialize..."
+sleep 5
 echo ""
 
 # Show container status
 echo "📊 Container status:"
-docker-compose ps
+sudo docker-compose -f docker-compose.fullstack.yml ps scheduler
 echo ""
 
 # Show scheduler logs (check for errors)
 echo "📋 Scheduler logs (last 30 lines):"
-docker logs --tail 30 leetcode-scheduler
+sudo docker logs --tail 30 leetcode-scheduler
 echo ""
 
 # Check if scheduler is still running
 echo "🔍 Checking scheduler status..."
-if docker ps | grep -q leetcode-scheduler; then
+if sudo docker ps | grep -q leetcode-scheduler; then
     echo "✅ Scheduler is running!"
     
     # Check if it's restarting
-    RESTART_COUNT=$(docker inspect leetcode-scheduler --format='{{.RestartCount}}')
+    RESTART_COUNT=$(sudo docker inspect leetcode-scheduler --format='{{.RestartCount}}')
     if [ "$RESTART_COUNT" -gt 0 ]; then
         echo "⚠️  Warning: Scheduler has restarted $RESTART_COUNT times"
-        echo "📋 Check the full logs with: docker logs -f leetcode-scheduler"
+        echo "📋 Check the full logs with: sudo docker logs -f leetcode-scheduler"
     else
         echo "✅ No restarts detected - looking good!"
     fi
@@ -80,6 +74,6 @@ echo ""
 echo "🎉 Deployment completed!"
 echo ""
 echo "💡 Useful commands:"
-echo "  - View live logs: docker logs -f leetcode-scheduler"
-echo "  - Check status: docker-compose ps"
-echo "  - Restart: docker-compose restart scheduler"
+echo "  - View live logs: sudo docker logs -f leetcode-scheduler"
+echo "  - Check status: sudo docker-compose -f docker-compose.fullstack.yml ps"
+echo "  - Restart: sudo docker-compose -f docker-compose.fullstack.yml restart scheduler"
