@@ -224,6 +224,25 @@ export const leetcodeApi = {
   },
 };
 
+export const notificationsApi = {
+  async getLogs(limit: number = 50, offset: number = 0, status?: string): Promise<{
+    notifications: any[];
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
+    const response = await apiClient.get('/notifications-log', {
+      params: { limit, offset, status },
+    });
+    return response.data;
+  },
+
+  async resend(id: number): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post(`/notifications-log/${id}/resend`);
+    return response.data;
+  },
+};
+
 // ==================== Health Check ====================
 
 export const healthApi = {

@@ -10,7 +10,7 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 
-from backend.api import auth, team, leetcode, analytics, notifications, settings, weekly_progress
+from backend.api import auth, team, leetcode, analytics, notifications, settings, weekly_progress, notifications_log
 from backend.core.config import settings as config_settings
 
 # Load environment variables
@@ -43,6 +43,7 @@ app.include_router(settings.router, prefix="/settings", tags=["System Settings"]
 app.include_router(weekly_progress.router, prefix="/analytics", tags=["Analytics"])
 print("Loading notifications router...")
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
+app.include_router(notifications_log.router, prefix="/notifications-log", tags=["Notifications Log"])
 
 @app.get("/")
 async def root():
