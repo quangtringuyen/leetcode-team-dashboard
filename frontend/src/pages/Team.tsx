@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { UserPlus, Trash2, Users, Download, Upload, Database } from 'lucide-react';
+import { UserPlus, Trash2, Users, Download, Upload, Database, Pencil } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { teamApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -20,6 +20,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import type { AddMemberRequest } from '@/types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { DEFAULT_AVATAR } from '@/lib/constants';
 
 const addMemberSchema = z.object({
   username: z.string().min(1, 'LeetCode username is required'),
@@ -33,6 +37,12 @@ export default function Team() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Edit State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({ name: '', username: '' });
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -123,6 +133,43 @@ export default function Team() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to restore backup. Please check the file format.');
     }
+  };
+
+  // Update member mutation
+  const updateMember = useMutation({
+    mutationFn: async (data: { currentUsername: string; name: string; username: string }) => {
+      const token = localStorage.getItem('access_token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      await axios.put(
+        `${API_URL}/members/${data.currentUsername}`,
+        { name: data.name, username: data.username },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      toast.success('Member updated successfully');
+      setIsEditOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to update member');
+    },
+  });
+
+  const handleEditClick = (member: any) => {
+    setEditingMember(member);
+    setEditFormData({ name: member.name, username: member.username });
+    setIsEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editFormData.username) return;
+
+    await updateMember.mutateAsync({
+      currentUsername: editingMember.username,
+      name: editFormData.name,
+      username: editFormData.username
+    });
   };
 
   return (
@@ -250,6 +297,50 @@ export default function Team() {
           </Dialog>
         </div>
       </div>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription>
+              Update member details. If Name is left blank, the Username will be displayed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="edit-name" className="text-sm font-medium">Display Name</label>
+              <Input
+                id="edit-name"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                placeholder="Enter display name"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="edit-username" className="text-sm font-medium">LeetCode Username</label>
+              <Input
+                id="edit-username"
+                value={editFormData.username}
+                onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                placeholder="Enter LeetCode username"
+              />
+              <p className="text-xs text-muted-foreground">
+                Changing this will update all historical data to the new username.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={updateMember.isPending}>
+              {updateMember.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Success Message */}
       {success && (
         <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary">
@@ -318,6 +409,7 @@ export default function Team() {
                 >
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
+                      <AvatarImage src={member.avatar || DEFAULT_AVATAR} alt={member.name} />
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
                         {member.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
@@ -328,10 +420,17 @@ export default function Team() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <Badge variant="secondary" className="font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="font-semibold mr-2">
                       {member.totalSolved} solved
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditClick(member)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
