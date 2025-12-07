@@ -68,6 +68,7 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_day', '\"monday\"')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_time', '\"00:00\"')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('notification_check_interval', '15')")
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('problems_per_member_weekly', '3')")
         
         conn.commit()
         logger.info("Database initialized successfully")

@@ -44,8 +44,11 @@ export default function Dashboard() {
   const totalMembers = members.length;
   const totalSolved = stats?.total_problems_solved || 0;
   const averageSolved = totalMembers > 0 ? Math.round(totalSolved / totalMembers) : 0;
-  const weeklyGoal = settings?.weekly_goal || 100;
-  const goalProgress = Math.min((totalSolved / weeklyGoal) * 100, 100);
+
+  // Calculate weekly goal: problems_per_member × number_of_members
+  const problemsPerMember = settings?.problems_per_member_weekly || 3;
+  const weeklyGoal = totalMembers * problemsPerMember;
+  const goalProgress = weeklyGoal > 0 ? Math.min((totalSolved / weeklyGoal) * 100, 100) : 0;
 
   return (
     <div className="space-y-8">

@@ -42,7 +42,8 @@ def update_setting(setting: SettingUpdate, current_user: dict = Depends(get_curr
         "refresh_interval",
         "snapshot_schedule_day",
         "snapshot_schedule_time",
-        "notification_check_interval"
+        "notification_check_interval",
+        "problems_per_member_weekly"
     ]
     
     if setting.key not in ALLOWED_KEYS:
