@@ -333,18 +333,6 @@ def main():
     # Verify Discord Webhook on startup
     if settings.DISCORD_WEBHOOK_URL:
         logger.info(f"Discord Webhook configured: {settings.DISCORD_WEBHOOK_URL[:10]}...")
-        # Send a startup message to confirm connectivity
-        try:
-            from backend.utils.notification_service import notification_service
-            notification_service.send_notification({
-                "type": "system",
-                "title": "🤖 Scheduler Started",
-                "message": "LeetCode Team Dashboard Scheduler is now online.",
-                "priority": "low"
-            }, channels=["discord"])
-            logger.info("Startup notification sent to Discord")
-        except Exception as e:
-            logger.error(f"Failed to send startup notification: {e}")
     else:
         logger.warning("DISCORD_WEBHOOK_URL is not set. Discord notifications will not be sent.")
 
