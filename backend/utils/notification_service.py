@@ -300,7 +300,12 @@ def check_and_notify_milestones(
     current_hard = current_data.get("hard", 0)
     previous_hard = previous_data.get("hard", 0)
     
-    if previous_hard == 0 and current_hard > 0:
+    # Also check if they actually solved a hard problem in this update
+    hard_diff = current_hard - previous_hard
+    
+    logger.info(f"Milestone check for {member}: previous_hard={previous_hard}, current_hard={current_hard}, hard_diff={hard_diff}")
+    
+    if previous_hard == 0 and current_hard > 0 and hard_diff > 0:
         notification = notification_service.create_milestone_notification(
             member=member,
             member_name=member_name,
