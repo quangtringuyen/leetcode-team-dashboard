@@ -18,7 +18,7 @@ def test_root():
 
 def test_health_check():
     """Test health check endpoint"""
-    response = client.get("/api/health")
+    response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
@@ -27,7 +27,7 @@ def test_health_check():
 def test_register_user():
     """Test user registration"""
     response = client.post(
-        "/api/auth/register",
+        "/auth/register",
         json={
             "username": "testuser",
             "email": "test@example.com",
@@ -45,7 +45,7 @@ def test_login():
     """Test user login"""
     # First register if needed
     client.post(
-        "/api/auth/register",
+        "/auth/register",
         json={
             "username": "testuser2",
             "email": "test2@example.com",
@@ -55,7 +55,7 @@ def test_login():
 
     # Try to login
     response = client.post(
-        "/api/auth/login",
+        "/auth/login",
         data={"username": "testuser2", "password": "testpass123"}
     )
 
@@ -66,7 +66,7 @@ def test_login():
 
 def test_get_daily_challenge():
     """Test fetching daily challenge (no auth required)"""
-    response = client.get("/api/leetcode/daily-challenge")
+    response = client.get("/leetcode/daily-challenge")
 
     # May fail if LeetCode API is down
     if response.status_code == 200:
@@ -76,14 +76,14 @@ def test_get_daily_challenge():
 
 def test_unauthorized_access():
     """Test that protected endpoints require authentication"""
-    response = client.get("/api/team/members")
+    response = client.get("/team/members")
     assert response.status_code == 401  # Unauthorized
 
 def test_get_current_user():
     """Test getting current user info"""
     # Register and login
     client.post(
-        "/api/auth/register",
+        "/auth/register",
         json={
             "username": "testuser3",
             "email": "test3@example.com",
@@ -92,7 +92,7 @@ def test_get_current_user():
     )
 
     login_response = client.post(
-        "/api/auth/login",
+        "/auth/login",
         data={"username": "testuser3", "password": "testpass123"}
     )
 
@@ -101,7 +101,7 @@ def test_get_current_user():
 
         # Get current user
         response = client.get(
-            "/api/auth/me",
+            "/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
 

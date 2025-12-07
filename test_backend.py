@@ -95,7 +95,7 @@ def test_api_creation():
         print("✅ Root endpoint works")
 
         # Test health check
-        response = client.get("/api/health")
+        response = client.get("/health")
         assert response.status_code == 200
         print("✅ Health check works")
 
