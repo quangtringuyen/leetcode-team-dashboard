@@ -10,10 +10,30 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import schedule
 
-from core.storage import choose_storage
-from services.members_service import MembersService
-from services.history_service import HistoryService
-from backend.utils.leetcodeapi import fetch_user_data
+print("Starting scheduler service...", flush=True)
+
+try:
+    print("Importing core modules...", flush=True)
+    from core.storage import choose_storage
+    from services.members_service import MembersService
+    from services.history_service import HistoryService
+    from backend.utils.leetcodeapi import fetch_user_data
+    
+    print("Importing backend modules...", flush=True)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from backend.core.config import settings
+    from backend.core.storage import read_json, write_json
+    from backend.utils.notification_service import (
+        check_and_notify_new_submissions,
+        check_and_notify_milestones,
+        notify_daily_challenge
+    )
+    print("Imports completed successfully.", flush=True)
+except Exception as e:
+    print(f"CRITICAL ERROR during imports: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
+    raise
 
 # Configure logging
 logging.basicConfig(
@@ -21,16 +41,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from backend.core.config import settings
-from backend.core.storage import read_json, write_json
-from backend.utils.notification_service import (
-    check_and_notify_new_submissions,
-    check_and_notify_milestones,
-    notify_daily_challenge
-)
 
 class DataScheduler:
     """Handles automatic data fetching and recording on schedule."""
