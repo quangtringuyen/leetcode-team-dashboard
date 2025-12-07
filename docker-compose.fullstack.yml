@@ -54,6 +54,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./backups:/app/backups
     depends_on:
       api:
         condition: service_started
