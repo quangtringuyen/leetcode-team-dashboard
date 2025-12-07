@@ -18,6 +18,7 @@ import { Pencil, Users } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { DEFAULT_AVATAR } from '@/lib/constants';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -90,7 +91,7 @@ export default function TeamManagement() {
                                 <TableRow key={member.username}>
                                     <TableCell className="flex items-center gap-2">
                                         <Avatar className="h-8 w-8">
-                                            <AvatarImage src={member.avatar || undefined} alt={member.name} />
+                                            <AvatarImage src={member.avatar || DEFAULT_AVATAR} alt={member.name} />
                                             <AvatarFallback>{member.name[0]}</AvatarFallback>
                                         </Avatar>
                                         <span className="font-medium">{member.name}</span>
