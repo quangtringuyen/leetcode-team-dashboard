@@ -150,6 +150,114 @@ async def add_team_member(
         }
     }
 
+class MemberUpdate(BaseModel):
+    name: Optional[str] = None
+    username: Optional[str] = None
+
+@router.put("/members/{member_username}")
+async def update_team_member(
+    member_username: str,
+    update_data: MemberUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update a team member's details.
+    Allows changing name (display name) and username (LeetCode handle).
+    If name is blank, it defaults to username.
+    """
+    username = current_user["username"]
+    
+    # Load all members
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members.get(username, [])
+    
+    # Find member
+    member_idx = -1
+    member = None
+    for i, m in enumerate(user_members):
+        if m["username"] == member_username:
+            member_idx = i
+            member = m
+            break
+            
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+        
+    # Update Name
+    if update_data.name is not None:
+        # If name is blank/empty string, set it to None (which will fallback to username in display)
+        # But user requirement: "if name is blank, display username"
+        # In our system, we usually store `name` field.
+        # If we store it as empty string, frontend should handle it.
+        # Or we can store it as the username.
+        if update_data.name.strip() == "":
+            member["name"] = update_data.username if update_data.username else member_username
+        else:
+            member["name"] = update_data.name
+            
+    # Update Username (Complex operation)
+    if update_data.username and update_data.username != member_username:
+        new_username = update_data.username
+        
+        # Check if new username exists on LeetCode
+        leetcode_data = fetch_user_data(new_username)
+        if not leetcode_data:
+            raise HTTPException(status_code=404, detail=f"LeetCode user '{new_username}' not found")
+            
+        # Check if already in team
+        if any(m["username"] == new_username for m in user_members):
+            raise HTTPException(status_code=400, detail=f"User '{new_username}' is already in your team")
+            
+        # Update in JSON
+        member["username"] = new_username
+        
+        # If name was defaulting to old username, update it to new username
+        if member.get("name") == member_username:
+            member["name"] = new_username
+            
+        # Update in Database (History/Snapshots)
+        # We need to update all snapshots associated with old username to new username
+        from backend.core.database import get_db_connection
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Update members table if exists
+                # Check if we use members table in DB (yes we do)
+                # But we can't update PK easily.
+                # Strategy: 
+                # 1. Create new member in DB
+                # 2. Update snapshots to point to new member
+                # 3. Delete old member
+                
+                # 1. Insert new member (ignore if exists)
+                cursor.execute("""
+                INSERT OR IGNORE INTO members (username, name, team_owner)
+                SELECT ?, ?, team_owner FROM members WHERE username = ?
+                """, (new_username, member.get("name"), member_username))
+                
+                # 2. Update snapshots
+                cursor.execute("""
+                UPDATE snapshots SET username = ? WHERE username = ?
+                """, (new_username, member_username))
+                
+                # 3. Delete old member
+                cursor.execute("DELETE FROM members WHERE username = ?", (member_username,))
+                
+                conn.commit()
+        except Exception as e:
+            # Log error but continue since JSON is primary for members list currently
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error updating database for member rename: {e}")
+
+    # Save changes
+    user_members[member_idx] = member
+    all_members[username] = user_members
+    write_json(settings.MEMBERS_FILE, all_members)
+    
+    return {"message": "Member updated successfully", "member": member}
+
 @router.delete("/members/{member_username}")
 async def remove_team_member(
     member_username: str,
