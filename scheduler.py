@@ -28,7 +28,8 @@ from backend.core.config import settings
 from backend.core.storage import read_json, write_json
 from backend.utils.notification_service import (
     check_and_notify_new_submissions,
-    check_and_notify_milestones
+    check_and_notify_milestones,
+    notify_daily_challenge
 )
 
 class DataScheduler:
@@ -121,6 +122,20 @@ class DataScheduler:
             
         except Exception as e:
             logger.error(f"Error in check_new_submissions: {e}", exc_info=True)
+
+    def check_daily_challenge(self):
+        """Fetch and notify daily challenge."""
+        logger.info("Checking daily challenge...")
+        try:
+            from utils.leetcodeapi import fetch_daily_challenge
+            challenge = fetch_daily_challenge()
+            if challenge:
+                notify_daily_challenge(challenge)
+                logger.info(f"Notified daily challenge: {challenge.get('title')}")
+            else:
+                logger.warning("Failed to fetch daily challenge")
+        except Exception as e:
+            logger.error(f"Error checking daily challenge: {e}", exc_info=True)
 
     def fetch_and_record_all_teams(self):
         """Fetch data for all teams and record to history."""
@@ -242,6 +257,9 @@ class DataScheduler:
         
         # Schedule submission check based on settings
         schedule.every(notification_interval).minutes.do(self.check_new_submissions)
+        
+        # Schedule daily challenge notification (08:00 AM)
+        schedule.every().day.at("08:00").do(self.check_daily_challenge)
         
         # Schedule weekly backup (Sunday at 02:00 AM)
         schedule.every().sunday.at("02:00").do(self.backup_data)
