@@ -47,6 +47,8 @@ class NotificationService:
         messages = {
             "total_solved": f"🎉 {member_name} reached {milestone_value} problems solved!",
             "streak": f"🔥 {member_name} achieved a {milestone_value}-week streak!",
+            "first_easy": f"🌱 {member_name} solved their first Easy problem!",
+            "first_medium": f"⚡ {member_name} solved their first Medium problem!",
             "first_hard": f"💪 {member_name} solved their first Hard problem!",
             "100_problems": f"🏆 {member_name} hit the 100 problems milestone!",
         }
@@ -296,14 +298,42 @@ def check_and_notify_milestones(
             notification_service.send_notification(notification, channels=["in_app", "discord"])
             notifications.append(notification)
     
-    # Check for first hard problem
+    # Check for first Easy problem
+    current_easy = current_data.get("easy", 0)
+    previous_easy = previous_data.get("easy", 0)
+    easy_diff = current_easy - previous_easy
+    
+    if previous_easy == 0 and current_easy > 0 and easy_diff > 0:
+        notification = notification_service.create_milestone_notification(
+            member=member,
+            member_name=member_name,
+            milestone_type="first_easy",
+            milestone_value=1
+        )
+        notification_service.send_notification(notification, channels=["in_app", "discord"])
+        notifications.append(notification)
+    
+    # Check for first Medium problem
+    current_medium = current_data.get("medium", 0)
+    previous_medium = previous_data.get("medium", 0)
+    medium_diff = current_medium - previous_medium
+    
+    if previous_medium == 0 and current_medium > 0 and medium_diff > 0:
+        notification = notification_service.create_milestone_notification(
+            member=member,
+            member_name=member_name,
+            milestone_type="first_medium",
+            milestone_value=1
+        )
+        notification_service.send_notification(notification, channels=["in_app", "discord"])
+        notifications.append(notification)
+    
+    # Check for first Hard problem
     current_hard = current_data.get("hard", 0)
     previous_hard = previous_data.get("hard", 0)
-    
-    # Also check if they actually solved a hard problem in this update
     hard_diff = current_hard - previous_hard
     
-    logger.info(f"Milestone check for {member}: previous_hard={previous_hard}, current_hard={current_hard}, hard_diff={hard_diff}")
+    logger.info(f"Milestone check for {member}: easy_diff={easy_diff}, medium_diff={medium_diff}, hard_diff={hard_diff}")
     
     if previous_hard == 0 and current_hard > 0 and hard_diff > 0:
         notification = notification_service.create_milestone_notification(
