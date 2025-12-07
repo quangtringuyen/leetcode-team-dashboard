@@ -84,19 +84,25 @@ class NotificationService:
         member_name: str,
         count: int,
         difficulty_breakdown: Dict[str, int],
-        problem_names: List[str] = []
+        problems_with_difficulty: List[Dict[str, str]] = []
     ) -> Dict[str, Any]:
         """Create notification for new problems solved"""
         
-        # Add problem names if available
+        # Format problem list with difficulties
         problem_str = ""
-        if problem_names:
-            if len(problem_names) == 1:
-                problem_str = f": {problem_names[0]}"
-            elif len(problem_names) <= 3:
-                problem_str = f": {', '.join(problem_names)}"
+        if problems_with_difficulty:
+            problem_list = []
+            for problem in problems_with_difficulty:
+                title = problem.get("title", "Unknown")
+                difficulty = problem.get("difficulty", "Unknown")
+                problem_list.append(f"{title} ({difficulty})")
+            
+            if len(problem_list) == 1:
+                problem_str = f": {problem_list[0]}"
+            elif len(problem_list) <= 3:
+                problem_str = f": {', '.join(problem_list)}"
             else:
-                problem_str = f": {', '.join(problem_names[:3])} and {len(problem_names)-3} more"
+                problem_str = f": {', '.join(problem_list[:3])} and {len(problem_list)-3} more"
         
         return {
             "type": "problem_solved",
@@ -331,7 +337,7 @@ def check_and_notify_new_submissions(
         
         # Default to now if no submissions found (fallback)
         resolved_at = datetime.now(timezone.utc).isoformat()
-        problem_names = []
+        problems_with_difficulty = []
         
         if recent_subs:
             # Sort by timestamp descending just in case
@@ -347,20 +353,43 @@ def check_and_notify_new_submissions(
                 except Exception:
                     pass
             
-            # Get problem names for the new problems
-            # We assume the top 'diff' submissions are the new ones
-            # This is an approximation but usually correct if checked frequently
+            # Get problem names and assign difficulties
+            # We'll assign difficulties based on the breakdown counts
+            # This is an approximation but works well if checked frequently
+            hard_count = 0
+            medium_count = 0
+            easy_count = 0
+            
             for i in range(min(diff, len(recent_subs))):
                 title = recent_subs[i].get("title")
-                if title:
-                    problem_names.append(title)
+                if not title:
+                    continue
+                
+                # Assign difficulty based on remaining counts
+                # Priority: Hard > Medium > Easy (most recent submissions get harder difficulties)
+                if hard_count < hard_diff:
+                    difficulty = "Hard"
+                    hard_count += 1
+                elif medium_count < medium_diff:
+                    difficulty = "Medium"
+                    medium_count += 1
+                elif easy_count < easy_diff:
+                    difficulty = "Easy"
+                    easy_count += 1
+                else:
+                    difficulty = "Unknown"
+                
+                problems_with_difficulty.append({
+                    "title": title,
+                    "difficulty": difficulty
+                })
         
         notification = notification_service.create_problem_solved_notification(
             member=member,
             member_name=member_name,
             count=diff,
             difficulty_breakdown=difficulty_breakdown,
-            problem_names=problem_names
+            problems_with_difficulty=problems_with_difficulty
         )
         
         # Override created_at with actual resolved time
