@@ -241,6 +241,11 @@ export const notificationsApi = {
     const response = await apiClient.post(`/notifications-log/${id}/resend`);
     return response.data;
   },
+
+  async checkSubmissions(): Promise<{ notifications: any[]; count: number; message: string }> {
+    const response = await apiClient.post('/notifications/check-submissions');
+    return response.data;
+  },
 };
 
 // ==================== Health Check ====================

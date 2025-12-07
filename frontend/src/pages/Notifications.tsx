@@ -38,6 +38,21 @@ export default function Notifications() {
         },
     });
 
+    const checkMutation = useMutation({
+        mutationFn: notificationsApi.checkSubmissions,
+        onSuccess: (data) => {
+            if (data.count > 0) {
+                toast.success(`Found ${data.count} new notifications!`);
+                queryClient.invalidateQueries({ queryKey: ['notifications-log'] });
+            } else {
+                toast.info('No new submissions found.');
+            }
+        },
+        onError: () => {
+            toast.error('Failed to check submissions');
+        },
+    });
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'sent':
@@ -71,13 +86,28 @@ export default function Notifications() {
                         View and manage system notifications sent to Discord
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ['notifications-log'] })}
-                >
-                    <RefreshCw className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="default"
+                        onClick={() => checkMutation.mutate()}
+                        disabled={checkMutation.isPending}
+                    >
+                        {checkMutation.isPending ? (
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Check Submissions
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['notifications-log'] })}
+                        title="Refresh Log"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
 
             <Card className="glass">
