@@ -18,6 +18,7 @@ export default function Settings() {
     const [snapshotDay, setSnapshotDay] = useState<string>('monday');
     const [snapshotTime, setSnapshotTime] = useState<string>('00:00');
     const [notificationInterval, setNotificationInterval] = useState<string>('15');
+    const [problemsPerMember, setProblemsPerMember] = useState<string>('3');
 
     // Fetch settings
     const { data: settings, isLoading } = useQuery({
@@ -39,6 +40,7 @@ export default function Settings() {
             if (settings.snapshot_schedule_day) setSnapshotDay(settings.snapshot_schedule_day);
             if (settings.snapshot_schedule_time) setSnapshotTime(settings.snapshot_schedule_time);
             if (settings.notification_check_interval) setNotificationInterval(settings.notification_check_interval.toString());
+            if (settings.problems_per_member_weekly) setProblemsPerMember(settings.problems_per_member_weekly.toString());
         }
     }, [settings]);
 
@@ -66,6 +68,7 @@ export default function Settings() {
             await updateSetting.mutateAsync({ key: 'snapshot_schedule_day', value: snapshotDay });
             await updateSetting.mutateAsync({ key: 'snapshot_schedule_time', value: snapshotTime });
             await updateSetting.mutateAsync({ key: 'notification_check_interval', value: parseInt(notificationInterval) });
+            await updateSetting.mutateAsync({ key: 'problems_per_member_weekly', value: parseInt(problemsPerMember) });
         } catch (error) {
             // Error handled in mutation
         }
@@ -109,16 +112,33 @@ export default function Settings() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="weekly-goal">Weekly Problem Goal</Label>
+                        <Label htmlFor="weekly-goal">Weekly Problem Goal (Legacy)</Label>
                         <Input
                             id="weekly-goal"
                             type="number"
                             value={weeklyGoal}
                             onChange={(e) => setWeeklyGoal(e.target.value)}
                             placeholder="100"
+                            disabled
                         />
                         <p className="text-xs text-muted-foreground">
-                            The target number of problems for the team to solve collectively each week.
+                            This field is deprecated. Use "Problems Per Member Weekly" instead.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="problems-per-member">Problems Per Member Weekly</Label>
+                        <Input
+                            id="problems-per-member"
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={problemsPerMember}
+                            onChange={(e) => setProblemsPerMember(e.target.value)}
+                            placeholder="3"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Target number of problems each member should solve per week. Weekly goal = this × number of members.
                         </p>
                     </div>
 
