@@ -281,6 +281,27 @@ class DataScheduler:
         schedule.every().sunday.at("02:00").do(self.backup_data)
 
         logger.info("Scheduler started. Waiting for scheduled tasks...")
+        logger.info("Scheduled jobs:")
+        for job in schedule.get_jobs():
+            logger.info(f"  - {job}")
+
+        # Optional: Run immediately on startup for testing
+        if os.environ.get("RUN_ON_STARTUP", "false").lower() == "true":
+            logger.info("RUN_ON_STARTUP enabled, running initial fetch...")
+            self.fetch_and_record_all_teams()
+            self.check_new_submissions()
+
+        # Keep the scheduler running
+        print("Entering main loop...", flush=True)
+        while True:
+            try:
+                schedule.run_pending()
+                if int(time.time()) % 60 == 0:
+                    print("Heartbeat: Scheduler is alive", flush=True)
+                time.sleep(1)  # Check every second instead of 60 to be more responsive
+            except Exception as e:
+                logger.error(f"Error in main loop: {e}")
+                time.sleep(5)
 
     def backup_data(self):
         """Backup the data directory."""
@@ -315,27 +336,6 @@ class DataScheduler:
                     
         except Exception as e:
             logger.error(f"Error creating backup: {e}", exc_info=True)
-        logger.info("Scheduled jobs:")
-        for job in schedule.get_jobs():
-            logger.info(f"  - {job}")
-
-        # Optional: Run immediately on startup for testing
-        if os.environ.get("RUN_ON_STARTUP", "false").lower() == "true":
-            logger.info("RUN_ON_STARTUP enabled, running initial fetch...")
-            self.fetch_and_record_all_teams()
-            self.check_new_submissions()
-
-        # Keep the scheduler running
-        print("Entering main loop...", flush=True)
-        while True:
-            try:
-                schedule.run_pending()
-                if int(time.time()) % 60 == 0:
-                    print("Heartbeat: Scheduler is alive", flush=True)
-                time.sleep(1)  # Check every second instead of 60 to be more responsive
-            except Exception as e:
-                logger.error(f"Error in main loop: {e}")
-                time.sleep(5)
 
 def main():
     """Main entry point for the scheduler service."""
