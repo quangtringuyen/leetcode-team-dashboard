@@ -32,16 +32,17 @@ export default function Dashboard() {
     }
   });
 
-  // Fetch current week's progress
-  const { data: weekOverWeek } = useQuery({
-    queryKey: ['week-over-week', 1],
+  // Fetch current week's progress (real-time)
+  const { data: weeklyProgressData } = useQuery({
+    queryKey: ['current-week-progress'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/analytics/week-over-week?weeks=1`, {
+      const response = await axios.get(`${API_URL}/analytics/current-week-progress`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return response.data;
-    }
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
   });
 
   const handleRecordSnapshot = async () => {
@@ -61,13 +62,10 @@ export default function Dashboard() {
   const problemsPerMember = settings?.problems_per_member_weekly || 3;
   const weeklyGoal = totalMembers * problemsPerMember;
 
-  // Calculate current week's total from week-over-week data
-  const currentWeekTotal = weekOverWeek?.reduce((sum: number, member: any) => sum + (member.current || 0), 0) || 0;
+  // Get current week's progress from real-time data
+  const currentWeekTotal = weeklyProgressData?.current_week_total || 0;
   const weeklyProgress = weeklyGoal > 0 ? Math.min((currentWeekTotal / weeklyGoal) * 100, 100) : 0;
-
-  // Calculate week-over-week change percentage
-  const previousWeekTotal = weekOverWeek?.reduce((sum: number, member: any) => sum + (member.previous || 0), 0) || 0;
-  const weeklyChange = previousWeekTotal > 0 ? ((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100 : 0;
+  const weeklyChange = weeklyProgressData?.weekly_change || 0;
 
   return (
     <div className="space-y-8">
