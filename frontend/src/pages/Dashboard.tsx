@@ -32,6 +32,18 @@ export default function Dashboard() {
     }
   });
 
+  // Fetch current week's progress
+  const { data: weekOverWeek } = useQuery({
+    queryKey: ['week-over-week', 1],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/analytics/week-over-week?weeks=1`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    }
+  });
+
   const handleRecordSnapshot = async () => {
     try {
       await recordSnapshot();
@@ -48,7 +60,14 @@ export default function Dashboard() {
   // Calculate weekly goal: problems_per_member × number_of_members
   const problemsPerMember = settings?.problems_per_member_weekly || 3;
   const weeklyGoal = totalMembers * problemsPerMember;
-  const goalProgress = weeklyGoal > 0 ? Math.min((totalSolved / weeklyGoal) * 100, 100) : 0;
+
+  // Calculate current week's total from week-over-week data
+  const currentWeekTotal = weekOverWeek?.reduce((sum: number, member: any) => sum + (member.current || 0), 0) || 0;
+  const weeklyProgress = weeklyGoal > 0 ? Math.min((currentWeekTotal / weeklyGoal) * 100, 100) : 0;
+
+  // Calculate week-over-week change percentage
+  const previousWeekTotal = weekOverWeek?.reduce((sum: number, member: any) => sum + (member.previous || 0), 0) || 0;
+  const weeklyChange = previousWeekTotal > 0 ? ((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100 : 0;
 
   return (
     <div className="space-y-8">
@@ -103,12 +122,12 @@ export default function Dashboard() {
         />
         <StatsCard
           title="Weekly Goal"
-          value={`${goalProgress.toFixed(0)}%`}
+          value={`${weeklyProgress.toFixed(0)}%`}
           icon={Calendar}
-          description={`${totalSolved}/${weeklyGoal} problems`}
+          description={`${currentWeekTotal}/${weeklyGoal} problems`}
           trend={{
-            value: goalProgress,
-            isPositive: goalProgress >= 50,
+            value: weeklyChange,
+            isPositive: weeklyChange >= 0,
           }}
           isLoading={isStatsLoading}
         />
