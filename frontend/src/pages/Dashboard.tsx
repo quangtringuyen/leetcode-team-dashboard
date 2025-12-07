@@ -24,7 +24,7 @@ export default function Dashboard() {
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const response = await axios.get(`${API_URL}/settings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -36,7 +36,7 @@ export default function Dashboard() {
   const { data: weeklyProgressData } = useQuery({
     queryKey: ['current-week-progress'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       const response = await axios.get(`${API_URL}/analytics/current-week-progress`, {
         headers: { Authorization: `Bearer ${token}` }
       });

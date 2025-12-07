@@ -24,7 +24,7 @@ export default function Settings() {
     const { data: settings, isLoading } = useQuery({
         queryKey: ['settings'],
         queryFn: async () => {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             const response = await axios.get(`${API_URL}/settings`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -47,7 +47,7 @@ export default function Settings() {
     // Update setting mutation
     const updateSetting = useMutation({
         mutationFn: async ({ key, value }: { key: string; value: any }) => {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             await axios.post(`${API_URL}/settings`, { key, value }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
