@@ -49,7 +49,7 @@ services:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
       - S3_PREFIX=${S3_PREFIX:-prod}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
-      - RUN_ON_STARTUP=true
+      - RUN_ON_STARTUP=false
       - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data
