@@ -331,7 +331,7 @@ def check_and_notify_new_submissions(
         }
         
         # Fetch recent submissions to get the actual timestamp and problem names
-        from backend.utils.leetcodeapi import fetch_recent_submissions
+        from backend.utils.leetcodeapi import fetch_recent_submissions, fetch_problem_details
         # Fetch enough submissions to cover the diff
         recent_subs = fetch_recent_submissions(member, limit=max(5, diff))
         
@@ -353,50 +353,28 @@ def check_and_notify_new_submissions(
                 except Exception:
                     pass
             
-            # Get problem names and assign difficulties
-            # We'll assign difficulties based on the breakdown counts
-            # This is an approximation but works well if checked frequently
-            hard_count = 0
-            medium_count = 0
-            easy_count = 0
-            
-            logger.info(f"Difficulty breakdown for {member}: easy_diff={easy_diff}, medium_diff={medium_diff}, hard_diff={hard_diff}, total_diff={diff}")
+            # Get problem names and fetch actual difficulties from API
+            logger.info(f"Fetching difficulty for {diff} problems for {member}")
             
             for i in range(min(diff, len(recent_subs))):
                 title = recent_subs[i].get("title")
+                title_slug = recent_subs[i].get("titleSlug")
+                
                 if not title:
                     continue
                 
-                # Assign difficulty based on remaining counts
-                # Priority: Hard > Medium > Easy (most recent submissions typically harder)
-                difficulty = None
-                
-                if hard_count < hard_diff:
-                    difficulty = "Hard"
-                    hard_count += 1
-                elif medium_count < medium_diff:
-                    difficulty = "Medium"
-                    medium_count += 1
-                elif easy_count < easy_diff:
-                    difficulty = "Easy"
-                    easy_count += 1
-                else:
-                    # Fallback: if all counts are 0 or exhausted, distribute evenly
-                    # This happens when difficulty breakdown is unavailable
-                    if diff == 1:
-                        # For single problem, assume Easy if no breakdown available
-                        difficulty = "Easy"
-                    else:
-                        # For multiple problems, cycle through difficulties
-                        cycle_index = i % 3
-                        if cycle_index == 0:
-                            difficulty = "Easy"
-                        elif cycle_index == 1:
-                            difficulty = "Medium"
+                # Fetch actual difficulty from LeetCode API
+                difficulty = "Easy"  # Default fallback
+                if title_slug:
+                    try:
+                        problem_details = fetch_problem_details(title_slug)
+                        if problem_details and problem_details.get("difficulty"):
+                            difficulty = problem_details["difficulty"]
+                            logger.info(f"Fetched difficulty '{difficulty}' for problem: {title}")
                         else:
-                            difficulty = "Hard"
-                
-                logger.info(f"Assigned difficulty '{difficulty}' to problem: {title}")
+                            logger.warning(f"Could not fetch difficulty for {title_slug}, using default: Easy")
+                    except Exception as e:
+                        logger.error(f"Error fetching difficulty for {title_slug}: {e}")
                 
                 problems_with_difficulty.append({
                     "title": title,
