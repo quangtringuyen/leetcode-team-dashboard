@@ -400,17 +400,17 @@ def check_and_notify_new_submissions(
             "hard": max(0, hard_diff)
         }
         
-        # Fetch recent submissions to get the actual timestamp and problem names
-        from backend.utils.leetcodeapi import fetch_recent_submissions, fetch_problem_details
-        # Fetch enough submissions to cover the diff
-        recent_subs = fetch_recent_submissions(member, limit=max(5, diff))
+        # Fetch recent submissions with difficulty info
+        from backend.utils.leetcodeapi import fetch_submissions_with_tags
+        # Fetch enough submissions to cover the diff (with some buffer)
+        recent_subs = fetch_submissions_with_tags(member, limit=max(10, diff * 2))
         
         # Default to now if no submissions found (fallback)
         resolved_at = datetime.now(timezone.utc).isoformat()
         problems_with_difficulty = []
         
         if recent_subs:
-            # Sort by timestamp descending just in case
+            # Sort by timestamp descending
             recent_subs.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
             
             # Get the latest timestamp
@@ -423,33 +423,22 @@ def check_and_notify_new_submissions(
                 except Exception:
                     pass
             
-            # Get problem names and fetch actual difficulties from API
-            logger.info(f"Fetching difficulty for {diff} problems for {member}")
+            # Get the most recent submissions (up to diff count)
+            logger.info(f"Processing {diff} new problems for {member}")
             
             for i in range(min(diff, len(recent_subs))):
-                title = recent_subs[i].get("title")
-                title_slug = recent_subs[i].get("titleSlug")
+                sub = recent_subs[i]
+                title = sub.get("title")
+                difficulty = sub.get("difficulty", "Easy")  # Already included in fetch_submissions_with_tags
                 
                 if not title:
                     continue
-                
-                # Fetch actual difficulty from LeetCode API
-                difficulty = "Easy"  # Default fallback
-                if title_slug:
-                    try:
-                        problem_details = fetch_problem_details(title_slug)
-                        if problem_details and problem_details.get("difficulty"):
-                            difficulty = problem_details["difficulty"]
-                            logger.info(f"Fetched difficulty '{difficulty}' for problem: {title}")
-                        else:
-                            logger.warning(f"Could not fetch difficulty for {title_slug}, using default: Easy")
-                    except Exception as e:
-                        logger.error(f"Error fetching difficulty for {title_slug}: {e}")
                 
                 problems_with_difficulty.append({
                     "title": title,
                     "difficulty": difficulty
                 })
+                logger.info(f"Problem {i+1}: {title} ({difficulty})")
         
         notification = notification_service.create_problem_solved_notification(
             member=member,
