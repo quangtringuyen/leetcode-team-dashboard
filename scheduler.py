@@ -242,8 +242,45 @@ class DataScheduler:
         
         # Schedule submission check based on settings
         schedule.every(notification_interval).minutes.do(self.check_new_submissions)
+        
+        # Schedule weekly backup (Sunday at 02:00 AM)
+        schedule.every().sunday.at("02:00").do(self.backup_data)
 
         logger.info("Scheduler started. Waiting for scheduled tasks...")
+
+    def backup_data(self):
+        """Backup the data directory."""
+        import shutil
+        import glob
+        
+        logger.info("Starting weekly data backup...")
+        try:
+            # Source directory (data/)
+            data_dir = settings.DATA_DIR
+            
+            # Backup directory (backups/)
+            backup_dir = os.path.join(os.path.dirname(data_dir), "backups")
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Timestamp for the backup
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_filename = f"leetcode_backup_{timestamp}"
+            backup_path = os.path.join(backup_dir, backup_filename)
+            
+            # Create zip archive
+            shutil.make_archive(backup_path, 'zip', data_dir)
+            
+            logger.info(f"Backup created successfully: {backup_path}.zip")
+            
+            # Cleanup old backups (keep last 5)
+            backups = sorted(glob.glob(os.path.join(backup_dir, "leetcode_backup_*.zip")))
+            if len(backups) > 5:
+                for old_backup in backups[:-5]:
+                    os.remove(old_backup)
+                    logger.info(f"Removed old backup: {old_backup}")
+                    
+        except Exception as e:
+            logger.error(f"Error creating backup: {e}", exc_info=True)
         logger.info("Scheduled jobs:")
         for job in schedule.get_jobs():
             logger.info(f"  - {job}")
