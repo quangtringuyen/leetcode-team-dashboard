@@ -326,9 +326,16 @@ class DataScheduler:
             self.check_new_submissions()
 
         # Keep the scheduler running
+        print("Entering main loop...", flush=True)
         while True:
-            schedule.run_pending()
-            time.sleep(60)  # Check every minute
+            try:
+                schedule.run_pending()
+                if int(time.time()) % 60 == 0:
+                    print("Heartbeat: Scheduler is alive", flush=True)
+                time.sleep(1)  # Check every second instead of 60 to be more responsive
+            except Exception as e:
+                logger.error(f"Error in main loop: {e}")
+                time.sleep(5)
 
 def main():
     """Main entry point for the scheduler service."""
