@@ -21,8 +21,8 @@ app = FastAPI(
     title="LeetCode Team Dashboard API",
     description="Track and analyze your team's LeetCode progress",
     version="2.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # Configure CORS
@@ -34,15 +34,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(team.router, prefix="/api/team", tags=["Team Management"])
-app.include_router(leetcode.router, prefix="/api/leetcode", tags=["LeetCode Data"])
-app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
-app.include_router(settings.router, prefix="/api/settings", tags=["System Settings"])
-app.include_router(weekly_progress.router, prefix="/api/analytics", tags=["Analytics"])
+# Include routers (no /api prefix since domain is api.quangtringuyen.cloud)
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(team.router, prefix="/team", tags=["Team Management"])
+app.include_router(leetcode.router, prefix="/leetcode", tags=["LeetCode Data"])
+app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(settings.router, prefix="/settings", tags=["System Settings"])
+app.include_router(weekly_progress.router, prefix="/analytics", tags=["Analytics"])
 print("Loading notifications router...")
-app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 
 @app.get("/")
 async def root():
@@ -50,10 +50,10 @@ async def root():
     return {
         "message": "LeetCode Team Dashboard API",
         "version": "2.0.0",
-        "docs": "/api/docs"
+        "docs": "/docs"
     }
 
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {

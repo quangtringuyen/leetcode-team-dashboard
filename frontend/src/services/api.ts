@@ -80,7 +80,7 @@ export const authApi = {
     formData.append('username', data.username);
     formData.append('password', data.password);
 
-    const response = await apiClient.post<Token>('/api/auth/login', formData, {
+    const response = await apiClient.post<Token>('/auth/login', formData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
@@ -89,12 +89,12 @@ export const authApi = {
   },
 
   async register(data: RegisterRequest): Promise<User> {
-    const response = await apiClient.post<User>('/api/auth/register', data);
+    const response = await apiClient.post<User>('/auth/register', data);
     return response.data;
   },
 
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<User>('/api/auth/me');
+    const response = await apiClient.get<User>('/auth/me');
     return response.data;
   },
 };
@@ -103,41 +103,41 @@ export const authApi = {
 
 export const teamApi = {
   async getMembers(): Promise<TeamMember[]> {
-    const response = await apiClient.get<TeamMember[]>('/api/team/members');
+    const response = await apiClient.get<TeamMember[]>('/team/members');
     return response.data;
   },
 
   async addMember(data: AddMemberRequest): Promise<void> {
-    await apiClient.post('/api/team/members', data);
+    await apiClient.post('/team/members', data);
   },
 
   async removeMember(username: string): Promise<void> {
-    await apiClient.delete(`/api/team/members/${username}`);
+    await apiClient.delete(`/team/members/${username}`);
   },
 
   async getStats(): Promise<TeamStats> {
-    const response = await apiClient.get<TeamStats>('/api/team/stats');
+    const response = await apiClient.get<TeamStats>('/team/stats');
     return response.data;
   },
 
   async exportExcel(): Promise<Blob> {
-    const response = await apiClient.get('/api/team/export/excel', {
+    const response = await apiClient.get('/team/export/excel', {
       responseType: 'blob',
     });
     return response.data;
   },
 
   async backup(): Promise<any> {
-    const response = await apiClient.get('/api/team/backup');
+    const response = await apiClient.get('/team/backup');
     return response.data;
   },
 
   async restore(backup: any): Promise<void> {
-    await apiClient.post('/api/team/restore', backup);
+    await apiClient.post('/team/restore', backup);
   },
 
   async uploadScreenshot(formData: FormData): Promise<void> {
-    await apiClient.post('/api/notifications/upload-screenshot', formData, {
+    await apiClient.post('/notifications/upload-screenshot', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -149,38 +149,38 @@ export const teamApi = {
 
 export const analyticsApi = {
   async getHistory(): Promise<WeeklySnapshot[]> {
-    const response = await apiClient.get<WeeklySnapshot[]>('/api/analytics/history');
+    const response = await apiClient.get<WeeklySnapshot[]>('/analytics/history');
     return response.data;
   },
 
   async recordSnapshot(): Promise<SnapshotResponse> {
-    const response = await apiClient.post<SnapshotResponse>('/api/analytics/snapshot');
+    const response = await apiClient.post<SnapshotResponse>('/analytics/snapshot');
     return response.data;
   },
 
   async getTrends(weeks: number = 12): Promise<TrendData> {
-    const response = await apiClient.get<TrendData>('/api/analytics/trends', {
+    const response = await apiClient.get<TrendData>('/analytics/trends', {
       params: { weeks },
     });
     return response.data;
   },
 
   async getWeekOverWeek(weeks: number = 1): Promise<WeekOverWeekChange[]> {
-    const response = await apiClient.get<WeekOverWeekChange[]>('/api/analytics/week-over-week', {
+    const response = await apiClient.get<WeekOverWeekChange[]>('/analytics/week-over-week', {
       params: { weeks },
     });
     return response.data;
   },
 
   async getWeeklyProgress(weeks: number = 12): Promise<WeeklyProgressData> {
-    const response = await apiClient.get('/api/analytics/weekly-progress', {
+    const response = await apiClient.get('/analytics/weekly-progress', {
       params: { weeks }
     });
     return response.data;
   },
 
   async getAcceptedTrend(days: number = 30): Promise<AcceptedTrendData[]> {
-    const response = await apiClient.get('/api/analytics/accepted-trend', {
+    const response = await apiClient.get('/analytics/accepted-trend', {
       params: { days },
     });
     return response.data;
@@ -189,7 +189,7 @@ export const analyticsApi = {
 
 export const leetcodeApi = {
   async getDailyChallenge(): Promise<DailyChallenge> {
-    const response = await apiClient.get('/api/leetcode/daily');
+    const response = await apiClient.get('/leetcode/daily');
     return response.data;
   },
 
@@ -205,19 +205,19 @@ export const leetcodeApi = {
     totalMembers: number;
     completedCount: number;
   }> {
-    const response = await apiClient.get('/api/leetcode/daily/completions');
+    const response = await apiClient.get('/leetcode/daily/completions');
     return response.data;
   },
 
   async getRecentSubmissions(limit: number = 20): Promise<RecentSubmission[]> {
-    const response = await apiClient.get('/api/leetcode/recent', {
+    const response = await apiClient.get('/leetcode/recent', {
       params: { limit },
     });
     return response.data;
   },
 
   async getDailyHistory(days: number = 7): Promise<DailyChallengeHistoryResponse> {
-    const response = await apiClient.get('/api/leetcode/daily/history', {
+    const response = await apiClient.get('/leetcode/daily/history', {
       params: { days },
     });
     return response.data;
@@ -228,7 +228,7 @@ export const leetcodeApi = {
 
 export const healthApi = {
   async check(): Promise<{ status: string; storage: string }> {
-    const response = await apiClient.get('/api/health');
+    const response = await apiClient.get('/health');
     return response.data;
   },
 };

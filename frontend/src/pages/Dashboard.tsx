@@ -14,7 +14,7 @@ import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import { Button } from '@/components/ui/button';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function Dashboard() {
   const { members, stats, isMembersLoading, isStatsLoading } = useTeam();

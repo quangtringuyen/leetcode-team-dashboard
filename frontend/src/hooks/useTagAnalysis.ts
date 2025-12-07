@@ -56,7 +56,7 @@ export function useTagAnalysis(limit: number = 100) {
     return useQuery<TagAnalysis[]>({
         queryKey: ['tags', 'analysis', limit],
         queryFn: async () => {
-            const response = await api.get(`/api/analytics/tags/analysis?limit=${limit}`);
+            const response = await api.get(`/analytics/tags/analysis?limit=${limit}`);
             return response.data;
         },
         staleTime: 10 * 60 * 1000, // 10 minutes (tag fetching is slow)
@@ -67,7 +67,7 @@ export function useTeamHeatmap(limit: number = 100) {
     return useQuery<TeamHeatmap>({
         queryKey: ['tags', 'heatmap', limit],
         queryFn: async () => {
-            const response = await api.get(`/api/analytics/tags/heatmap?limit=${limit}`);
+            const response = await api.get(`/analytics/tags/heatmap?limit=${limit}`);
             return response.data;
         },
         staleTime: 10 * 60 * 1000,
@@ -83,7 +83,7 @@ export function useTagRecommendations(
         queryKey: ['tags', 'recommendations', memberUsername, difficulty, limit],
         queryFn: async () => {
             const response = await api.get(
-                `/api/analytics/tags/recommendations/${memberUsername}?difficulty=${difficulty}&limit=${limit}`
+                `/analytics/tags/recommendations/${memberUsername}?difficulty=${difficulty}&limit=${limit}`
             );
             return response.data;
         },
