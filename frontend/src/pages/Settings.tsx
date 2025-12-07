@@ -8,6 +8,7 @@ import { Select, SelectItem } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Save, Settings as SettingsIcon, Clock, Bell } from 'lucide-react';
 import axios from 'axios';
+import TeamManagement from '@/components/settings/TeamManagement';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -148,6 +149,8 @@ export default function Settings() {
                     </Button>
                 </CardContent>
             </Card>
+
+            <TeamManagement />
 
             <Card className="glass">
                 <CardHeader>
