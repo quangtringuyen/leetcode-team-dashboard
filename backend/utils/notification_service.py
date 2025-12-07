@@ -360,13 +360,17 @@ def check_and_notify_new_submissions(
             medium_count = 0
             easy_count = 0
             
+            logger.info(f"Difficulty breakdown for {member}: easy_diff={easy_diff}, medium_diff={medium_diff}, hard_diff={hard_diff}, total_diff={diff}")
+            
             for i in range(min(diff, len(recent_subs))):
                 title = recent_subs[i].get("title")
                 if not title:
                     continue
                 
                 # Assign difficulty based on remaining counts
-                # Priority: Hard > Medium > Easy (most recent submissions get harder difficulties)
+                # Priority: Hard > Medium > Easy (most recent submissions typically harder)
+                difficulty = None
+                
                 if hard_count < hard_diff:
                     difficulty = "Hard"
                     hard_count += 1
@@ -377,7 +381,22 @@ def check_and_notify_new_submissions(
                     difficulty = "Easy"
                     easy_count += 1
                 else:
-                    difficulty = "Unknown"
+                    # Fallback: if all counts are 0 or exhausted, distribute evenly
+                    # This happens when difficulty breakdown is unavailable
+                    if diff == 1:
+                        # For single problem, assume Easy if no breakdown available
+                        difficulty = "Easy"
+                    else:
+                        # For multiple problems, cycle through difficulties
+                        cycle_index = i % 3
+                        if cycle_index == 0:
+                            difficulty = "Easy"
+                        elif cycle_index == 1:
+                            difficulty = "Medium"
+                        else:
+                            difficulty = "Hard"
+                
+                logger.info(f"Assigned difficulty '{difficulty}' to problem: {title}")
                 
                 problems_with_difficulty.append({
                     "title": title,
