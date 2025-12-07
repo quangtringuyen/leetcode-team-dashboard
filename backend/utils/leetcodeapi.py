@@ -254,24 +254,10 @@ def fetch_daily_challenge_by_date(target_date: str) -> Optional[Dict[str, Any]]:
         date_obj = datetime.strptime(target_date, "%Y-%m-%d")
         year = date_obj.year
         month = date_obj.month
-
-        response = requests.post(
-            LEETCODE_API_URL,
-            json={
-                "query": query,
-                "variables": {"year": year, "month": month}
-            },
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-
-        if response.status_code != 200:
-            logger.error(f"LeetCode API returned status {response.status_code}")
-            return None
-
-        data = response.json()
-        challenges = data.get("data", {}).get("dailyCodingChallengeV2", {}).get("challenges", [])
-
+        
+        # Use cached monthly fetch
+        challenges = _fetch_monthly_challenges(year, month)
+        
         # Find the challenge for the target date
         for challenge in challenges:
             if challenge.get("date") == target_date:
@@ -290,6 +276,52 @@ def fetch_daily_challenge_by_date(target_date: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error fetching daily challenge for {target_date}: {e}")
         return None
+
+from functools import lru_cache
+
+@lru_cache(maxsize=12)  # Cache last 12 months requested
+def _fetch_monthly_challenges(year: int, month: int) -> List[Dict[str, Any]]:
+    """
+    Fetch all daily challenges for a specific month (Cached)
+    """
+    query = """
+    query dailyCodingQuestionRecords($year: Int!, $month: Int!) {
+        dailyCodingChallengeV2(year: $year, month: $month) {
+            challenges {
+                date
+                link
+                question {
+                    questionId
+                    title
+                    titleSlug
+                    difficulty
+                }
+            }
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            LEETCODE_API_URL,
+            json={
+                "query": query,
+                "variables": {"year": year, "month": month}
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            logger.error(f"LeetCode API returned status {response.status_code}")
+            return []
+
+        data = response.json()
+        return data.get("data", {}).get("dailyCodingChallengeV2", {}).get("challenges", [])
+        
+    except Exception as e:
+        logger.error(f"Error fetching monthly challenges for {year}-{month}: {e}")
+        return []
 
 
 def fetch_submissions_with_tags(username: str, limit: int = 100) -> List[Dict[str, Any]]:

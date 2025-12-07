@@ -51,36 +51,47 @@ async def get_current_week_progress(current_user: dict = Depends(get_current_use
                 last_week_data[member_username] = snapshot.get("totalSolved", 0)
                 break
     
-    # Fetch current live data for all members
+    # Fetch current live data for all members in parallel
     current_totals = {}
     members_progress = []
     
-    for member in user_members:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    def fetch_member_progress(member):
         member_username = member.get("username")
         if not member_username:
-            continue
+            return None
             
         try:
             # Fetch live data
             live_data = fetch_user_data(member_username)
             if live_data:
                 current_total = live_data.get("totalSolved", 0)
-                current_totals[member_username] = current_total
                 
                 # Calculate this week's progress
                 last_week_total = last_week_data.get(member_username, current_total)
                 week_progress = current_total - last_week_total
                 
-                members_progress.append({
+                return {
                     "username": member_username,
                     "name": member.get("name", member_username),
                     "current_total": current_total,
                     "last_week_total": last_week_total,
                     "week_progress": week_progress
-                })
+                }
         except Exception as e:
             logger.error(f"Error fetching data for {member_username}: {e}")
-            continue
+        return None
+
+    # Use ThreadPoolExecutor for parallel fetching
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_member = {executor.submit(fetch_member_progress, member): member for member in user_members}
+        
+        for future in as_completed(future_to_member):
+            result = future.result()
+            if result:
+                members_progress.append(result)
+                current_totals[result["username"]] = result["current_total"]
     
     # Calculate team totals
     current_week_total = sum(m["week_progress"] for m in members_progress)
