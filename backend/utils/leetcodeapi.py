@@ -360,21 +360,31 @@ def fetch_submissions_with_tags(username: str, limit: int = 100) -> List[Dict[st
         data = response.json()
         submissions = data.get("data", {}).get("recentAcSubmissionList", [])
         
-        # For each submission, fetch problem details including tags
+        # For each submission, fetch problem details including tags (in parallel)
         submissions_with_tags = []
-        for sub in submissions:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        def process_submission(sub):
             title_slug = sub.get("titleSlug")
             if title_slug:
                 # Fetch problem details (tags are available via problem query)
                 problem_data = _fetch_problem_details(title_slug)
                 if problem_data:
-                    submissions_with_tags.append({
+                    return {
                         "title": sub.get("title"),
                         "titleSlug": title_slug,
                         "timestamp": sub.get("timestamp"),
                         "tags": problem_data.get("tags", []),
                         "difficulty": problem_data.get("difficulty")
-                    })
+                    }
+            return None
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(process_submission, sub) for sub in submissions]
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    submissions_with_tags.append(result)
         
         return submissions_with_tags
         
@@ -386,6 +396,7 @@ def fetch_submissions_with_tags(username: str, limit: int = 100) -> List[Dict[st
 def _fetch_problem_details(title_slug: str) -> Optional[Dict[str, Any]]:
     """
     Fetch problem details including tags (internal helper).
+    Cached in database to avoid repeated API calls.
     
     Args:
         title_slug: Problem title slug
@@ -393,6 +404,16 @@ def _fetch_problem_details(title_slug: str) -> Optional[Dict[str, Any]]:
     Returns:
         Dict with problem details or None
     """
+    # Check DB cache first
+    try:
+        from backend.core.database import get_cached_data, set_cached_data
+        cache_key = f"problem_details_{title_slug}"
+        cached_data = get_cached_data(cache_key, ttl_seconds=86400 * 30)  # Cache for 30 days
+        if cached_data:
+            return cached_data
+    except ImportError:
+        pass  # Fallback if circular import or other issue
+        
     query = """
     query questionData($titleSlug: String!) {
         question(titleSlug: $titleSlug) {
@@ -426,12 +447,21 @@ def _fetch_problem_details(title_slug: str) -> Optional[Dict[str, Any]]:
         
         tags = [tag.get("name") for tag in question.get("topicTags", [])]
         
-        return {
+        result = {
             "questionId": question.get("questionId"),
             "title": question.get("title"),
             "difficulty": question.get("difficulty"),
             "tags": tags
         }
+        
+        # Save to DB cache
+        try:
+            from backend.core.database import set_cached_data
+            set_cached_data(cache_key, result)
+        except:
+            pass
+            
+        return result
         
     except Exception as e:
         logger.warning(f"Error fetching problem details for {title_slug}: {e}")
