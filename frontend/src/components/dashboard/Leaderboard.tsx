@@ -1,9 +1,10 @@
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TeamMember } from '@/types';
+import { DEFAULT_AVATAR } from '@/lib/constants';
 
 interface LeaderboardProps {
   members: TeamMember[];
@@ -63,6 +64,7 @@ export default function Leaderboard({ members, isLoading }: LeaderboardProps) {
 
                 {/* Avatar */}
                 <Avatar className="h-10 w-10">
+                  <AvatarImage src={member.avatar || DEFAULT_AVATAR} alt={member.name} />
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {member.name.charAt(0).toUpperCase()}
                   </AvatarFallback>

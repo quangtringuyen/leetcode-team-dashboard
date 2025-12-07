@@ -1,9 +1,10 @@
 import { Trophy, Medal } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TeamMember } from '@/types';
+import { DEFAULT_AVATAR } from '@/lib/constants';
 
 interface PodiumProps {
   members: TeamMember[];
@@ -52,6 +53,7 @@ export default function Podium({ members, isLoading }: PodiumProps) {
         <div className="relative">
           {icons[position as keyof typeof icons]}
           <Avatar className="h-16 w-16 border-4 border-background shadow-lg mt-2">
+            <AvatarImage src={member.avatar || DEFAULT_AVATAR} alt={member.name} />
             <AvatarFallback className={`bg-gradient-to-br ${colors[position as keyof typeof colors]} text-white text-xl font-bold`}>
               {member.name.charAt(0).toUpperCase()}
             </AvatarFallback>
