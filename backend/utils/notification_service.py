@@ -151,6 +151,48 @@ class NotificationService:
             "created_at": datetime.now(timezone.utc).isoformat()
         }
     
+    def save_notification_to_db(self, notification: Dict[str, Any], status: str = "pending"):
+        """Save notification to database"""
+        try:
+            from backend.core.database import get_db_connection
+            import json
+            
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Extract metadata (everything except core fields)
+                core_fields = ["type", "title", "message", "member", "priority", "created_at"]
+                metadata = {k: v for k, v in notification.items() if k not in core_fields}
+                
+                # Determine recipient
+                recipient = notification.get("member")
+                if not recipient:
+                    # If it's a channel-wide notification, maybe use 'channel' or 'all'
+                    recipient = "channel"
+                
+                sent_at = None
+                if status == "sent":
+                    sent_at = datetime.now(timezone.utc).isoformat()
+                
+                cursor.execute("""
+                INSERT INTO notifications (type, title, message, recipient, status, metadata, created_at, sent_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    notification.get("type"),
+                    notification.get("title"),
+                    notification.get("message"),
+                    recipient,
+                    status,
+                    json.dumps(metadata),
+                    notification.get("created_at", datetime.now(timezone.utc).isoformat()),
+                    sent_at
+                ))
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            logger.error(f"Failed to save notification to DB: {e}")
+            return None
+
     def send_notification(
         self,
         notification: Dict[str, Any],
@@ -166,6 +208,8 @@ class NotificationService:
         Returns:
             True if sent successfully
         """
+        success = True
+        
         # For now, just store in memory (in-app notifications)
         if "in_app" in channels:
             self.notifications.append(notification)
@@ -185,6 +229,7 @@ class NotificationService:
         if "discord" in channels:
             if not settings.DISCORD_WEBHOOK_URL:
                 logger.warning("Discord channel requested but DISCORD_WEBHOOK_URL not set")
+                # We don't mark as failed if URL is missing, just skip
             else:
                 try:
                     import requests
@@ -207,13 +252,18 @@ class NotificationService:
                     
                     if response.status_code not in [200, 204]:
                         logger.error(f"Discord API error {response.status_code}: {response.text}")
+                        success = False
                     else:
                         logger.info(f"Sent Discord notification: {notification['title']}")
                         
                 except Exception as e:
                     logger.error(f"Failed to send Discord notification: {str(e)}")
+                    success = False
         
-        return True
+        # Save to DB
+        self.save_notification_to_db(notification, status="sent" if success else "failed")
+        
+        return success
     
     def get_notifications(
         self,

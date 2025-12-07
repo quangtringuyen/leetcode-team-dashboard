@@ -62,6 +62,24 @@ def init_db():
         )
         """)
         
+        # Notifications table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            title TEXT,
+            message TEXT,
+            recipient TEXT,
+            status TEXT,
+            metadata TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            sent_at TIMESTAMP
+        )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status)")
+        
         # Insert default settings if not exist
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('weekly_goal', '100')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('team_name', '\"LeetCode Team\"')")
