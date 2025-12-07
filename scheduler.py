@@ -13,7 +13,7 @@ import schedule
 from core.storage import choose_storage
 from services.members_service import MembersService
 from services.history_service import HistoryService
-from utils.leetcodeapi import fetch_user_data
+from backend.utils.leetcodeapi import fetch_user_data
 
 # Configure logging
 logging.basicConfig(
@@ -133,7 +133,7 @@ class DataScheduler:
         """Fetch and notify daily challenge."""
         logger.info("Checking daily challenge...")
         try:
-            from utils.leetcodeapi import fetch_daily_challenge
+            from backend.utils.leetcodeapi import fetch_daily_challenge
             challenge = fetch_daily_challenge()
             if challenge:
                 notify_daily_challenge(challenge)
