@@ -20,6 +20,7 @@ services:
       - S3_PREFIX=${S3_PREFIX:-prod}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8090}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -49,6 +50,7 @@ services:
       - S3_PREFIX=${S3_PREFIX:-prod}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - RUN_ON_STARTUP=true
+      - TZ=Asia/Ho_Chi_Minh
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -69,6 +71,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
     depends_on:
       api:
         condition: service_healthy
