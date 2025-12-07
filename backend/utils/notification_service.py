@@ -130,6 +130,26 @@ class NotificationService:
             "priority": "low",
             "created_at": datetime.utcnow().isoformat()
         }
+
+    def create_daily_challenge_notification(
+        self,
+        challenge_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Create notification for daily challenge"""
+        title = challenge_data.get("title", "Unknown Problem")
+        difficulty = challenge_data.get("difficulty", "Unknown")
+        link = f"https://leetcode.com{challenge_data.get('link', '')}"
+        date_str = challenge_data.get("date", datetime.now().strftime("%Y-%m-%d"))
+        
+        return {
+            "type": "daily_challenge",
+            "title": f"📅 Daily Challenge: {title}",
+            "message": f"Today's challenge is **{title}** ({difficulty}).\n[Solve it now]({link})",
+            "priority": "medium",
+            "action": "Solve Challenge",
+            "link": link,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
     
     def send_notification(
         self,
@@ -397,3 +417,20 @@ def check_and_notify_new_submissions(
         notifications.append(notification)
         
     return notifications
+
+
+def notify_daily_challenge(challenge_data: Dict[str, Any]) -> bool:
+    """
+    Send notification for daily challenge.
+    
+    Args:
+        challenge_data: Data from fetch_daily_challenge()
+        
+    Returns:
+        True if sent successfully
+    """
+    if not challenge_data:
+        return False
+        
+    notification = notification_service.create_daily_challenge_notification(challenge_data)
+    return notification_service.send_notification(notification, channels=["in_app", "discord"])
