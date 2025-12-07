@@ -3,11 +3,32 @@ import { Bell, AlertTriangle, Award, Calendar, X, RefreshCw } from 'lucide-react
 import { useNotifications, useClearNotifications, useCheckSubmissions } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function NotificationCenter() {
     const { data, isLoading } = useNotifications(20);
     const clearMutation = useClearNotifications();
+
     const checkSubmissionsMutation = useCheckSubmissions();
+
+    const handleCheckSubmissions = () => {
+        checkSubmissionsMutation.mutate(undefined, {
+            onSuccess: (data) => {
+                if (data.count > 0) {
+                    toast.success(`Found ${data.count} new notification${data.count > 1 ? 's' : ''}!`, {
+                        description: 'Check your notifications or Discord for details'
+                    });
+                } else {
+                    toast.info('No new submissions found', {
+                        description: 'You\'re all caught up!'
+                    });
+                }
+            },
+            onError: () => {
+                toast.error('Failed to check submissions');
+            }
+        });
+    };
 
     if (isLoading) {
         return (
@@ -79,7 +100,7 @@ export default function NotificationCenter() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => checkSubmissionsMutation.mutate()}
+                            onClick={handleCheckSubmissions}
                             disabled={checkSubmissionsMutation.isPending}
                             title="Check for new submissions"
                         >
