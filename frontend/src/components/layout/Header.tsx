@@ -28,6 +28,8 @@ export default function Header() {
     { name: 'Dashboard', path: '/' },
     { name: 'Analytics', path: '/analytics' },
     { name: 'Team', path: '/team' },
+    { name: 'Notifications', path: '/notifications' },
+    { name: 'Settings', path: '/settings' },
   ];
 
   return (
