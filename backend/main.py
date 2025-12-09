@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from backend.api import auth, team, leetcode, analytics, notifications, settings, weekly_progress, notifications_log
 from backend.core.config import settings as config_settings
+from backend.core.database import init_db
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +25,13 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and other startup tasks"""
+    init_db()
+    print("Database initialized successfully")
 
 # Configure CORS
 app.add_middleware(
