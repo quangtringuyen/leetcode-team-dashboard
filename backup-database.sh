@@ -29,8 +29,20 @@ mkdir -p "$BACKUP_DIR"
 # 1. Backup SQLite database file
 echo -e "${YELLOW}Backing up database file...${NC}"
 if sudo docker exec leetcode-api test -f /app/data/leetcode.db; then
-    # Use SQLite's .backup command for safe backup
-    sudo docker exec leetcode-api sqlite3 /app/data/leetcode.db ".backup /app/data/temp_backup.db"
+    # Use Python to create a safe backup
+    sudo docker exec leetcode-api python3 -c "
+import sqlite3
+import shutil
+src = '/app/data/leetcode.db'
+dst = '/app/data/temp_backup.db'
+# Use backup API for safe copy
+src_conn = sqlite3.connect(src)
+dst_conn = sqlite3.connect(dst)
+src_conn.backup(dst_conn)
+src_conn.close()
+dst_conn.close()
+print('Backup created')
+"
     sudo docker cp leetcode-api:/app/data/temp_backup.db "$BACKUP_DIR/leetcode.db"
     sudo docker exec leetcode-api rm /app/data/temp_backup.db
     echo -e "${GREEN}✓ Database file backed up${NC}"
@@ -41,7 +53,17 @@ fi
 
 # 2. Export to SQL dump
 echo -e "${YELLOW}Creating SQL dump...${NC}"
-sudo docker exec leetcode-api sqlite3 /app/data/leetcode.db .dump > "$BACKUP_DIR/leetcode_dump.sql"
+sudo docker exec leetcode-api python3 -c "
+import sqlite3
+conn = sqlite3.connect('/app/data/leetcode.db')
+with open('/app/data/dump.sql', 'w') as f:
+    for line in conn.iterdump():
+        f.write(f'{line}\n')
+conn.close()
+print('SQL dump created')
+"
+sudo docker cp leetcode-api:/app/data/dump.sql "$BACKUP_DIR/leetcode_dump.sql"
+sudo docker exec leetcode-api rm /app/data/dump.sql
 echo -e "${GREEN}✓ SQL dump created${NC}"
 
 # 3. Export to JSON (for easy inspection)
