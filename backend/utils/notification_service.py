@@ -270,23 +270,96 @@ class NotificationService:
         member: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
-        """Get recent notifications"""
-        if member:
-            filtered = [n for n in self.notifications if n.get("member") == member]
-        else:
-            filtered = self.notifications
-        
-        # Sort by created_at descending
-        sorted_notifications = sorted(
-            filtered,
-            key=lambda x: x.get("created_at", ""),
-            reverse=True
-        )
-        
-        return sorted_notifications[:limit]
+        """Get recent notifications from database"""
+        try:
+            from backend.core.database import get_db_connection
+            import json
+            
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Build query based on member filter
+                if member:
+                    cursor.execute("""
+                        SELECT id, type, title, message, recipient, status, metadata, created_at, sent_at
+                        FROM notifications
+                        WHERE recipient = ? OR recipient = 'channel'
+                        ORDER BY created_at DESC
+                        LIMIT ?
+                    """, (member, limit))
+                else:
+                    cursor.execute("""
+                        SELECT id, type, title, message, recipient, status, metadata, created_at, sent_at
+                        FROM notifications
+                        ORDER BY created_at DESC
+                        LIMIT ?
+                    """, (limit,))
+                
+                rows = cursor.fetchall()
+                
+                # Convert to notification format
+                notifications = []
+                for row in rows:
+                    notification = {
+                        "id": row["id"],
+                        "type": row["type"],
+                        "title": row["title"],
+                        "message": row["message"],
+                        "member": row["recipient"] if row["recipient"] != "channel" else None,
+                        "priority": "medium",  # Default priority
+                        "created_at": row["created_at"],
+                        "read": False  # Default to unread
+                    }
+                    
+                    # Parse metadata if exists
+                    if row["metadata"]:
+                        try:
+                            metadata = json.loads(row["metadata"])
+                            notification.update(metadata)
+                        except:
+                            pass
+                    
+                    notifications.append(notification)
+                
+                return notifications
+                
+        except Exception as e:
+            logger.error(f"Failed to get notifications from DB: {e}")
+            # Fallback to in-memory list if DB fails
+            if member:
+                filtered = [n for n in self.notifications if n.get("member") == member]
+            else:
+                filtered = self.notifications
+            
+            sorted_notifications = sorted(
+                filtered,
+                key=lambda x: x.get("created_at", ""),
+                reverse=True
+            )
+            
+            return sorted_notifications[:limit]
     
     def clear_notifications(self, member: Optional[str] = None):
-        """Clear notifications"""
+        """Clear notifications from database"""
+        try:
+            from backend.core.database import get_db_connection
+            
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                
+                if member:
+                    cursor.execute("DELETE FROM notifications WHERE recipient = ?", (member,))
+                else:
+                    cursor.execute("DELETE FROM notifications")
+                
+                conn.commit()
+                deleted_count = cursor.rowcount
+                logger.info(f"Cleared {deleted_count} notification(s) from database")
+                
+        except Exception as e:
+            logger.error(f"Failed to clear notifications from DB: {e}")
+        
+        # Also clear in-memory list
         if member:
             self.notifications = [n for n in self.notifications if n.get("member") != member]
         else:
