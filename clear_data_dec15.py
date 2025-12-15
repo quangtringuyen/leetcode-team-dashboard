@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Target date to clear
-TARGET_DATE = "2024-12-15"  # Format: YYYY-MM-DD
+TARGET_DATE = "2025-12-15"  # Format: YYYY-MM-DD
 
 def create_backup():
     """Create a backup of the database before clearing data"""
