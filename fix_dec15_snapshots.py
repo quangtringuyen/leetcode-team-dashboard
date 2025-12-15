@@ -174,6 +174,63 @@ def update_dec15_snapshots(reconstructed):
         
         return updated
 
+def validate_with_leetcode(reconstructed):
+    """Validate reconstructed values against current LeetCode data"""
+    from backend.utils.leetcodeapi import fetch_user_data
+    
+    logger.info("\n🔍 Step 5: Validating with LeetCode API")
+    logger.info("=" * 100)
+    
+    validation_results = []
+    
+    for data in reconstructed:
+        username = data['username']
+        reconstructed_dec15 = data['dec15_total']
+        
+        # Fetch current data from LeetCode
+        try:
+            current_data = fetch_user_data(username)
+            if current_data:
+                current_total = current_data['totalSolved']
+                
+                # Current should be: Dec 15 snapshot + Dec 15 problems
+                # So Dec 15 problems = Current - Dec 15 snapshot
+                dec15_problems = current_total - reconstructed_dec15
+                
+                validation_results.append({
+                    'username': username,
+                    'reconstructed_dec15': reconstructed_dec15,
+                    'current_leetcode': current_total,
+                    'dec15_problems': dec15_problems,
+                    'valid': dec15_problems >= 0
+                })
+                
+                status = "✅" if dec15_problems >= 0 else "❌"
+                logger.info(f"{status} {username:<20} | Dec 15: {reconstructed_dec15:3d} | "
+                           f"Current: {current_total:3d} | Dec 15 problems: {dec15_problems:+3d}")
+            else:
+                logger.warning(f"⚠️  {username:<20} | Failed to fetch from LeetCode")
+        except Exception as e:
+            logger.error(f"❌ {username:<20} | Error: {e}")
+    
+    logger.info("=" * 100)
+    
+    # Show specific validation for quangtringuyen
+    for result in validation_results:
+        if result['username'] == 'quangtringuyen':
+            logger.info(f"\n📊 Validation for quangtringuyen:")
+            logger.info(f"  Expected: +3 problems from Dec 8-14")
+            logger.info(f"  Reconstructed Dec 15 value: {result['reconstructed_dec15']}")
+            logger.info(f"  Current LeetCode total: {result['current_leetcode']}")
+            logger.info(f"  Dec 15 problems: {result['dec15_problems']}")
+            
+            if result['dec15_problems'] >= 0:
+                logger.info(f"  ✅ Validation PASSED")
+            else:
+                logger.error(f"  ❌ Validation FAILED - reconstructed value too high!")
+    
+    return validation_results
+
 def main():
     """Main function"""
     logger.info("=" * 100)
@@ -221,6 +278,19 @@ def main():
                    f"{data['added']:<8} | {data['dec15_total']:<15}")
     logger.info("=" * 100)
     
+    # Step 5: Validate with LeetCode
+    validation_results = validate_with_leetcode(reconstructed)
+    
+    # Check if validation passed
+    all_valid = all(r.get('valid', False) for r in validation_results)
+    if not all_valid:
+        logger.error("\n❌ Validation failed for some members!")
+        logger.error("   Reconstructed values may be incorrect")
+        response = input("\nContinue anyway? (yes/no): ").strip().lower()
+        if response != 'yes':
+            logger.info("❌ Operation cancelled")
+            return 0
+    
     # Step 6: Confirm update
     response = input("\nUpdate Dec 15 snapshots with these values? (yes/no): ").strip().lower()
     
@@ -229,7 +299,7 @@ def main():
         return 0
     
     # Step 7: Update
-    logger.info("\n💾 Step 5: Updating Dec 15 Snapshots")
+    logger.info("\n💾 Step 6: Updating Dec 15 Snapshots")
     updated = update_dec15_snapshots(reconstructed)
     
     # Summary
