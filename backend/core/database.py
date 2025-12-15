@@ -84,7 +84,7 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('weekly_goal', '100')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('team_name', '\"LeetCode Team\"')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_day', '\"monday\"')")
-        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_time', '\"00:00\"')")
+        cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('snapshot_schedule_time', '\"07:30\"')")  # Changed from 00:00 to 07:30 to align with LeetCode's UTC 00:00 (GMT+7 07:00)
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('notification_check_interval', '15')")
         cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('problems_per_member_weekly', '3')")
         
