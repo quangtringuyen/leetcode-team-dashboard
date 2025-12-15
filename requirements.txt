@@ -12,3 +12,9 @@ streamlit-option-menu>=0.3.6
 streamlit-aggrid>=0.3.4
 streamlit-card>=0.0.4
 plotly-express>=0.4.1
+# Backend dependencies for scheduler
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-dotenv>=1.0.0
