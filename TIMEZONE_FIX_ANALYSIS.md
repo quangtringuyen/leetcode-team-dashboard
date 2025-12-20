@@ -146,3 +146,4 @@ All problems solved on Sunday (00:00-23:59 UTC) are captured in Sunday's snapsho
 1. Update `snapshot_schedule_time` setting to `07:30`
 2. Restart scheduler container
 3. Monitor next snapshot to verify all problems are captured
+sudo docker ps -a
