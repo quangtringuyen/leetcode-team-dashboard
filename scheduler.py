@@ -244,7 +244,7 @@ class DataScheduler:
         
         # Get scheduler settings
         snapshot_day = get_setting("snapshot_schedule_day", "monday").lower()
-        snapshot_time = get_setting("snapshot_schedule_time", "00:00")
+        snapshot_time = get_setting("snapshot_schedule_time", "00:05")
         notification_interval = int(get_setting("notification_check_interval", 15))
         
         logger.info(f"Configuring scheduler with settings from database:")
@@ -274,8 +274,8 @@ class DataScheduler:
         # Schedule submission check based on settings
         schedule.every(notification_interval).minutes.do(self.check_new_submissions)
         
-        # Schedule daily challenge notification (08:00 AM)
-        schedule.every().day.at("08:00").do(self.check_daily_challenge)
+        # Schedule daily challenge notification (00:05 UTC - usually 7:05 AM in VN)
+        schedule.every().day.at("00:05").do(self.check_daily_challenge)
         
         # Schedule weekly backup (Sunday at 02:00 AM)
         schedule.every().sunday.at("02:00").do(self.backup_data)
