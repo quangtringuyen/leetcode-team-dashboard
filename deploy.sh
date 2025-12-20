@@ -8,7 +8,7 @@ set -e  # Exit on any error
 # Server configuration
 SERVER_USER="quangtringuyen"
 SERVER_HOST="192.168.1.7"
-PROJECT_PATH="/volume1/docker/leetcode-team-dashboard"  # Adjust this path to match your NAS setup
+PROJECT_PATH="/volume2/docker/leetcode-team-dashboard"  # Adjust this path to match your NAS setup
 
 echo "🚀 Starting deployment to $SERVER_HOST..."
 echo ""
