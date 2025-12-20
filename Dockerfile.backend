@@ -25,8 +25,8 @@ COPY utils/ utils/
 COPY scheduler.py .
 COPY .env* ./
 
-# Create data directory
-RUN mkdir -p data
+# Create data directory (handled by volume mount, but good to ensure existence)
+# RUN mkdir -p data
 
 # Expose port
 EXPOSE 8000
