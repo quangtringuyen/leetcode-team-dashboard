@@ -24,7 +24,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # Stage 2: Production with Nginx
-FROM nginx:alpine
+FROM nginx:1.25-alpine
 
 # Copy built assets from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
