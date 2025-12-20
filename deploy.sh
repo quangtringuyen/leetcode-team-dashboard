@@ -14,7 +14,7 @@ echo "🚀 Starting deployment to $SERVER_HOST..."
 echo ""
 
 # SSH into server and execute deployment commands
-ssh "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
+ssh "${SERVER_USER}@${SERVER_HOST}" << EOF
 set -e
 
 # Navigate to project directory
