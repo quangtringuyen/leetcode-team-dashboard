@@ -31,8 +31,10 @@ echo ""
 
 # Stop containers
 echo "🛑 Stopping containers..."
-docker-compose down
-echo "✅ Containers stopped"
+docker-compose down --remove-orphans || true
+# Force remove containers to ensure no conflicts
+docker rm -f leetcode-scheduler leetcode-api 2>/dev/null || true
+echo "✅ Containers stopped and cleaned"
 echo ""
 
 # Rebuild containers without cache
