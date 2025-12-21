@@ -38,7 +38,7 @@ export default function Header() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl">
           <Code2 className="h-6 w-6 text-primary" />
-          <span className="gradient-text">LeetCode Dashboard</span>
+          <span className="gradient-text">DevInsightHub</span>
         </Link>
 
         {/* Desktop Navigation */}
