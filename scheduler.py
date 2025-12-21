@@ -244,7 +244,7 @@ class DataScheduler:
         
         # Get scheduler settings
         snapshot_day = get_setting("snapshot_schedule_day", "monday").lower()
-        snapshot_time = get_setting("snapshot_schedule_time", "00:05")
+        snapshot_time = get_setting("snapshot_schedule_time", "07:05")
         notification_interval = int(get_setting("notification_check_interval", 15))
         
         logger.info(f"Configuring scheduler with settings from database:")
