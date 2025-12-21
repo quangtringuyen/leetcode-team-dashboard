@@ -274,8 +274,9 @@ class DataScheduler:
         # Schedule submission check based on settings
         schedule.every(notification_interval).minutes.do(self.check_new_submissions)
         
-        # Schedule daily challenge notification (00:05 UTC - usually 7:05 AM in VN)
-        schedule.every().day.at("00:05").do(self.check_daily_challenge)
+        # Schedule daily challenge notification (07:05 VN Time / 00:05 UTC)
+        # Note: Since we use TZ=Asia/Ho_Chi_Minh in Docker, this runs at 07:05 local time
+        schedule.every().day.at("07:05").do(self.check_daily_challenge)
         
         # Schedule weekly backup (Sunday at 02:00 AM)
         schedule.every().sunday.at("02:00").do(self.backup_data)
