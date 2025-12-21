@@ -8,19 +8,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 LEETCODE_API_URL = "https://leetcode.com/graphql"
 LEETCODE_PROFILE_URL = "https://leetcode.com/{username}/"
 
+# Standard headers to imitate a browser and avoid blocking
+HEADERS = {
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://leetcode.com/"
+}
 
 def fetch_user_data(username: str) -> Optional[Dict[str, Any]]:
     """
     Fetch user profile data from LeetCode GraphQL API
-
-    Args:
-        username: LeetCode username
-
-    Returns:
-        Dict with user data or None if user not found
     """
     query = """
     query getUserProfile($username: String!) {
@@ -52,7 +53,7 @@ def fetch_user_data(username: str) -> Optional[Dict[str, Any]]:
         response = requests.post(
             LEETCODE_API_URL,
             json={"query": query, "variables": {"username": username}},
-            headers={"Content-Type": "application/json"},
+            headers=HEADERS,
             timeout=30  # Increased timeout to 30 seconds
         )
 
@@ -138,7 +139,7 @@ def fetch_recent_submissions(username: str, limit: int = 20) -> List[Dict[str, A
         response = requests.post(
             LEETCODE_API_URL,
             json={"query": query, "variables": {"username": username, "limit": limit}},
-            headers={"Content-Type": "application/json"},
+            headers=HEADERS,
             timeout=10
         )
 
@@ -191,7 +192,7 @@ def fetch_daily_challenge() -> Optional[Dict[str, Any]]:
         response = requests.post(
             LEETCODE_API_URL,
             json={"query": query},
-            headers={"Content-Type": "application/json"},
+            headers=HEADERS,
             timeout=10
         )
 
@@ -308,7 +309,7 @@ def _fetch_monthly_challenges(year: int, month: int) -> List[Dict[str, Any]]:
                 "query": query,
                 "variables": {"year": year, "month": month}
             },
-            headers={"Content-Type": "application/json"},
+            headers=HEADERS,
             timeout=10
         )
 
@@ -349,7 +350,7 @@ def fetch_submissions_with_tags(username: str, limit: int = 100) -> List[Dict[st
         response = requests.post(
             LEETCODE_API_URL,
             json={"query": query, "variables": {"username": username, "limit": limit}},
-            headers={"Content-Type": "application/json"},
+            headers=HEADERS,
             timeout=15
         )
         
@@ -432,7 +433,7 @@ def _fetch_problem_details(title_slug: str) -> Optional[Dict[str, Any]]:
         response = requests.post(
             LEETCODE_API_URL,
             json={"query": query, "variables": {"titleSlug": title_slug}},
-            headers={"Content-Type": "application/json"},
+            headers=HEADERS,
             timeout=10
         )
         
