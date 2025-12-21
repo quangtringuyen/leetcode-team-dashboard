@@ -120,8 +120,8 @@ async def get_daily_challenge_history(
 
     username = current_user["username"]
     
-    # Check cache
-    cache_key = f"daily_history_{username}_{days}"
+    # Check cache (v2 to invalidate old cache after API fix)
+    cache_key = f"daily_history_v2_{username}_{days}"
     cached_result = get_cached_data(cache_key, ttl_seconds=900) # 15 mins cache
     if cached_result:
         return cached_result
