@@ -206,6 +206,10 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
     today = date.today()
     changes = []
 
+    # Get all members to ensure new ones are included
+    all_members_config = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members_config.get(username, [])
+
     # For each of the last N weeks, compare with the previous week
     for week_offset in range(weeks):
         current_week_start = (today - timedelta(days=today.weekday() + (week_offset * 7))).isoformat()
@@ -215,6 +219,7 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
         current_week_data = {}
         previous_week_data = {}
 
+        # First populate from history
         for member_username, snapshots in user_history_dict.items():
             for snapshot in snapshots:
                 week = snapshot.get("week_start")
@@ -235,15 +240,17 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
             for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
         }
 
-        all_members = set(list(current_week_data.keys()) + list(previous_week_data.keys()))
-
-        for member in all_members:
+        # Iterate over ALL configured members
+        for member_info in user_members:
+            member = member_info["username"]
+            
+            # Get values (default to 0)
             current_val = current_week_data.get(member, 0)
             previous_val = previous_week_data.get(member, 0)
             
-            # Skip if no data for this member in this week window
-            if current_val == 0 and previous_val == 0:
-                continue
+            # Show member even if 0/0
+            # if current_val == 0 and previous_val == 0:
+            #     continue
                 
             change = current_val - previous_val
             
@@ -297,6 +304,11 @@ def get_week_over_week(
     today = date.today()
     changes = []
     
+    # Get all members to ensure new ones are included
+    all_members_config = read_json(settings.MEMBERS_FILE, default={})
+    user_members = all_members_config.get(username, [])
+    user_members_dict = {m["username"]: m for m in user_members}
+
     # Iterate through requested number of weeks
     for w in range(weeks):
         # Calculate week starts for this iteration
@@ -309,6 +321,7 @@ def get_week_over_week(
         current_week_data = {}
         previous_week_data = {}
 
+        # First, process existing history
         for member_username, snapshots in user_history_dict.items():
             for snapshot in snapshots:
                 week = snapshot.get("week_start")
@@ -318,7 +331,7 @@ def get_week_over_week(
                     current_week_data[member_username] = total
                 elif week == previous_week_start:
                     previous_week_data[member_username] = total
-
+        
         # Calculate ranks for this week pair
         current_week_ranks = {
             m: i + 1 
@@ -329,15 +342,17 @@ def get_week_over_week(
             for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
         }
 
-        all_members = set(list(current_week_data.keys()) + list(previous_week_data.keys()))
-
-        for member in all_members:
+        # Iterate over ALL configured members
+        for member_info in user_members:
+            member = member_info["username"]
+            
+            # Get values (default to 0 if not found)
             current_val = current_week_data.get(member, 0)
             previous_val = previous_week_data.get(member, 0)
             
-            # Skip if no data for this member in this week window (optional, but keeps table clean)
-            if current_val == 0 and previous_val == 0:
-                continue
+            # Show member even if both are 0, so new members appear
+            # if current_val == 0 and previous_val == 0:
+            #     continue
                 
             change = current_val - previous_val
             
@@ -452,7 +467,12 @@ def get_weekly_progress(
     
     # Process each member with forward-fill
     members_data = {}
-    for member_username, snapshots in user_history_dict.items():
+    
+    # Iterate over ALL members, not just those with history
+    for member in user_members:
+        member_username = member["username"]
+        snapshots = user_history_dict.get(member_username, [])
+        
         # Sort snapshots by week
         sorted_snapshots = sorted(snapshots, key=lambda x: x.get("week_start", ""))
         
