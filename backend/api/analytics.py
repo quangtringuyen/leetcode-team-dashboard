@@ -248,10 +248,16 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
             current_val = current_week_data.get(member, 0)
             previous_val = previous_week_data.get(member, 0)
             
-            # Show member even if 0/0
-            # if current_val == 0 and previous_val == 0:
-            #     continue
-                
+            # If current_val is 0 (missing snapshot) AND it is the current week (week_offset=0),
+            # try to fetch live data to show "Current" status correctly for new members.
+            if week_offset == 0 and current_val == 0:
+                try:
+                    live_data = fetch_user_data(member)
+                    if live_data:
+                        current_val = live_data.get("totalSolved", 0)
+                except Exception:
+                    pass
+            
             change = current_val - previous_val
             
             # Calculate percentage change
@@ -350,10 +356,19 @@ def get_week_over_week(
             current_val = current_week_data.get(member, 0)
             previous_val = previous_week_data.get(member, 0)
             
-            # Show member even if both are 0, so new members appear
-            # if current_val == 0 and previous_val == 0:
-            #     continue
-                
+            # If current_val is 0 (missing snapshot) AND it is the current week (w=0),
+            # try to fetch live data to show "Current" status correctly for new members.
+            if w == 0 and current_val == 0:
+                # We can try to fetch live data
+                # To avoid N API calls sequentially, we might want to do this in parallel above?
+                # But typically this falls back for only NEW members (few).
+                try:
+                    live_data = fetch_user_data(member)
+                    if live_data:
+                        current_val = live_data.get("totalSolved", 0)
+                except Exception as e:
+                    pass
+
             change = current_val - previous_val
             
             # Calculate percentage change
@@ -468,7 +483,7 @@ def get_weekly_progress(
     # Process each member with forward-fill
     members_data = {}
     
-    # Iterate over ALL members, not just those with history
+    # Iterate over ALL members
     for member in user_members:
         member_username = member["username"]
         snapshots = user_history_dict.get(member_username, [])
@@ -482,9 +497,38 @@ def get_weekly_progress(
         # Forward-fill algorithm
         filled_data = []
         last_value = 0
+        
+        # Determine current week to potentially use live data
+        current_week_iso = end_week.isoformat()
+        
         for week in all_weeks:
             if week in snapshot_dict:
                 last_value = snapshot_dict[week]
+            
+            # If it's the current week and we have 0 (or just forwarded), let's try to get live/cached data
+            # Only if we don't have a real snapshot for this week
+            if week == current_week_iso and week not in snapshot_dict:
+                # Try to get live data from cache to avoid heavy api calls
+                # We can't actuall call async fetch here easily without changing architecture
+                # But we can check if we have it in memory or just use last value
+                
+                # For now, let's leave it as forward-fill. 
+                # If we want live data here, we'd need to fetch_user_data which is slow if not parallel.
+                # However, the user specifically complained about "Showing 0".
+                # If last_value is 0 (new member), we should try to get it.
+                if last_value == 0:
+                    try:
+                        # Try cache first (implicit in fetch_user_data usually? No, fetch_user_data calls external)
+                        # We use get_cached_data? No, fetch_user_data does internal caching.
+                        # We should try to use fetch_user_data but it might be slow for 12 weeks graph?
+                        # Actually this is just one point per member.
+                        # Let's do it only if 0, which is the case for new members.
+                        live_data = fetch_user_data(member_username)
+                        if live_data and live_data.get("totalSolved"):
+                            last_value = live_data.get("totalSolved")
+                    except:
+                        pass
+                
             filled_data.append(last_value)
         
         members_data[member_username] = {
