@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
-from backend.core.database import get_user_history_from_db, get_db_connection, get_cached_data, set_cached_data
+from backend.core.database import get_user_history_from_db, get_db_connection, get_cached_data, set_cached_data, get_team_members_from_db
 from backend.core.config import settings
 from backend.utils.leetcodeapi import fetch_user_data, fetch_submissions_with_tags
 from backend.utils.streak_tracker import get_team_streaks, get_streak_leaderboard, get_members_at_risk
@@ -71,9 +71,8 @@ async def record_snapshot(current_user: dict = Depends(get_current_user)):
     """Record current week snapshot for all team members"""
     username = current_user["username"]
 
-    # Get team members
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get team members from DB
+    user_members = get_team_members_from_db(username)
 
     if not user_members:
         return {"message": "No team members to snapshot", "count": 0}
@@ -155,9 +154,8 @@ def get_trends(
     """Get trend data for the last N weeks"""
     username = current_user["username"]
 
-    history = read_json(settings.HISTORY_FILE, default={})
-    # History structure: {owner: {member_username: [snapshots]}}
-    user_history_dict = history.get(username, {})
+    # Fetch history from DB
+    user_history_dict = get_user_history_from_db(username)
 
     if not user_history_dict:
         return {"weeks": [], "members": {}}
@@ -197,8 +195,7 @@ def get_trends(
 
 def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str, Any]]:
     """Internal helper to get week-over-week changes (synchronous, for Excel export)"""
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    user_history_dict = get_user_history_from_db(username)
 
     if not user_history_dict:
         return []
@@ -206,9 +203,8 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
     today = date.today()
     changes = []
 
-    # Get all members to ensure new ones are included
-    all_members_config = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members_config.get(username, [])
+    # Get members from DB
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
 
@@ -312,9 +308,8 @@ def get_week_over_week(
     today = date.today()
     changes = []
     
-    # Get all members to ensure new ones are included
-    all_members_config = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members_config.get(username, [])
+    # Get all members from DB
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     user_members_dict = {m["username"]: m for m in user_members}
@@ -467,8 +462,7 @@ def get_weekly_progress(
 
     
     # Get team members for names
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members.get(username, [])
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
@@ -563,8 +557,8 @@ def get_accepted_trend(
     username = current_user["username"]
 
     # Get team members
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get team members from DB
+    user_members = get_team_members_from_db(username)
 
     if not user_members:
         return []
@@ -703,9 +697,8 @@ def get_streaks_leaderboard(
     if not user_history_dict:
         return []
     
-    # Get member names for active filtering
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members.get(username, [])
+    # Get team members from DB
+    user_members = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
@@ -743,9 +736,8 @@ def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
         return []
     
     # Get member names for active filtering
-    # Get member names for active filtering
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members.get(username, [])
+    # Get team members from DB
+    user_members = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}

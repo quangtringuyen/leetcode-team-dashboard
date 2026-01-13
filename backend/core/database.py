@@ -193,3 +193,12 @@ def set_cached_data(key: str, data: dict | list):
         VALUES (?, ?, ?)
         """, (key, json_data, now))
         conn.commit()
+
+def get_team_members_from_db(owner_username: str) -> list:
+    """Fetch all members for a team owner"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, name, team_owner, status FROM members WHERE team_owner = ?", (owner_username,))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
