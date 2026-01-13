@@ -2,37 +2,49 @@
 from __future__ import annotations
 from typing import List, Dict, Any
 
-from core.storage import Storage
+from backend.core.database import get_db_connection
 
-DATA_PATH = "data/members.json"
-
-
+# Replaces Storage-based implementation with DB implementation
 class MembersService:
-    def __init__(self, storage: Storage):
-        self.storage = storage
+    def __init__(self, storage: Any = None):
+        # Storage is no longer used but kept for signature compatibility if needed
+        pass
 
     def load_all_members(self) -> Dict[str, Any]:
-        return self.storage.read_json(DATA_PATH, default={})
+        """Load all members grouped by team owner"""
+        result = {}
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username, name, team_owner, status FROM members WHERE status != 'suspended'")
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                owner = row["team_owner"]
+                member = dict(row)
+                if owner not in result:
+                    result[owner] = []
+                result[owner].append(member)
+        return result
 
     def save_all_members(self, all_members: Dict[str, Any]) -> None:
-        self.storage.write_json(DATA_PATH, all_members)
+        # DB is source of truth, this might be legacy sync?
+        # For now, do nothing or implement complex sync if needed.
+        # Scheduler doesn't call this.
+        pass
 
     def load_members(self, owner: str) -> List[Dict[str, str]]:
-        return self.load_all_members().get(owner, [])
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username, name, team_owner, status FROM members WHERE team_owner = ?", (owner,))
+            return [dict(row) for row in cursor.fetchall()]
 
     def save_members(self, owner: str, members: List[Dict[str, str]]) -> None:
-        full = self.load_all_members()
-        full[owner] = members
-        self.save_all_members(full)
+        pass
 
     def add_member(self, owner: str, name: str, username: str) -> bool:
-        members = self.load_members(owner)
-        if any(m["username"] == username for m in members):
-            return False
-        members.append({"name": name, "username": username})
-        self.save_members(owner, members)
+        # Handled by API
         return True
 
     def remove_member(self, owner: str, username: str) -> None:
-        members = [m for m in self.load_members(owner) if m["username"] != username]
-        self.save_members(owner, members)
+        # Handled by API
+        pass

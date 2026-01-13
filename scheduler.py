@@ -56,8 +56,8 @@ class DataScheduler:
         logger.info("Checking for new submissions...")
         
         try:
-            # Load team members
-            all_members = read_json(settings.MEMBERS_FILE, default={})
+            # Load team members via service (DB)
+            all_members = self.members_service.load_all_members()
             
             # Flatten members list (handle multiple teams if any, though usually it's by owner)
             # Structure is {owner: [members]}
