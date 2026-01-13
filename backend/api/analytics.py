@@ -460,8 +460,7 @@ def get_weekly_progress(
     # Fetch history from DB
     user_history_dict = get_user_history_from_db(username)
     
-    if not user_history_dict:
-        return {"weeks": [], "members": {}}
+
     
     # Get team members for names
     all_members = read_json(settings.MEMBERS_FILE, default={})
@@ -756,17 +755,23 @@ def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
     if not user_history_dict:
         return []
     
-    # Calculate difficulty trends for all members
-    team_trends = get_team_difficulty_trends(user_history_dict)
-    
-    # Get member names
-    all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     
-    # Add names to trend data
-    for trend in team_trends:
-        trend["name"] = member_names.get(trend["member"], trend["member"])
+    # Calculate difficulty trends for all members
+    team_trends = []
+    for member in user_members:
+        member_username = member["username"]
+        member_history = user_history_dict.get(member_username, [])
+        
+        # Calculate trends even if history is empty
+        trend_data = calculate_difficulty_trends(member_history)
+        
+        team_trends.append({
+            "member": member_username,
+            "name": member_names.get(member_username, member_username),
+            **trend_data
+        })
     
     return team_trends
 
