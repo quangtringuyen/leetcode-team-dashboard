@@ -467,3 +467,11 @@ def _fetch_problem_details(title_slug: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.warning(f"Error fetching problem details for {title_slug}: {e}")
         return None
+
+def check_leetcode_user_exists(username: str) -> bool:
+    """
+    Check if a LeetCode user exists.
+    """
+    data = fetch_user_data(username)
+    return data is not None
+
