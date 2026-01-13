@@ -22,6 +22,16 @@ class UpdateMember(BaseModel):
     status: str = "active"
     username: Optional[str] = None # Allow updating username
 
+def get_members_list_internal(owner_username: str) -> List[dict]:
+    """Internal helper to get members list for a team owner"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Include avatar as it is often needed by consumers
+        cursor.execute("SELECT username, name, team_owner, status, avatar FROM members WHERE team_owner = ?", (owner_username,))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
 @router.get("/members", response_model=List[dict])
 def get_team_members(current_user: dict = Depends(get_current_user)):
     """Get all team members with their latest stats"""
