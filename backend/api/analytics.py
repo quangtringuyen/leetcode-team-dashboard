@@ -667,7 +667,9 @@ def get_streaks(current_user: dict = Depends(get_current_user)):
     
     # Get member names for active filtering
     all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    user_members_raw = all_members.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     active_usernames = set(member_names.keys())
     
@@ -703,7 +705,9 @@ def get_streaks_leaderboard(
     
     # Get member names for active filtering
     all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    user_members_raw = all_members.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     active_usernames = set(member_names.keys())
     
