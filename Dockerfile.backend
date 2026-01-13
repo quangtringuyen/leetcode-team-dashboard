@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY backend/ backend/
 COPY core/ core/
 COPY services/ services/
-COPY utils/ utils/
+
 COPY scheduler.py .
 COPY .env* ./
 
