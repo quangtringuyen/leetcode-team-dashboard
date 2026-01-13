@@ -41,7 +41,7 @@ export default function Team() {
   // Edit State
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
-  const [editFormData, setEditFormData] = useState({ name: '', username: '' });
+  const [editFormData, setEditFormData] = useState({ name: '', username: '', status: 'active' });
   const queryClient = useQueryClient();
 
   const {
@@ -137,12 +137,12 @@ export default function Team() {
 
   // Update member mutation
   const updateMember = useMutation({
-    mutationFn: async (data: { currentUsername: string; name: string; username: string }) => {
+    mutationFn: async (data: { currentUsername: string; name: string; username: string; status: string }) => {
       const token = localStorage.getItem('access_token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       await axios.put(
         `${API_URL}/members/${data.currentUsername}`,
-        { name: data.name, username: data.username },
+        { name: data.name, username: data.username, status: data.status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
     },
@@ -158,7 +158,7 @@ export default function Team() {
 
   const handleEditClick = (member: any) => {
     setEditingMember(member);
-    setEditFormData({ name: member.name, username: member.username });
+    setEditFormData({ name: member.name, username: member.username, status: member.status || 'active' });
     setIsEditOpen(true);
   };
 
@@ -168,7 +168,8 @@ export default function Team() {
     await updateMember.mutateAsync({
       currentUsername: editingMember.username,
       name: editFormData.name,
-      username: editFormData.username
+      username: editFormData.username,
+      status: editFormData.status
     });
   };
 
@@ -309,6 +310,21 @@ export default function Team() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <label htmlFor="edit-status" className="text-sm font-medium">Status</label>
+              <select
+                id="edit-status"
+                value={editFormData.status}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Suspended members will not appear in analytics or charts but their data is preserved.
+              </p>
+            </div>
+            <div className="space-y-2">
               <label htmlFor="edit-name" className="text-sm font-medium">Display Name</label>
               <Input
                 id="edit-name"
@@ -366,7 +382,7 @@ export default function Team() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {members.filter((m) => m.totalSolved > 0).length}
+              {members.filter((m) => m.status !== 'suspended').length}
             </div>
           </CardContent>
         </Card>
@@ -405,7 +421,8 @@ export default function Team() {
               {members.map((member) => (
                 <div
                   key={member.username}
-                  className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
+                  className={`flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors ${member.status === 'suspended' ? 'opacity-60 grayscale-[0.5]' : ''
+                    }`}
                 >
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
@@ -415,7 +432,14 @@ export default function Team() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{member.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{member.name}</p>
+                        {member.status === 'suspended' && (
+                          <Badge variant="destructive" className="text-[10px] px-1 h-5">
+                            Suspended
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">@{member.username}</p>
                     </div>
                   </div>

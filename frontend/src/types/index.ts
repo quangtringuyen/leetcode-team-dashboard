@@ -32,6 +32,7 @@ export interface TeamMember {
   easy: number;
   medium: number;
   hard: number;
+  status?: string;
 }
 
 export interface AddMemberRequest {
