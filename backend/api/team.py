@@ -148,6 +148,49 @@ async def add_team_member(
     all_members[username] = user_members
     write_json(settings.MEMBERS_FILE, all_members)
 
+    # Automatically record initial history snapshot
+    try:
+        from datetime import date, datetime, timedelta
+        
+        # Calculate week start (Monday)
+        today = date.today()
+        week_start = (today - timedelta(days=today.weekday())).isoformat()
+        
+        history = read_json(settings.HISTORY_FILE, default={})
+        if username not in history:
+            history[username] = {}
+        
+        # Initialize member list if needed
+        # History structure: {owner: {member_username: [snapshots]}}
+        # Check structure in get_history: {owner: {member_username: [snapshots]}} matches what I see
+        
+        user_history = history.get(username, {})
+        if member.username not in user_history:
+            user_history[member.username] = []
+            
+        # Create snapshot from the data we just fetched
+        snapshot = {
+            "week_start": week_start,
+            "member": member.username,
+            "totalSolved": leetcode_data.get("totalSolved", 0),
+            "easy": leetcode_data.get("easy", 0),
+            "medium": leetcode_data.get("medium", 0),
+            "hard": leetcode_data.get("hard", 0),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Check if snapshot for this week already exists (unlikely for new member but good practice)
+        # Actually for new member it definitely doesn't exist unless re-added
+        user_history[member.username].append(snapshot)
+        history[username] = user_history
+        write_json(settings.HISTORY_FILE, history)
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to record initial history for {member.username}: {e}")
+
+
     return {
         "message": f"Added {member.username} to team",
         "member": {
