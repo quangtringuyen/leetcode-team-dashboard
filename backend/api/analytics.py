@@ -13,7 +13,7 @@ from backend.core.database import get_user_history_from_db, get_db_connection, g
 from backend.core.config import settings
 from backend.utils.leetcodeapi import fetch_user_data, fetch_submissions_with_tags
 from backend.utils.streak_tracker import get_team_streaks, get_streak_leaderboard, get_members_at_risk
-from backend.utils.difficulty_analyzer import get_team_difficulty_trends, get_stuck_members
+from backend.utils.difficulty_analyzer import get_team_difficulty_trends, get_stuck_members, calculate_difficulty_trends
 from backend.utils.tag_analyzer import get_team_tag_analysis, get_team_tag_heatmap, recommend_problems_by_weak_tags
 from backend.utils.problem_recommender import get_personalized_recommendations, recommend_by_company
 
