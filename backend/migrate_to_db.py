@@ -23,7 +23,7 @@ def migrate():
     cursor = conn.cursor()
     
     # 1. Migrate Members
-    members_file = settings.MEMBERS_FILE
+    members_file = os.path.join(settings.DATA_DIR, settings.MEMBERS_FILE)
     if os.path.exists(members_file):
         logger.info(f"Reading members from {members_file}")
         try:
@@ -62,7 +62,7 @@ def migrate():
         logger.warning(f"Members file not found: {members_file}")
 
     # 2. Migrate History
-    history_file = settings.HISTORY_FILE
+    history_file = os.path.join(settings.DATA_DIR, settings.HISTORY_FILE)
     if os.path.exists(history_file):
         logger.info(f"Reading history from {history_file}")
         try:
