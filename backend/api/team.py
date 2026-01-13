@@ -26,10 +26,12 @@ def get_members_list_internal(username: str) -> List[Dict[str, Any]]:
 class TeamMember(BaseModel):
     username: str
     name: Optional[str] = None
+    status: Optional[str] = "active"  # active, suspended
 
 class TeamMemberResponse(BaseModel):
     username: str
     name: str
+    status: str = "active"
     avatar: Optional[str] = None
     totalSolved: int = 0
     ranking: Optional[int] = None
@@ -57,6 +59,7 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
                 return TeamMemberResponse(
                     username=member["username"],
                     name=member.get("name", member["username"]),
+                    status=member.get("status", "active"),
                     avatar=leetcode_data.get("avatar"),
                     totalSolved=leetcode_data.get("totalSolved", 0),
                     ranking=leetcode_data.get("ranking"),
@@ -69,6 +72,7 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
                 return TeamMemberResponse(
                     username=member["username"],
                     name=member.get("name", member["username"]),
+                    status=member.get("status", "active"),
                     totalSolved=0,
                     easy=0,
                     medium=0,
@@ -82,6 +86,7 @@ async def get_team_members(current_user: dict = Depends(get_current_user)):
             return TeamMemberResponse(
                 username=member["username"],
                 name=member.get("name", member["username"]),
+                status=member.get("status", "active"),
                 totalSolved=0,
                 easy=0,
                 medium=0,
@@ -136,7 +141,8 @@ async def add_team_member(
     # Add new member
     user_members.append({
         "username": member.username,
-        "name": member.name or leetcode_data.get("realName", member.username)
+        "name": member.name or leetcode_data.get("realName", member.username),
+        "status": member.status or "active"
     })
 
     all_members[username] = user_members
@@ -146,13 +152,15 @@ async def add_team_member(
         "message": f"Added {member.username} to team",
         "member": {
             "username": member.username,
-            "name": member.name or leetcode_data.get("realName", member.username)
+            "name": member.name or leetcode_data.get("realName", member.username),
+            "status": member.status or "active"
         }
     }
 
 class MemberUpdate(BaseModel):
     name: Optional[str] = None
     username: Optional[str] = None
+    status: Optional[str] = None  # active, suspended
 
 @router.put("/members/{member_username}")
 async def update_team_member(
@@ -250,6 +258,13 @@ async def update_team_member(
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error updating database for member rename: {e}")
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error updating database for member rename: {e}")
+
+    # Update Status
+    if update_data.status:
+        member["status"] = update_data.status
 
     # Save changes
     user_members[member_idx] = member

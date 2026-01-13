@@ -208,7 +208,9 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
 
     # Get all members to ensure new ones are included
     all_members_config = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members_config.get(username, [])
+    user_members_raw = all_members_config.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
 
     # For each of the last N weeks, compare with the previous week
     for week_offset in range(weeks):
@@ -312,7 +314,9 @@ def get_week_over_week(
     
     # Get all members to ensure new ones are included
     all_members_config = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members_config.get(username, [])
+    user_members_raw = all_members_config.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     user_members_dict = {m["username"]: m for m in user_members}
 
     # Iterate through requested number of weeks
@@ -464,7 +468,9 @@ def get_weekly_progress(
     
     # Get team members for names
     all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    user_members_raw = all_members.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     
     # Determine week range
@@ -659,19 +665,23 @@ def get_streaks(current_user: dict = Depends(get_current_user)):
     if not user_history_dict:
         return []
     
-    # Calculate streaks for all members
-    team_streaks = get_team_streaks(user_history_dict)
-    
-    # Get member names
+    # Get member names for active filtering
     all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    active_usernames = set(member_names.keys())
+    
+    # Calculate streaks for all members
+    team_streaks = get_team_streaks(user_history_dict)
+    
+    # Filter for active members only
+    active_streaks = [s for s in team_streaks if s["member"] in active_usernames]
     
     # Add names to streak data
-    for streak in team_streaks:
+    for streak in active_streaks:
         streak["name"] = member_names.get(streak["member"], streak["member"])
     
-    return team_streaks
+    return active_streaks
 
 
 @router.get("/streaks/leaderboard")
@@ -691,14 +701,20 @@ def get_streaks_leaderboard(
     if not user_history_dict:
         return []
     
-    # Calculate streaks
-    team_streaks = get_team_streaks(user_history_dict)
-    leaderboard = get_streak_leaderboard(team_streaks, limit)
-    
-    # Get member names
+    # Get member names for active filtering
     all_members = read_json(settings.MEMBERS_FILE, default={})
     user_members = all_members.get(username, [])
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    active_usernames = set(member_names.keys())
+    
+    # Calculate streaks
+    team_streaks = get_team_streaks(user_history_dict)
+    
+    # Filter for active members only
+    active_streaks = [s for s in team_streaks if s["member"] in active_usernames]
+    
+    # Get leaderboard from filtered list
+    leaderboard = get_streak_leaderboard(active_streaks, limit)
     
     # Add names and rank
     for i, streak in enumerate(leaderboard):
@@ -722,14 +738,23 @@ def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
     if not user_history_dict:
         return []
     
+    # Get member names for active filtering
+    # Get member names for active filtering
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members_raw = all_members.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
+    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    active_usernames = set(member_names.keys())
+    
     # Calculate streaks
     team_streaks = get_team_streaks(user_history_dict)
-    at_risk = get_members_at_risk(team_streaks)
     
-    # Get member names
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
-    member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
+    # Filter for active members only
+    active_streaks = [s for s in team_streaks if s["member"] in active_usernames]
+    
+    # Get at-risk from filtered list
+    at_risk = get_members_at_risk(active_streaks)
     
     # Add names
     for streak in at_risk:
@@ -755,7 +780,11 @@ def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
     if not user_history_dict:
         return []
     
-    user_members = all_members.get(username, [])
+    # Get member names
+    all_members = read_json(settings.MEMBERS_FILE, default={})
+    user_members_raw = all_members.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     
     # Calculate difficulty trends for all members
