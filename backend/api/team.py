@@ -189,6 +189,8 @@ async def update_team_member(
             break
             
     if not member:
+        print(f"DEBUG: Update member failed. User: {username}, Target: {member_username}")
+        print(f"DEBUG: Available members: {[m.get('username') for m in user_members]}")
         raise HTTPException(status_code=404, detail="Member not found")
         
     # Update Name
