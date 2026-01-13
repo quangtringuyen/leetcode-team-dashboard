@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function Dashboard() {
-  const { members, stats, isMembersLoading, isStatsLoading } = useTeam();
+  const { members, isMembersLoading, isStatsLoading } = useTeam();
   const { recordSnapshot, isRecordingSnapshot, lastSnapshot } = useAnalytics();
 
   // Fetch settings

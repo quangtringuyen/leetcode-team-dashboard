@@ -27,7 +27,7 @@ export default function Analytics() {
     getAcceptedTrend
   } = useAnalytics();
 
-  const { members, stats, isMembersLoading, isStatsLoading } = useTeam();
+  const { members, isMembersLoading, isStatsLoading } = useTeam();
 
   // Fetch data for charts
   const {
