@@ -46,11 +46,22 @@ export default function Analytics() {
     isLoading: isAcceptedTrendLoading,
   } = getAcceptedTrend(trendDays);
 
+  // Filter out suspended members
+  const activeMembers = members.filter(m => m.status !== 'suspended');
+
   // Prepare difficulty pie chart data
+  // Note: stats might currently include suspended members if backend get_stats isn't filtered.
+  // Ideally, we should recalculate from activeMembers to be consistent if stats is stale/global.
+  const activeStats = {
+    easy: activeMembers.reduce((sum, m) => sum + m.easy, 0),
+    medium: activeMembers.reduce((sum, m) => sum + m.medium, 0),
+    hard: activeMembers.reduce((sum, m) => sum + m.hard, 0),
+  };
+
   const difficultyData = [
-    { name: 'Easy', value: stats?.difficulty_breakdown?.easy || 0 },
-    { name: 'Medium', value: stats?.difficulty_breakdown?.medium || 0 },
-    { name: 'Hard', value: stats?.difficulty_breakdown?.hard || 0 },
+    { name: 'Easy', value: activeStats.easy },
+    { name: 'Medium', value: activeStats.medium },
+    { name: 'Hard', value: activeStats.hard },
   ];
 
 
@@ -234,7 +245,7 @@ export default function Analytics() {
       {/* Team Performance & Difficulty Distribution */}
       <div className="grid gap-6 md:grid-cols-2">
         <TeamPerformanceChart
-          members={members}
+          members={activeMembers}
           title="Team Performance"
           description="Solved problems breakdown by member"
           isLoading={isMembersLoading}

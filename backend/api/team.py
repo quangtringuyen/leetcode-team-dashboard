@@ -300,7 +300,9 @@ async def get_team_stats(current_user: dict = Depends(get_current_user)):
 
     # Load members
     all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    user_members_raw = all_members.get(username, [])
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
 
     if not user_members:
         return {

@@ -53,9 +53,12 @@ export default function Dashboard() {
     }
   };
 
+  // Filter out suspended members
+  const activeMembers = members.filter(m => m.status !== 'suspended');
+
   // Calculate stats
-  const totalMembers = members.length;
-  const totalSolved = stats?.total_problems_solved || 0;
+  const totalMembers = activeMembers.length;
+  const totalSolved = activeMembers.reduce((sum, m) => sum + m.totalSolved, 0);
   const averageSolved = totalMembers > 0 ? Math.round(totalSolved / totalMembers) : 0;
 
   // Calculate weekly goal: problems_per_member × number_of_members
@@ -101,7 +104,7 @@ export default function Dashboard() {
           title="Team Members"
           value={totalMembers}
           icon={Users}
-          description={`${members.filter((m) => m.totalSolved > 0).length} active`}
+          description={`${activeMembers.filter((m) => m.totalSolved > 0).length} active`}
           isLoading={isMembersLoading}
         />
         <StatsCard
@@ -135,8 +138,8 @@ export default function Dashboard() {
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Column: Leaderboard & Podium */}
         <div className="lg:col-span-2 space-y-8">
-          <Podium members={members} isLoading={isMembersLoading} />
-          <Leaderboard members={members} isLoading={isMembersLoading} />
+          <Podium members={activeMembers} isLoading={isMembersLoading} />
+          <Leaderboard members={activeMembers} isLoading={isMembersLoading} />
         </div>
 
         {/* Right Column: Notifications, Streaks, Daily Challenge & Recent Activity */}
