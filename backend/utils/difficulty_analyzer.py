@@ -44,9 +44,9 @@ def calculate_difficulty_trends(history_data: List[Dict[str, Any]]) -> Dict[str,
                 "medium": medium,
                 "hard": hard,
                 "total": total,
-                "easy_pct": round((easy / total) * 100, 1),
-                "medium_pct": round((medium / total) * 100, 1),
-                "hard_pct": round((hard / total) * 100, 1)
+                "easy_pct": round((easy / total) * 100, 1) if total > 0 else 0,
+                "medium_pct": round((medium / total) * 100, 1) if total > 0 else 0,
+                "hard_pct": round((hard / total) * 100, 1) if total > 0 else 0
             })
     
     if not trends:
