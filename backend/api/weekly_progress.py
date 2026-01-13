@@ -7,7 +7,7 @@ from datetime import date, timedelta
 import logging
 
 from backend.api.auth import get_current_user
-from backend.core.database import get_user_history_from_db
+from backend.core.database import get_user_history_from_db, get_team_members_from_db
 from backend.utils.leetcodeapi import fetch_user_data
 from backend.core.storage import read_json
 from backend.core.config import settings
@@ -24,9 +24,8 @@ async def get_current_week_progress(current_user: dict = Depends(get_current_use
     """
     username = current_user["username"]
     
-    # Get members list
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get members list from DB
+    user_members = get_team_members_from_db(username)
     
     if not user_members:
         return {

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from backend.core.security import get_current_user
 from backend.core.storage import read_json, write_json
 from backend.core.config import settings
+from backend.core.database import get_db_connection, get_user_history_from_db, get_team_members_from_db
 from backend.utils.notification_service import (
     notification_service,
     check_and_notify_streaks,
@@ -141,9 +142,8 @@ async def check_streak_notifications(current_user: dict = Depends(get_current_us
     """
     username = current_user["username"]
     
-    # Load history
-    history = read_json(settings.HISTORY_FILE, default={})
-    user_history_dict = history.get(username, {})
+    # Load history from DB
+    user_history_dict = get_user_history_from_db(username)
     
     if not user_history_dict:
         return {"notifications": [], "count": 0}
@@ -151,9 +151,8 @@ async def check_streak_notifications(current_user: dict = Depends(get_current_us
     # Calculate streaks
     team_streaks = get_team_streaks(user_history_dict)
     
-    # Get member names
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get member names from DB
+    user_members = get_team_members_from_db(username)
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     
     # Add names to streak data
@@ -178,9 +177,8 @@ async def check_new_submissions(current_user: dict = Depends(get_current_user)):
     """
     username = current_user["username"]
     
-    # Load team members
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Load team members from DB
+    user_members = get_team_members_from_db(username)
     
     if not user_members:
         return {"notifications": [], "count": 0}
@@ -259,9 +257,8 @@ async def send_daily_digest(current_user: dict = Depends(get_current_user)):
     """
     username = current_user["username"]
     
-    # Get team stats
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get team stats from DB
+    user_members = get_team_members_from_db(username)
     
     # Calculate today's stats
     total_members = len(user_members)
