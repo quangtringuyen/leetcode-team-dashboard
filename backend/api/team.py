@@ -38,13 +38,19 @@ def get_team_members(current_user: dict = Depends(get_current_user)):
     user_members = []
     
     # 1. Load members from DB
+    current_username = current_user["username"]
+    logger.info(f"get_team_members called for user: {current_username}")
+    
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT username, name, team_owner, status FROM members WHERE team_owner = ?", (current_user["username"],))
+        cursor.execute("SELECT username, name, team_owner, status FROM members WHERE team_owner = ?", (current_username,))
         rows = cursor.fetchall()
         user_members = [dict(row) for row in rows]
 
+    logger.info(f"Found {len(user_members)} members for user {current_username}")
+
     if not user_members:
+        logger.warning(f"No members found for user {current_username}. this might be a mismatch with team_owner in DB.")
         return []
 
     # 2. Fetch live LeetCode stats in parallel
