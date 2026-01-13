@@ -183,7 +183,7 @@ async def update_team_member(
     member_idx = -1
     member = None
     for i, m in enumerate(user_members):
-        if m["username"] == member_username:
+        if m["username"].lower() == member_username.lower():
             member_idx = i
             member = m
             break
