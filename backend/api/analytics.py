@@ -660,8 +660,7 @@ def get_streaks(current_user: dict = Depends(get_current_user)):
         return []
     
     # Get member names for active filtering
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members.get(username, [])
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
@@ -698,7 +697,7 @@ def get_streaks_leaderboard(
         return []
     
     # Get team members from DB
-    user_members = get_team_members_from_db(username)
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
@@ -737,7 +736,7 @@ def get_streaks_at_risk(current_user: dict = Depends(get_current_user)):
     
     # Get member names for active filtering
     # Get team members from DB
-    user_members = get_team_members_from_db(username)
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
@@ -777,8 +776,7 @@ def get_difficulty_trends(current_user: dict = Depends(get_current_user)):
         return []
     
     # Get member names
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members_raw = all_members.get(username, [])
+    user_members_raw = get_team_members_from_db(username)
     # Filter out suspended members
     user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
@@ -820,9 +818,10 @@ def get_stuck_on_difficulty(current_user: dict = Depends(get_current_user)):
     team_trends = get_team_difficulty_trends(user_history_dict)
     stuck_members = get_stuck_members(team_trends)
     
-    # Get member names
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get member names for active filtering
+    user_members_raw = get_team_members_from_db(username)
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     member_names = {m["username"]: m.get("name", m["username"]) for m in user_members}
     
     # Add names
@@ -847,9 +846,10 @@ def get_tags_analysis(
     """
     username = current_user["username"]
     
-    # Get team members
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get team members from DB
+    user_members_raw = get_team_members_from_db(username)
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     
     if not user_members:
         return []
@@ -924,9 +924,10 @@ def get_tags_heatmap(
     """
     username = current_user["username"]
     
-    # Get team members
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    # Get team members from DB
+    user_members_raw = get_team_members_from_db(username)
+    # Filter out suspended members
+    user_members = [m for m in user_members_raw if m.get("status", "active") != "suspended"]
     
     if not user_members:
         return {
@@ -987,8 +988,7 @@ async def get_tag_recommendations(
     username = current_user["username"]
     
     # Verify member belongs to user's team
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    user_members = get_team_members_from_db(username)
     member_usernames = [m["username"] for m in user_members]
     
     if member_username not in member_usernames:
@@ -1029,8 +1029,7 @@ async def get_member_recommendations(
     username = current_user["username"]
     
     # Verify member belongs to user's team
-    all_members = read_json(settings.MEMBERS_FILE, default={})
-    user_members = all_members.get(username, [])
+    user_members = get_team_members_from_db(username)
     member_usernames = [m["username"] for m in user_members]
     
     if member_username not in member_usernames:
