@@ -20,9 +20,17 @@ def init_db():
             name TEXT,
             avatar TEXT,
             team_owner TEXT,
+            status TEXT DEFAULT 'active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        
+        # Ensure status column exists (migration for existing DBs)
+        try:
+            cursor.execute("SELECT status FROM members LIMIT 1")
+        except sqlite3.OperationalError:
+            logger.info("Adding missing 'status' column to members table")
+            cursor.execute("ALTER TABLE members ADD COLUMN status TEXT DEFAULT 'active'")
         
         # Snapshots table (Weekly history)
         cursor.execute("""
