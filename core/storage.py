@@ -4,11 +4,7 @@ import json, os, io
 from dataclasses import dataclass
 from typing import Any, Tuple
 
-try:
-    import streamlit as st
-    HAS_ST = True
-except Exception:
-    HAS_ST = False
+
 
 
 class Storage:
