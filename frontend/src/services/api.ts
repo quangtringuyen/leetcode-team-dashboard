@@ -103,20 +103,20 @@ export const authApi = {
 
 export const teamApi = {
   async getMembers(): Promise<TeamMember[]> {
-    const response = await apiClient.get<TeamMember[]>('/team/members/');
+    const response = await apiClient.get<TeamMember[]>('/team/members');
     return response.data;
   },
 
   async addMember(data: AddMemberRequest): Promise<void> {
-    await apiClient.post('/team/members/', data);
+    await apiClient.post('/team/members', data);
   },
 
   async removeMember(username: string): Promise<void> {
-    await apiClient.delete(`/team/members/${username}/`);
+    await apiClient.delete(`/team/members/${username}`);
   },
 
   async updateMember(data: { currentUsername: string; name: string; username: string; status: string }): Promise<void> {
-    await apiClient.put(`/team/members/${data.currentUsername}/`, {
+    await apiClient.put(`/team/members/${data.currentUsername}`, {
       name: data.name,
       username: data.username,
       status: data.status,
@@ -124,7 +124,7 @@ export const teamApi = {
   },
 
   async getStats(): Promise<TeamStats> {
-    const response = await apiClient.get<TeamStats>('/team/stats/');
+    const response = await apiClient.get<TeamStats>('/team/stats');
     return response.data;
   },
 
@@ -157,38 +157,38 @@ export const teamApi = {
 
 export const analyticsApi = {
   async getHistory(): Promise<WeeklySnapshot[]> {
-    const response = await apiClient.get<WeeklySnapshot[]>('/analytics/history/');
+    const response = await apiClient.get<WeeklySnapshot[]>('/analytics/history');
     return response.data;
   },
 
   async recordSnapshot(): Promise<SnapshotResponse> {
-    const response = await apiClient.post<SnapshotResponse>('/analytics/snapshot/');
+    const response = await apiClient.post<SnapshotResponse>('/analytics/snapshot');
     return response.data;
   },
 
   async getTrends(weeks: number = 12): Promise<TrendData> {
-    const response = await apiClient.get<TrendData>('/analytics/trends/', {
+    const response = await apiClient.get<TrendData>('/analytics/trends', {
       params: { weeks },
     });
     return response.data;
   },
 
   async getWeekOverWeek(weeks: number = 1): Promise<WeekOverWeekChange[]> {
-    const response = await apiClient.get<WeekOverWeekChange[]>('/analytics/week-over-week/', {
+    const response = await apiClient.get<WeekOverWeekChange[]>('/analytics/week-over-week', {
       params: { weeks },
     });
     return response.data;
   },
 
   async getWeeklyProgress(weeks: number = 12): Promise<WeeklyProgressData> {
-    const response = await apiClient.get('/analytics/weekly-progress/', {
+    const response = await apiClient.get('/analytics/weekly-progress', {
       params: { weeks }
     });
     return response.data;
   },
 
   async getAcceptedTrend(days: number = 30): Promise<AcceptedTrendData[]> {
-    const response = await apiClient.get('/analytics/accepted-trend/', {
+    const response = await apiClient.get('/analytics/accepted-trend', {
       params: { days },
     });
     return response.data;
@@ -197,7 +197,7 @@ export const analyticsApi = {
 
 export const leetcodeApi = {
   async getDailyChallenge(): Promise<DailyChallenge> {
-    const response = await apiClient.get('/leetcode/daily/');
+    const response = await apiClient.get('/leetcode/daily');
     return response.data;
   },
 
@@ -213,19 +213,19 @@ export const leetcodeApi = {
     totalMembers: number;
     completedCount: number;
   }> {
-    const response = await apiClient.get('/leetcode/daily/completions/');
+    const response = await apiClient.get('/leetcode/daily/completions');
     return response.data;
   },
 
   async getRecentSubmissions(limit: number = 20): Promise<RecentSubmission[]> {
-    const response = await apiClient.get('/leetcode/recent/', {
+    const response = await apiClient.get('/leetcode/recent', {
       params: { limit },
     });
     return response.data;
   },
 
   async getDailyHistory(days: number = 7): Promise<DailyChallengeHistoryResponse> {
-    const response = await apiClient.get('/leetcode/daily/history/', {
+    const response = await apiClient.get('/leetcode/daily/history', {
       params: { days },
     });
     return response.data;
@@ -239,19 +239,19 @@ export const notificationsApi = {
     limit: number;
     offset: number;
   }> {
-    const response = await apiClient.get('/notifications-log/', {
+    const response = await apiClient.get('/notifications-log', {
       params: { limit, offset, status },
     });
     return response.data;
   },
 
   async resend(id: number): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.post(`/notifications-log/${id}/resend/`);
+    const response = await apiClient.post(`/notifications-log/${id}/resend`);
     return response.data;
   },
 
   async checkSubmissions(): Promise<{ notifications: any[]; count: number; message: string }> {
-    const response = await apiClient.post('/notifications/check-submissions/');
+    const response = await apiClient.post('/notifications/check-submissions');
     return response.data;
   },
 };
@@ -273,7 +273,7 @@ export const settingsApi = {
 
 export const healthApi = {
   async check(): Promise<{ status: string; storage: string }> {
-    const response = await apiClient.get('/health/');
+    const response = await apiClient.get('/health');
     return response.data;
   },
 };
