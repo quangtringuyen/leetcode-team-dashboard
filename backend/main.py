@@ -23,7 +23,8 @@ app = FastAPI(
     description="Track and analyze your team's LeetCode progress",
     version="2.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    root_path=os.getenv("ROOT_PATH", "")
 )
 
 # Initialize database on startup

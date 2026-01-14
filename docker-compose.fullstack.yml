@@ -19,6 +19,7 @@ services:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
       - S3_PREFIX=${S3_PREFIX:-prod}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8090}
+      - ROOT_PATH=${ROOT_PATH:-}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       - TZ=Asia/Ho_Chi_Minh
     volumes:
