@@ -13,7 +13,7 @@ from backend.core.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TARGET_OWNER = "quangtringuyen"
+TARGET_OWNER = "leetcodescamp"
 
 def fix_migration():
     logger.info(f"Starting recovery migration to {DB_PATH}")
