@@ -47,12 +47,12 @@ def get_team_members(current_user: dict = Depends(get_current_user)):
         rows = cursor.fetchall()
         user_members = [dict(row) for row in rows]
 
-    print(f"DEBUG: Found {len(user_members)} members in DB for user '{current_username}'")
-    if len(user_members) == 0:
-        # Check if there are ANY members in DB to debug owner mismatch
-        cursor.execute("SELECT DISTINCT team_owner FROM members")
-        owners = [row[0] for row in cursor.fetchall()]
-        print(f"DEBUG: Existing team_owners in DB: {owners}")
+        print(f"DEBUG: Found {len(user_members)} members in DB for user '{current_username}'")
+        if len(user_members) == 0:
+            # Check if there are ANY members in DB to debug owner mismatch
+            cursor.execute("SELECT DISTINCT team_owner FROM members")
+            owners = [row[0] for row in cursor.fetchall()]
+            print(f"DEBUG: Existing team_owners in DB: {owners}")
 
     if not user_members:
         logger.warning(f"No members found for user {current_username}. this might be a mismatch with team_owner in DB.")
