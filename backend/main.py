@@ -42,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers (no /api prefix since domain is api.quangtringuyen.cloud)
+# Include routers (no /api prefix since it's handled by Caddy handle_path)
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(team.router, prefix="/team", tags=["Team Management"])
 app.include_router(leetcode.router, prefix="/leetcode", tags=["LeetCode Data"])

@@ -37,7 +37,7 @@ set +a
 if [[ "$VITE_API_URL" == *"localhost"* ]]; then
     echo "⚠️  WARNING: VITE_API_URL contains 'localhost'"
     echo "   Current value: $VITE_API_URL"
-    echo "   Expected: https://api.quangtringuyen.cloud"
+    echo "   Expected: https://leetcode.quangtringuyen.cloud/api"
     read -p "   Continue anyway? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -102,15 +102,15 @@ echo ""
 echo "🏥 Testing API health..."
 if command -v curl &> /dev/null; then
     # Try localhost first
-    if curl -f http://localhost:8090/api/health &> /dev/null; then
+    if curl -f http://localhost:8090/health &> /dev/null; then
         echo "✅ API is healthy on localhost:8090"
     else
         echo "⚠️  API health check failed on localhost"
     fi
     
     # Try production domain if available
-    if curl -f https://api.quangtringuyen.cloud/api/health &> /dev/null; then
-        echo "✅ API is accessible at https://api.quangtringuyen.cloud"
+    if curl -f https://leetcode.quangtringuyen.cloud/api/health &> /dev/null; then
+        echo "✅ API is accessible at https://leetcode.quangtringuyen.cloud/api"
     else
         echo "ℹ️  API not yet accessible at production domain (may need reverse proxy setup)"
     fi
@@ -122,10 +122,10 @@ echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📝 Next steps:"
-echo "   1. Ensure reverse proxy (Nginx/Traefik) is configured"
-echo "   2. Verify SSL certificates are in place"
-echo "   3. Test from external network: https://quangtringuyen.cloud"
-echo "   4. Check API: https://api.quangtringuyen.cloud/api/health"
+1. Ensure reverse proxy (Caddy/Nginx) is configured as per updated docs
+2. Verify SSL certificates are in place
+3. Test from external network: https://leetcode.quangtringuyen.cloud
+4. Check API: https://leetcode.quangtringuyen.cloud/api/health
 echo ""
 echo "📖 For detailed instructions, see: PRODUCTION_DEPLOYMENT.md"
 echo ""
