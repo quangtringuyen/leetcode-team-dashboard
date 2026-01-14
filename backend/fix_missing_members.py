@@ -101,6 +101,36 @@ def fix_migration():
         except Exception as e:
             logger.error(f"Error recovering history: {e}")
 
+    # 3. Recover members from last_state.json (sometimes more up-to-date)
+    last_state_file = os.path.join(settings.DATA_DIR, "last_state.json")
+    if os.path.exists(last_state_file):
+        try:
+            with open(last_state_file, 'r') as f:
+                content = json.load(f)
+            
+            added_count = 0
+            # last_state.json is {owner: {username: data}}
+            if isinstance(content, dict):
+                for owner, members_data in content.items():
+                    if not isinstance(members_data, dict): continue
+                    for username, data in members_data.items():
+                        name = data.get("realName") or data.get("name") or username
+                        avatar = data.get("avatar")
+                        
+                        cursor.execute("""
+                            INSERT INTO members (username, name, avatar, team_owner, status)
+                            VALUES (?, ?, ?, ?, 'active')
+                            ON CONFLICT(username) DO UPDATE SET
+                            team_owner=excluded.team_owner
+                        """, (username, name, avatar, TARGET_OWNER))
+                        added_count += 1
+            
+            conn.commit()
+            logger.info(f"Verified/Recovered {added_count} members from last_state.json into owner '{TARGET_OWNER}'")
+            
+        except Exception as e:
+            logger.error(f"Error recovering from last_state: {e}")
+
     conn.close()
     logger.info("Recovery completed.")
 
