@@ -2,7 +2,7 @@ import { Users, TrendingUp, Target, Calendar } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { settingsApi, apiClient } from '@/services/api';
 import StatsCard from '@/components/dashboard/StatsCard';
 import Podium from '@/components/dashboard/Podium';
 import Leaderboard from '@/components/dashboard/Leaderboard';
@@ -14,32 +14,21 @@ import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import { Button } from '@/components/ui/button';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 export default function Dashboard() {
-  const { members, isMembersLoading, isStatsLoading } = useTeam();
+  const { members = [], isMembersLoading, isStatsLoading } = useTeam();
   const { recordSnapshot, isRecordingSnapshot, lastSnapshot } = useAnalytics();
 
   // Fetch settings
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: async () => {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get(`${API_URL}/settings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return response.data;
-    }
+    queryFn: () => settingsApi.getSettings()
   });
 
   // Fetch current week's progress (real-time)
   const { data: weeklyProgressData } = useQuery({
     queryKey: ['current-week-progress'],
     queryFn: async () => {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get(`${API_URL}/analytics/current-week-progress`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiClient.get('/analytics/current-week-progress/');
       return response.data;
     },
     refetchInterval: 300000, // Refetch every 5 minutes
@@ -54,11 +43,11 @@ export default function Dashboard() {
   };
 
   // Filter out suspended members
-  const activeMembers = members.filter(m => m.status !== 'suspended');
+  const activeMembers = (members || []).filter(m => m.status !== 'suspended');
 
   // Calculate stats
   const totalMembers = activeMembers.length;
-  const totalSolved = activeMembers.reduce((sum, m) => sum + m.totalSolved, 0);
+  const totalSolved = activeMembers.reduce((sum, m) => sum + (m.totalSolved || 0), 0);
   const averageSolved = totalMembers > 0 ? Math.round(totalSolved / totalMembers) : 0;
 
   // Calculate weekly goal: problems_per_member × number_of_members
@@ -104,7 +93,7 @@ export default function Dashboard() {
           title="Team Members"
           value={totalMembers}
           icon={Users}
-          description={`${activeMembers.filter((m) => m.totalSolved > 0).length} active`}
+          description={`${activeMembers.filter((m) => (m.totalSolved || 0) > 0).length} active`}
           isLoading={isMembersLoading}
         />
         <StatsCard
