@@ -268,7 +268,8 @@ class NotificationService:
     def get_notifications(
         self,
         member: Optional[str] = None,
-        limit: int = 50
+        limit: int = 50,
+        include_read: bool = False
     ) -> List[Dict[str, Any]]:
         """Get recent notifications from database"""
         try:
@@ -278,19 +279,22 @@ class NotificationService:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
                 
-                # Build query based on member filter
+                # Build query based on member filter and read status
+                read_filter = "" if include_read else "AND (read IS NULL OR read = 0)"
+                
                 if member:
-                    cursor.execute("""
-                        SELECT id, type, title, message, recipient, status, metadata, created_at, sent_at
+                    cursor.execute(f"""
+                        SELECT id, type, title, message, recipient, status, metadata, created_at, sent_at, read
                         FROM notifications
-                        WHERE recipient = ? OR recipient = 'channel'
+                        WHERE (recipient = ? OR recipient = 'channel') {read_filter}
                         ORDER BY created_at DESC
                         LIMIT ?
                     """, (member, limit))
                 else:
-                    cursor.execute("""
-                        SELECT id, type, title, message, recipient, status, metadata, created_at, sent_at
+                    cursor.execute(f"""
+                        SELECT id, type, title, message, recipient, status, metadata, created_at, sent_at, read
                         FROM notifications
+                        WHERE 1=1 {read_filter}
                         ORDER BY created_at DESC
                         LIMIT ?
                     """, (limit,))
@@ -340,7 +344,7 @@ class NotificationService:
             return sorted_notifications[:limit]
     
     def clear_notifications(self, member: Optional[str] = None):
-        """Clear notifications from database"""
+        """Mark notifications as read (instead of deleting them)"""
         try:
             from backend.core.database import get_db_connection
             
@@ -348,18 +352,18 @@ class NotificationService:
                 cursor = conn.cursor()
                 
                 if member:
-                    cursor.execute("DELETE FROM notifications WHERE recipient = ?", (member,))
+                    cursor.execute("UPDATE notifications SET read = 1 WHERE recipient = ?", (member,))
                 else:
-                    cursor.execute("DELETE FROM notifications")
+                    cursor.execute("UPDATE notifications SET read = 1")
                 
                 conn.commit()
-                deleted_count = cursor.rowcount
-                logger.info(f"Cleared {deleted_count} notification(s) from database")
+                updated_count = cursor.rowcount
+                logger.info(f"Marked {updated_count} notification(s) as read")
                 
         except Exception as e:
-            logger.error(f"Failed to clear notifications from DB: {e}")
+            logger.error(f"Failed to mark notifications as read: {e}")
         
-        # Also clear in-memory list
+        # Also clear in-memory list (for backward compatibility)
         if member:
             self.notifications = [n for n in self.notifications if n.get("member") != member]
         else:
