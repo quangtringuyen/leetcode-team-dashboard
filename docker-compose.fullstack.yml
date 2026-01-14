@@ -90,7 +90,3 @@ services:
 networks:
   leetcode-network:
     driver: bridge
-
-volumes:
-  data:
-  logs:
