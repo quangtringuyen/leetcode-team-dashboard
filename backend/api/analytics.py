@@ -263,6 +263,9 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
                     live_data = fetch_user_data(member)
                     if live_data:
                         current_val = live_data.get("totalSolved", 0)
+                        # Add to current_week_data so it's included in ranking
+                        if current_val > 0:
+                            current_week_data[member] = current_val
                 except Exception:
                     pass
             
@@ -275,6 +278,13 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
                 pct_change = 100.0
             else:
                 pct_change = 0.0
+            
+            # Recalculate ranks after adding live data (only for current week)
+            if week_offset == 0:
+                current_week_ranks = {
+                    m: i + 1 
+                    for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
+                }
                 
             # Calculate rank delta
             current_rank = current_week_ranks.get(member)
