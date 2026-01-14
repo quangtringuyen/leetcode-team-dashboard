@@ -115,6 +115,14 @@ export const teamApi = {
     await apiClient.delete(`/team/members/${username}`);
   },
 
+  async updateMember(data: { currentUsername: string; name: string; username: string; status: string }): Promise<void> {
+    await apiClient.put(`/team/members/${data.currentUsername}`, {
+      name: data.name,
+      username: data.username,
+      status: data.status,
+    });
+  },
+
   async getStats(): Promise<TeamStats> {
     const response = await apiClient.get<TeamStats>('/team/stats');
     return response.data;

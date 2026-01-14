@@ -108,6 +108,9 @@ def get_team_members(current_user: dict = Depends(get_current_user)):
 def add_team_member(member: TeamMember, current_user: dict = Depends(get_current_user)):
     """Add a new team member"""
     username = member.username
+    current_username = current_user["username"]
+    print(f"DEBUG: add_team_member called by '{current_username}' for member '{username}'")
+    
     if not username:
         raise HTTPException(status_code=400, detail="Username is required")
 
@@ -131,11 +134,12 @@ def add_team_member(member: TeamMember, current_user: dict = Depends(get_current
         """, (
             username, 
             member.name or username, 
-            current_user["username"], 
+            current_username, 
             member.status,
             datetime.utcnow().isoformat()
         ))
         conn.commit()
+        print(f"DEBUG: Successfully added {username} to DB with owner {current_username}")
 
     # 4. Fetch initial stats and record history immediately
     try:

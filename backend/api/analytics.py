@@ -593,24 +593,33 @@ def get_accepted_trend(
             daily_counts = defaultdict(set)  # Use set to avoid counting same problem multiple times
 
             for sub in submissions:
-                timestamp = int(sub.get("timestamp", 0))
-                submission_date = datetime.fromtimestamp(timestamp).date()
+                timestamp = sub.get("timestamp")
+                if timestamp is None:
+                    continue
+                
+                try:
+                    timestamp_int = int(timestamp)
+                    submission_date = datetime.fromtimestamp(timestamp_int).date()
 
-                # Check if within date range
-                if start_date <= submission_date <= end_date:
-                    # Use titleSlug as unique identifier to avoid counting duplicates
-                    title_slug = sub.get("titleSlug")
-                    if title_slug:
-                        daily_counts[submission_date].add(title_slug)
+                    # Check if within date range
+                    if start_date <= submission_date <= end_date:
+                        # Use titleSlug as unique identifier to avoid counting duplicates
+                        title_slug = sub.get("titleSlug")
+                        if title_slug:
+                            daily_counts[submission_date].add(title_slug)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Invalid timestamp '{timestamp}' for user {member_username}: {e}")
+                    continue
 
             # Convert to result format
             for submission_date, problems in daily_counts.items():
-                member_results.append({
-                    "date": submission_date.isoformat(),
-                    "member": member_name,
-                    "username": member_username,
-                    "accepted": len(problems)  # Count unique problems solved that day
-                })
+                if submission_date:
+                    member_results.append({
+                        "date": submission_date.isoformat(),
+                        "member": member_name,
+                        "username": member_username,
+                        "accepted": len(problems)
+                    })
 
         except Exception as e:
             # Log error but continue with other members

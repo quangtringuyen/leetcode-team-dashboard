@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dialog';
 import type { AddMemberRequest } from '@/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { toast } from 'sonner';
 import { DEFAULT_AVATAR } from '@/lib/constants';
 
@@ -138,13 +137,7 @@ export default function Team() {
   // Update member mutation
   const updateMember = useMutation({
     mutationFn: async (data: { currentUsername: string; name: string; username: string; status: string }) => {
-      const token = localStorage.getItem('access_token');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      await axios.put(
-        `${API_URL}/members/${data.currentUsername}`,
-        { name: data.name, username: data.username, status: data.status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await teamApi.updateMember(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
