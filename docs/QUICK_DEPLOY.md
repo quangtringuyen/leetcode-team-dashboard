@@ -2,8 +2,8 @@
 
 ## 🎯 Your Configuration
 
-- **Frontend URL**: https://quangtringuyen.cloud
-- **API URL**: https://api.quangtringuyen.cloud
+- **Frontend URL**: https://leetcode.quangtringuyen.cloud
+- **API URL**: https://leetcode.quangtringuyen.cloud/api
 - **Ports**: 
   - Frontend: 3000 (internal) → 443 (external via reverse proxy)
   - API: 8090 (internal) → 443 (external via reverse proxy)
@@ -23,8 +23,8 @@ nano .env.production  # Edit with your actual values
 - `S3_BUCKET_NAME` - Your bucket name
 
 **Already configured** (no changes needed):
-- ✅ `VITE_API_URL=https://api.quangtringuyen.cloud`
-- ✅ `CORS_ORIGINS=https://quangtringuyen.cloud,https://api.quangtringuyen.cloud,...`
+- ✅ `VITE_API_URL=https://leetcode.quangtringuyen.cloud/api`
+- ✅ `CORS_ORIGINS=https://leetcode.quangtringuyen.cloud,https://quangtringuyen.cloud,...`
 
 ### 2️⃣ Run Deployment Script
 ```bash
@@ -71,8 +71,8 @@ After deployment:
 - [ ] Reverse proxy configured for both domains
 - [ ] SSL certificates installed
 - [ ] DNS records pointing to NAS
-- [ ] External access works: `https://quangtringuyen.cloud`
-- [ ] API accessible: `https://api.quangtringuyen.cloud/api/health`
+- [ ] External access works: `https://leetcode.quangtringuyen.cloud`
+- [ ] API accessible: `https://leetcode.quangtringuyen.cloud/api/health`
 - [ ] No CORS errors in browser console
 
 ## 🐛 Troubleshooting
