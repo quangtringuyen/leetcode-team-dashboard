@@ -15,13 +15,17 @@ def add_system_notification():
     
     title = "System Restored"
     message = "Historical data and member profiles have been successfully restored. Welcome back!"
-    type_ = "info" # info, success, warning, error
-    timestamp = datetime.now().isoformat()
+    type_ = "system_info" 
+    recipient = "all"
+    status = "sent"
+    created_at = datetime.now().isoformat()
     
     try:
-        # Check if notifications table exists (it should)
-        cursor.execute("INSERT INTO notifications (title, message, type, timestamp, read) VALUES (?, ?, ?, ?, ?)", 
-                       (title, message, type_, timestamp, 0))
+        # Correct Schema: id, type, title, message, recipient, status, metadata, created_at, sent_at
+        cursor.execute("""
+            INSERT INTO notifications (type, title, message, recipient, status, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (type_, title, message, recipient, status, created_at))
         conn.commit()
         logger.info("Notification added successfully.")
     except Exception as e:
