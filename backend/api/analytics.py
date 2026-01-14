@@ -219,6 +219,9 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
 
         # First populate from history
         # First populate from history
+        current_week_ranks = {}
+        previous_week_ranks = {}
+        
         for member_username, snapshots in user_history_dict.items():
             # Filter and sort snapshots for this user
             user_snaps = sorted(snapshots, key=lambda x: x.get("week_start", ""), reverse=True)
@@ -235,18 +238,27 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
 
             if curr_snap:
                 current_week_data[member_username] = curr_snap.get("totalSolved", 0)
+                # Extract rank if available
+                if curr_snap.get("rank"):
+                    current_week_ranks[member_username] = curr_snap.get("rank")
+                    
             if prev_snap:
                 previous_week_data[member_username] = prev_snap.get("totalSolved", 0)
+                # Extract rank if available
+                if prev_snap.get("rank"):
+                    previous_week_ranks[member_username] = prev_snap.get("rank")
 
-        # Calculate ranks for this week pair
-        current_week_ranks = {
-            m: i + 1 
-            for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
-        }
-        previous_week_ranks = {
-            m: i + 1 
-            for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
-        }
+        # Calculate ranks for members without saved ranks (fallback for current week or missing data)
+        if not current_week_ranks:
+            current_week_ranks = {
+                m: i + 1 
+                for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
+            }
+        if not previous_week_ranks:
+            previous_week_ranks = {
+                m: i + 1 
+                for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
+            }
 
         # Iterate over ALL configured members
         for member_info in user_members:
@@ -280,7 +292,7 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
                 pct_change = 0.0
             
             # Recalculate ranks after adding live data (only for current week)
-            if week_offset == 0:
+            if week_offset == 0 and current_week_data:
                 current_week_ranks = {
                     m: i + 1 
                     for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
