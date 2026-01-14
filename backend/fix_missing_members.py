@@ -60,6 +60,11 @@ def fix_migration():
 
             conn.commit()
             logger.info(f"Verified/Recovered {count} members into owner '{TARGET_OWNER}'")
+
+            # 1.5 Force any existing members to the target owner
+            cursor.execute("UPDATE members SET team_owner = ?", (TARGET_OWNER,))
+            conn.commit()
+            logger.info(f"Forced all existing members to owner '{TARGET_OWNER}'")
             
         except Exception as e:
             logger.error(f"Error recovering members: {e}")
