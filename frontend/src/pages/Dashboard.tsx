@@ -28,7 +28,7 @@ export default function Dashboard() {
   const { data: weeklyProgressData } = useQuery({
     queryKey: ['current-week-progress'],
     queryFn: async () => {
-      const response = await apiClient.get('/analytics/current-week-progress/');
+      const response = await apiClient.get('/analytics/current-week-progress');
       return response.data;
     },
     refetchInterval: 300000, // Refetch every 5 minutes

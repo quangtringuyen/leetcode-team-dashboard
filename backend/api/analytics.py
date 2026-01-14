@@ -218,15 +218,25 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
         previous_week_data = {}
 
         # First populate from history
+        # First populate from history
         for member_username, snapshots in user_history_dict.items():
-            for snapshot in snapshots:
-                week = snapshot.get("week_start")
-                total = snapshot.get("totalSolved", 0)
+            # Filter and sort snapshots for this user
+            user_snaps = sorted(snapshots, key=lambda x: x.get("week_start", ""), reverse=True)
+            
+            # Find current week snapshot
+            curr_snap = next((s for s in user_snaps if s.get("week_start") == current_week_start), None)
+            
+            # Find previous week snapshot (strict match first)
+            prev_snap = next((s for s in user_snaps if s.get("week_start") == previous_week_start), None)
+            
+            # Fallback: if strictly previous is missing, find the most recent snapshot BEFORE current week
+            if not prev_snap:
+                prev_snap = next((s for s in user_snaps if s.get("week_start", "") < current_week_start), None)
 
-                if week == current_week_start:
-                    current_week_data[member_username] = total
-                elif week == previous_week_start:
-                    previous_week_data[member_username] = total
+            if curr_snap:
+                current_week_data[member_username] = curr_snap.get("totalSolved", 0)
+            if prev_snap:
+                previous_week_data[member_username] = prev_snap.get("totalSolved", 0)
 
         # Calculate ranks for this week pair
         current_week_ranks = {
@@ -327,15 +337,28 @@ def get_week_over_week(
         previous_week_data = {}
 
         # First, process existing history
+        # First, process existing history
         for member_username, snapshots in user_history_dict.items():
-            for snapshot in snapshots:
-                week = snapshot.get("week_start")
-                total = snapshot.get("totalSolved", 0)
-
-                if week == current_week_start:
-                    current_week_data[member_username] = total
-                elif week == previous_week_start:
-                    previous_week_data[member_username] = total
+            # Sort snapshots
+            user_snaps = sorted(snapshots, key=lambda x: x.get("week_start", ""), reverse=True)
+            
+            # Find current week snapshot
+            curr_snap = next((s for s in user_snaps if s.get("week_start") == current_week_start), None)
+            
+            # Find previous week snapshot (strict match first)
+            prev_snap = next((s for s in user_snaps if s.get("week_start") == previous_week_start), None)
+            
+            # Fallback for previous week if missing (find most recent BEFORE current week)
+            if not prev_snap:
+                target_date = current_week_start
+                # If current week snapshot is missing too, we assume "current" is today
+                # but we need strictly before "expected current week start"
+                prev_snap = next((s for s in user_snaps if s.get("week_start", "") < target_date), None)
+            
+            if curr_snap:
+                current_week_data[member_username] = curr_snap.get("totalSolved", 0)
+            if prev_snap:
+                previous_week_data[member_username] = prev_snap.get("totalSolved", 0)
         
         # Calculate ranks for this week pair
         current_week_ranks = {
