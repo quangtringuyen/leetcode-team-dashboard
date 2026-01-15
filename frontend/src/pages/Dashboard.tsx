@@ -10,7 +10,6 @@ import Leaderboard from '@/components/dashboard/Leaderboard';
 import DailyChallengeCard from '@/components/dashboard/DailyChallengeCard';
 import RecentSubmissionsList from '@/components/dashboard/RecentSubmissionsList';
 import DailyChallengeCompletions from '@/components/dashboard/DailyChallengeCompletions';
-import StreakLeaderboard from '@/components/dashboard/StreakLeaderboard';
 import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import StreakCalendar from '@/components/gamification/StreakCalendar';
@@ -130,13 +129,29 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Left Column: Podium & Detailed Stats */}
-        <div className="lg:col-span-2 space-y-8">
-          <Podium members={activeMembers} isLoading={isMembersLoading} />
-          <Leaderboard members={activeMembers} isLoading={isMembersLoading} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column: Team Streak & Leaderboards */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Team Streak - Active Hero Mode */}
+          <div className="h-48">
+            <TeamStreakCard
+              streak={teamStreak?.current_streak || 0}
+              activeToday={teamStreak?.active_today || false}
+              isLoading={isGamificationLoading}
+            />
+          </div>
 
-          {/* New Achievements Panel */}
+          <Podium members={activeMembers} isLoading={isMembersLoading} />
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Leaderboard members={activeMembers} isLoading={isMembersLoading} />
+            <GamificationLeaderboard
+              entries={pointsLeaderboard || []}
+              isLoading={isGamificationLoading}
+            />
+          </div>
+
+          {/* Achievements - Full Width in this column */}
           <AchievementsPanel
             achievements={achievements || []}
             isLoading={isGamificationLoading}
@@ -146,7 +161,7 @@ export default function Dashboard() {
         {/* Right Column: Gamification & Activity */}
         <div className="space-y-6">
           {/* New Personal Streak Calendar */}
-          <div className="h-64">
+          <div className="h-48">
             <StreakCalendar
               currentStreak={streak?.current_streak || 0}
               longestStreak={streak?.longest_streak || 0}
@@ -156,17 +171,7 @@ export default function Dashboard() {
           </div>
 
           <NotificationCenter />
-
-          {/* New Points Leaderboard */}
-          <div className="h-96">
-            <GamificationLeaderboard
-              entries={pointsLeaderboard || []}
-              isLoading={isGamificationLoading}
-            />
-          </div>
-
           <StreakAtRiskAlert />
-          <StreakLeaderboard />
           <DailyChallengeCard />
           <RecentSubmissionsList />
         </div>
