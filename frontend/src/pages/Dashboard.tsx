@@ -6,14 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import { settingsApi, apiClient } from '@/services/api';
 import StatsCard from '@/components/dashboard/StatsCard';
 import Podium from '@/components/dashboard/Podium';
-import Leaderboard from '@/components/dashboard/Leaderboard';
+import UnifiedLeaderboard from '@/components/dashboard/UnifiedLeaderboard';
 import DailyChallengeCard from '@/components/dashboard/DailyChallengeCard';
 import RecentSubmissionsList from '@/components/dashboard/RecentSubmissionsList';
 import DailyChallengeCompletions from '@/components/dashboard/DailyChallengeCompletions';
 import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import StreakCalendar from '@/components/gamification/StreakCalendar';
-import GamificationLeaderboard from '@/components/gamification/Leaderboard';
 import AchievementsPanel from '@/components/gamification/AchievementsPanel';
 import TeamStreakCard from '@/components/gamification/TeamStreakCard';
 import { Button } from '@/components/ui/button';
@@ -65,7 +64,7 @@ export default function Dashboard() {
   const weeklyChange = weeklyProgressData?.weekly_change || 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -92,8 +91,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats & Streak Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatsCard
           title="Team Members"
           value={totalMembers}
@@ -126,59 +125,52 @@ export default function Dashboard() {
           }}
           isLoading={isStatsLoading}
         />
+
+        {/* Compact Team Streak Card */}
+        <TeamStreakCard
+          streak={teamStreak?.current_streak || 0}
+          activeToday={teamStreak?.active_today || false}
+          isLoading={isGamificationLoading}
+        />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column: Team Streak & Leaderboards */}
+        {/* Left Column: Podium & Rankings */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Team Streak - Active Hero Mode */}
-          <div className="h-48">
-            <TeamStreakCard
-              streak={teamStreak?.current_streak || 0}
-              activeToday={teamStreak?.active_today || false}
-              isLoading={isGamificationLoading}
-            />
-          </div>
-
           <Podium members={activeMembers} isLoading={isMembersLoading} />
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Leaderboard members={activeMembers} isLoading={isMembersLoading} />
-            <GamificationLeaderboard
-              entries={pointsLeaderboard || []}
-              isLoading={isGamificationLoading}
-            />
-          </div>
-
-          {/* Achievements - Full Width in this column */}
-          <AchievementsPanel
-            achievements={achievements || []}
-            isLoading={isGamificationLoading}
+          <UnifiedLeaderboard
+            problemSolvers={activeMembers.sort((a, b) => (b.totalSolved || 0) - (a.totalSolved || 0))}
+            pointEarners={pointsLeaderboard || []}
+            isLoading={isMembersLoading || isGamificationLoading}
           />
         </div>
 
-        {/* Right Column: Gamification & Activity */}
+        {/* Right Column: Activity Feed */}
         <div className="space-y-6">
-          {/* New Personal Streak Calendar */}
-          <div className="h-48">
-            <StreakCalendar
-              currentStreak={streak?.current_streak || 0}
-              longestStreak={streak?.longest_streak || 0}
-              history={streak?.streak_history || []}
-              isLoading={isGamificationLoading}
-            />
-          </div>
-
+          <StreakCalendar
+            currentStreak={streak?.current_streak || 0}
+            longestStreak={streak?.longest_streak || 0}
+            history={streak?.streak_history || []}
+            isLoading={isGamificationLoading}
+          />
           <NotificationCenter />
-          <StreakAtRiskAlert />
           <DailyChallengeCard />
           <RecentSubmissionsList />
         </div>
       </div>
 
-      {/* Daily Challenge Completions - Full Width at Bottom */}
-      <DailyChallengeCompletions />
+      {/* Bottom Full Width: Achievements & Streak Alerts */}
+      <div className="space-y-6">
+        <AchievementsPanel
+          achievements={achievements || []}
+          isLoading={isGamificationLoading}
+        />
+        <div className="grid gap-6 md:grid-cols-2">
+          <StreakAtRiskAlert />
+          <DailyChallengeCompletions />
+        </div>
+      </div>
     </div>
   );
 }
