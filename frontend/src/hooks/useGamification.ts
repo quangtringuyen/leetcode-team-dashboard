@@ -30,6 +30,13 @@ export interface Achievement {
     unlocked_at?: string;
 }
 
+
+export interface TeamStreakData {
+    current_streak: number;
+    active_today: boolean;
+    history: string[];
+}
+
 export const useGamification = () => {
     const { data: streak, isLoading: isStreakLoading } = useQuery({
         queryKey: ['gamification-streak'],
@@ -63,11 +70,20 @@ export const useGamification = () => {
         },
     });
 
+    const { data: teamStreak, isLoading: isTeamStreakLoading } = useQuery({
+        queryKey: ['gamification-team-streak'],
+        queryFn: async () => {
+            const response = await apiClient.get<TeamStreakData>('/gamification/team-streak');
+            return response.data;
+        },
+    });
+
     return {
         streak,
         points,
         achievements,
         leaderboard,
-        isLoading: isStreakLoading || isPointsLoading || isAchievementsLoading || isLeaderboardLoading
+        teamStreak,
+        isLoading: isStreakLoading || isPointsLoading || isAchievementsLoading || isLeaderboardLoading || isTeamStreakLoading
     };
 };

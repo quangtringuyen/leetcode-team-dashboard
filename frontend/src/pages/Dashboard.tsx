@@ -16,12 +16,13 @@ import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import StreakCalendar from '@/components/gamification/StreakCalendar';
 import GamificationLeaderboard from '@/components/gamification/Leaderboard';
 import AchievementsPanel from '@/components/gamification/AchievementsPanel';
+import TeamStreakCard from '@/components/gamification/TeamStreakCard';
 import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
   const { members = [], isMembersLoading, isStatsLoading } = useTeam();
   const { recordSnapshot, isRecordingSnapshot, lastSnapshot } = useAnalytics();
-  const { streak, achievements, leaderboard: pointsLeaderboard, isLoading: isGamificationLoading } = useGamification();
+  const { streak, achievements, leaderboard: pointsLeaderboard, teamStreak, isLoading: isGamificationLoading } = useGamification();
 
   // Fetch settings
   const { data: settings } = useQuery({
