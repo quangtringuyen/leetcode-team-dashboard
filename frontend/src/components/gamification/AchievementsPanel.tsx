@@ -20,24 +20,16 @@ interface AchievementsPanelProps {
 
 const AchievementsPanel = ({ achievements, isLoading = false }: AchievementsPanelProps) => {
 
-    // Dummy data if empty (for visual testing)
-    const displayAchievements = achievements.length > 0 ? achievements : [
-        { key: "1", name: "First Solve", description: "Solve your first problem", icon: "🌱", category: "starter", unlocked: true },
-        { key: "2", name: "Streak Starter", description: "3 day streak", icon: "🔥", category: "streak", unlocked: true },
-        { key: "3", name: "Week Warrior", description: "7 day streak", icon: "🔥🔥", category: "streak", unlocked: false },
-        { key: "4", name: "Hard Mode", description: "Solve a Hard problem", icon: "💪", category: "difficulty", unlocked: false },
-    ];
-
     if (isLoading) {
         return (
-            <Card className="h-full">
-                <CardHeader>
-                    <CardTitle>Achievements</CardTitle>
+            <Card className="border-none shadow-none bg-transparent">
+                <CardHeader className="px-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Achievements</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-4 gap-4">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                            <div key={i} className="aspect-square bg-gray-200 rounded-lg animate-pulse"></div>
+                <CardContent className="px-0">
+                    <div className="flex gap-2 animate-pulse">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="h-10 w-10 bg-muted rounded-lg"></div>
                         ))}
                     </div>
                 </CardContent>
@@ -45,57 +37,44 @@ const AchievementsPanel = ({ achievements, isLoading = false }: AchievementsPane
         );
     }
 
-    // Group achievements by category status
-    const unlockedCount = displayAchievements.filter(a => a.unlocked).length;
-    const totalCount = displayAchievements.length;
-    const progressPercentage = Math.round((unlockedCount / totalCount) * 100) || 0;
+    const unlockedCount = achievements.filter(a => a.unlocked).length;
+    const totalCount = achievements.length;
 
     return (
-        <Card className="h-full">
-            <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                        Achievements
-                    </CardTitle>
-                    <Badge variant="secondary" className="font-mono">
-                        {unlockedCount}/{totalCount}
-                    </Badge>
-                </div>
+        <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pb-3 flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                    Achievements
+                </CardTitle>
+                <Badge variant="secondary" className="text-[10px] font-mono font-bold px-2 py-0">
+                    {unlockedCount}/{totalCount}
+                </Badge>
             </CardHeader>
 
-            <CardContent>
-                {/* Progress Bar */}
-                <div className="w-full bg-secondary h-2 rounded-full mb-6 overflow-hidden">
-                    <div
-                        className="bg-yellow-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${progressPercentage}%` }}
-                    ></div>
-                </div>
-
-                {/* Grid */}
-                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            <CardContent className="px-0 pt-0">
+                <div className="flex flex-wrap gap-2.5">
                     <TooltipProvider>
-                        {displayAchievements.map((achievement) => (
+                        {achievements.map((achievement) => (
                             <Tooltip key={achievement.key}>
                                 <TooltipTrigger asChild>
                                     <div
                                         className={`
-                      aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-all cursor-help
-                      ${achievement.unlocked
-                                                ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200 shadow-sm dark:from-yellow-900/20 dark:to-orange-900/20 dark:border-yellow-700/50 grayscale-0'
-                                                : 'bg-muted border-muted-foreground/20 grayscale opacity-50 hover:opacity-75'}
-                    `}
+                                            w-10 h-10 rounded-lg flex items-center justify-center text-lg border transition-all cursor-help
+                                            ${achievement.unlocked
+                                                ? 'bg-white dark:bg-zinc-900 border-yellow-200 dark:border-yellow-700/50 shadow-sm relative overflow-hidden'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 border-transparent grayscale opacity-30'}
+                                        `}
                                     >
+                                        {achievement.unlocked && (
+                                            <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-bl-sm opacity-50" />
+                                        )}
                                         {achievement.icon}
                                     </div>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-[200px]">
-                                    <div className="font-bold text-sm mb-1 flex items-center gap-2">
-                                        {achievement.name}
-                                        {achievement.unlocked && <span className="text-xs text-green-500">✓</span>}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                                <TooltipContent side="top">
+                                    <div className="text-xs font-bold">{achievement.name}</div>
+                                    <div className="text-[10px] text-muted-foreground">{achievement.description}</div>
                                 </TooltipContent>
                             </Tooltip>
                         ))}

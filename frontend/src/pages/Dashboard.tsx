@@ -15,7 +15,6 @@ import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import StreakCalendar from '@/components/gamification/StreakCalendar';
 import AchievementsPanel from '@/components/gamification/AchievementsPanel';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 export default function Dashboard() {
   const { members = [], isMembersLoading, isStatsLoading } = useTeam();
@@ -64,39 +63,35 @@ export default function Dashboard() {
   const weeklyChange = weeklyProgressData?.weekly_change || 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header with Team Streak */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Track your team's LeetCode progress
-            </p>
-          </div>
-
-          {/* Compact Team Streak Badge */}
-          {teamStreak && (
-            <Badge
-              variant={teamStreak.active_today ? "default" : "secondary"}
-              className="h-10 px-3 flex items-center gap-2 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400"
-            >
-              <Flame className={`h-4 w-4 ${teamStreak.active_today ? 'fill-current animate-pulse' : ''}`} />
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold">{teamStreak.current_streak}</span>
-                <span className="text-[10px] uppercase tracking-wider font-semibold opacity-80 pt-0.5">Team Streak</span>
+    <div className="max-w-[1600px] mx-auto space-y-8 pb-12">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-2">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">Dashboard</h1>
+            {teamStreak && (
+              <div className="flex items-center bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 dark:border-orange-800 animate-in fade-in slide-in-from-left-2 duration-500">
+                <Flame className={`h-3.5 w-3.5 mr-1.5 ${teamStreak.active_today ? 'fill-current animate-pulse' : ''}`} />
+                {teamStreak.current_streak} DAY TEAM STREAK
               </div>
-            </Badge>
-          )}
+            )}
+          </div>
+          <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
+            Real-time performance analytics for your LeetCode team.
+          </p>
         </div>
-        <Button
-          onClick={handleRecordSnapshot}
-          disabled={isRecordingSnapshot}
-          className="gap-2"
-        >
-          <Calendar className="h-4 w-4" />
-          {isRecordingSnapshot ? 'Recording...' : 'Record Snapshot'}
-        </Button>
+
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleRecordSnapshot}
+            disabled={isRecordingSnapshot}
+            variant="outline"
+            className="h-11 px-6 shadow-sm font-semibold"
+          >
+            <Calendar className="mr-2 h-4 w-4 opacity-70" />
+            {isRecordingSnapshot ? 'Recording...' : 'Quick Snapshot'}
+          </Button>
+        </div>
       </div>
 
       {lastSnapshot && (
@@ -143,20 +138,31 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column: Podium & Rankings */}
-        <div className="lg:col-span-2 space-y-6">
-          <Podium members={activeMembers} isLoading={isMembersLoading} />
-          <UnifiedLeaderboard
-            problemSolvers={activeMembers.sort((a, b) => (b.totalSolved || 0) - (a.totalSolved || 0))}
-            pointEarners={pointsLeaderboard || []}
-            isLoading={isMembersLoading || isGamificationLoading}
-          />
+      {/* Main Dash Grid */}
+      <div className="grid gap-8 lg:grid-cols-12 items-start">
+        {/* Main Column: 8/12 */}
+        <div className="lg:col-span-8 space-y-10">
+          {/* Top Rankings Area */}
+          <div className="grid gap-10">
+            <Podium members={activeMembers} isLoading={isMembersLoading} />
+            <UnifiedLeaderboard
+              problemSolvers={activeMembers.sort((a, b) => (b.totalSolved || 0) - (a.totalSolved || 0))}
+              pointEarners={pointsLeaderboard || []}
+              isLoading={isMembersLoading || isGamificationLoading}
+            />
+          </div>
+
+          {/* Bottom Main Content */}
+          <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800">
+            <AchievementsPanel
+              achievements={achievements || []}
+              isLoading={isGamificationLoading}
+            />
+          </div>
         </div>
 
-        {/* Right Column: Activity Feed */}
-        <div className="space-y-6">
+        {/* Sidebar Column: 4/12 */}
+        <div className="lg:col-span-4 space-y-8">
           <StreakCalendar
             currentStreak={streak?.current_streak || 0}
             longestStreak={streak?.longest_streak || 0}
@@ -169,16 +175,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bottom Full Width: Achievements & Streak Alerts */}
-      <div className="space-y-6">
-        <AchievementsPanel
-          achievements={achievements || []}
-          isLoading={isGamificationLoading}
-        />
-        <div className="grid gap-6 md:grid-cols-2">
+      {/* Footer Details */}
+      <div className="pt-10 border-t border-zinc-100 dark:border-zinc-800 grid gap-10 md:grid-cols-2">
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Status Alerts</h3>
           <StreakAtRiskAlert />
-          <DailyChallengeCompletions />
         </div>
+        <DailyChallengeCompletions />
       </div>
     </div>
   );
