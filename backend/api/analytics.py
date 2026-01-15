@@ -260,26 +260,33 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
                 for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
             }
 
-        # Iterate over ALL configured members
+        # For current week (week_offset=0), fetch live data for members without snapshots
+        if week_offset == 0:
+            for member_info in user_members:
+                member = member_info["username"]
+                if member not in current_week_data or current_week_data.get(member, 0) == 0:
+                    try:
+                        live_data = fetch_user_data(member)
+                        if live_data:
+                            current_val = live_data.get("totalSolved", 0)
+                            if current_val > 0:
+                                current_week_data[member] = current_val
+                    except Exception:
+                        pass
+            
+            # Recalculate ranks after fetching all live data
+            current_week_ranks = {
+                m: i + 1 
+                for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
+            }
+
+        # Iterate over ALL configured members to build response
         for member_info in user_members:
             member = member_info["username"]
             
             # Get values (default to 0)
             current_val = current_week_data.get(member, 0)
             previous_val = previous_week_data.get(member, 0)
-            
-            # If current_val is 0 (missing snapshot) AND it is the current week (week_offset=0),
-            # try to fetch live data to show "Current" status correctly for new members.
-            if week_offset == 0 and current_val == 0:
-                try:
-                    live_data = fetch_user_data(member)
-                    if live_data:
-                        current_val = live_data.get("totalSolved", 0)
-                        # Add to current_week_data so it's included in ranking
-                        if current_val > 0:
-                            current_week_data[member] = current_val
-                except Exception:
-                    pass
             
             change = current_val - previous_val
             
@@ -290,13 +297,6 @@ def get_week_over_week_internal(username: str, weeks: int = 4) -> List[Dict[str,
                 pct_change = 100.0
             else:
                 pct_change = 0.0
-            
-            # Recalculate ranks after adding live data (only for current week)
-            if week_offset == 0 and current_week_data:
-                current_week_ranks = {
-                    m: i + 1 
-                    for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
-                }
                 
             # Calculate rank delta
             current_rank = current_week_ranks.get(member)
