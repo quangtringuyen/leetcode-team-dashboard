@@ -1,6 +1,7 @@
 import { Users, TrendingUp, Target, Calendar } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useGamification } from '@/hooks/useGamification';
 import { useQuery } from '@tanstack/react-query';
 import { settingsApi, apiClient } from '@/services/api';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -12,11 +13,15 @@ import DailyChallengeCompletions from '@/components/dashboard/DailyChallengeComp
 import StreakLeaderboard from '@/components/dashboard/StreakLeaderboard';
 import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
+import StreakCalendar from '@/components/gamification/StreakCalendar';
+import GamificationLeaderboard from '@/components/gamification/Leaderboard';
+import AchievementsPanel from '@/components/gamification/AchievementsPanel';
 import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
   const { members = [], isMembersLoading, isStatsLoading } = useTeam();
   const { recordSnapshot, isRecordingSnapshot, lastSnapshot } = useAnalytics();
+  const { streak, achievements, leaderboard: pointsLeaderboard, isLoading: isGamificationLoading } = useGamification();
 
   // Fetch settings
   const { data: settings } = useQuery({
@@ -125,15 +130,40 @@ export default function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid gap-8 lg:grid-cols-3">
-        {/* Left Column: Leaderboard & Podium */}
+        {/* Left Column: Podium & Detailed Stats */}
         <div className="lg:col-span-2 space-y-8">
           <Podium members={activeMembers} isLoading={isMembersLoading} />
           <Leaderboard members={activeMembers} isLoading={isMembersLoading} />
+
+          {/* New Achievements Panel */}
+          <AchievementsPanel
+            achievements={achievements || []}
+            isLoading={isGamificationLoading}
+          />
         </div>
 
-        {/* Right Column: Notifications, Streaks, Daily Challenge & Recent Activity */}
+        {/* Right Column: Gamification & Activity */}
         <div className="space-y-6">
+          {/* New Personal Streak Calendar */}
+          <div className="h-64">
+            <StreakCalendar
+              currentStreak={streak?.current_streak || 0}
+              longestStreak={streak?.longest_streak || 0}
+              history={streak?.streak_history || []}
+              isLoading={isGamificationLoading}
+            />
+          </div>
+
           <NotificationCenter />
+
+          {/* New Points Leaderboard */}
+          <div className="h-96">
+            <GamificationLeaderboard
+              entries={pointsLeaderboard || []}
+              isLoading={isGamificationLoading}
+            />
+          </div>
+
           <StreakAtRiskAlert />
           <StreakLeaderboard />
           <DailyChallengeCard />
