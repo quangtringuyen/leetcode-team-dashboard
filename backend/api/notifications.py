@@ -183,9 +183,9 @@ async def check_new_submissions(current_user: dict = Depends(get_current_user)):
     if not user_members:
         return {"notifications": [], "count": 0}
     
-    # Load last state
-    last_state = read_json(settings.LAST_STATE_FILE, default={})
-    user_last_state = last_state.get(username, {})
+    # Load last state from database
+    from backend.core.last_state_db import get_last_state, update_last_state
+    user_last_state = get_last_state(username)
     
     notifications = []
     new_state = {}
@@ -237,11 +237,11 @@ async def check_new_submissions(current_user: dict = Depends(get_current_user)):
                 logger = logging.getLogger(__name__)
                 logger.error(f"Error checking submissions for {member_username}: {e}")
     
-    # Update last state
-    # Merge with existing state to preserve members who weren't fetched successfully
-    user_last_state.update(new_state)
-    last_state[username] = user_last_state
-    write_json(settings.LAST_STATE_FILE, last_state)
+    # Update last state in database
+    if new_state:
+        # Merge with existing state to preserve members who weren't fetched successfully
+        user_last_state.update(new_state)
+        update_last_state(username, user_last_state)
     
     return {
         "notifications": notifications,
