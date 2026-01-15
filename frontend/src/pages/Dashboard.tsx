@@ -1,4 +1,4 @@
-import { Users, TrendingUp, Target, Calendar } from 'lucide-react';
+import { Users, TrendingUp, Target, Calendar, Flame } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeam';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useGamification } from '@/hooks/useGamification';
@@ -14,8 +14,8 @@ import StreakAtRiskAlert from '@/components/dashboard/StreakAtRiskAlert';
 import NotificationCenter from '@/components/dashboard/NotificationCenter';
 import StreakCalendar from '@/components/gamification/StreakCalendar';
 import AchievementsPanel from '@/components/gamification/AchievementsPanel';
-import TeamStreakCard from '@/components/gamification/TeamStreakCard';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export default function Dashboard() {
   const { members = [], isMembersLoading, isStatsLoading } = useTeam();
@@ -65,13 +65,29 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Team Streak */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your team's LeetCode progress
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Track your team's LeetCode progress
+            </p>
+          </div>
+
+          {/* Compact Team Streak Badge */}
+          {teamStreak && (
+            <Badge
+              variant={teamStreak.active_today ? "default" : "secondary"}
+              className="h-10 px-3 flex items-center gap-2 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400"
+            >
+              <Flame className={`h-4 w-4 ${teamStreak.active_today ? 'fill-current animate-pulse' : ''}`} />
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold">{teamStreak.current_streak}</span>
+                <span className="text-[10px] uppercase tracking-wider font-semibold opacity-80 pt-0.5">Team Streak</span>
+              </div>
+            </Badge>
+          )}
         </div>
         <Button
           onClick={handleRecordSnapshot}
@@ -91,8 +107,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stats & Streak Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {/* Stats Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Team Members"
           value={totalMembers}
@@ -124,13 +140,6 @@ export default function Dashboard() {
             isPositive: weeklyChange >= 0,
           }}
           isLoading={isStatsLoading}
-        />
-
-        {/* Compact Team Streak Card */}
-        <TeamStreakCard
-          streak={teamStreak?.current_streak || 0}
-          activeToday={teamStreak?.active_today || false}
-          isLoading={isGamificationLoading}
         />
       </div>
 
