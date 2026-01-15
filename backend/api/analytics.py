@@ -382,6 +382,7 @@ def get_week_over_week(
             if prev_snap:
                 previous_week_data[member_username] = prev_snap.get("totalSolved", 0)
         
+        
         # Calculate ranks for this week pair
         current_week_ranks = {
             m: i + 1 
@@ -392,26 +393,33 @@ def get_week_over_week(
             for i, (m, _) in enumerate(sorted(previous_week_data.items(), key=lambda x: x[1], reverse=True))
         }
 
-        # Iterate over ALL configured members
+        # For current week (w=0), fetch live data for members without snapshots
+        if w == 0:
+            for member_info in user_members:
+                member = member_info["username"]
+                if member not in current_week_data or current_week_data.get(member, 0) == 0:
+                    try:
+                        live_data = fetch_user_data(member)
+                        if live_data:
+                            current_val = live_data.get("totalSolved", 0)
+                            if current_val > 0:
+                                current_week_data[member] = current_val
+                    except Exception:
+                        pass
+            
+            # Recalculate ranks after fetching all live data
+            current_week_ranks = {
+                m: i + 1 
+                for i, (m, _) in enumerate(sorted(current_week_data.items(), key=lambda x: x[1], reverse=True))
+            }
+
+        # Iterate over ALL configured members to build response
         for member_info in user_members:
             member = member_info["username"]
             
             # Get values (default to 0 if not found)
             current_val = current_week_data.get(member, 0)
             previous_val = previous_week_data.get(member, 0)
-            
-            # If current_val is 0 (missing snapshot) AND it is the current week (w=0),
-            # try to fetch live data to show "Current" status correctly for new members.
-            if w == 0 and current_val == 0:
-                # We can try to fetch live data
-                # To avoid N API calls sequentially, we might want to do this in parallel above?
-                # But typically this falls back for only NEW members (few).
-                try:
-                    live_data = fetch_user_data(member)
-                    if live_data:
-                        current_val = live_data.get("totalSolved", 0)
-                except Exception as e:
-                    pass
 
             change = current_val - previous_val
             
