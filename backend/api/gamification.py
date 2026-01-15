@@ -40,7 +40,17 @@ class LeaderboardEntry(BaseModel):
 
 # --- Endpoints ---
 
+class TeamStreakResponse(BaseModel):
+    current_streak: int
+    active_today: bool
+    history: List[str]
+
 # 1. Streaks
+
+@router.get("/team-streak", response_model=TeamStreakResponse)
+async def get_team_streak(current_user: dict = Depends(get_current_user)):
+    """Get the collective team streak"""
+    return gamification_service.get_team_streak()
 
 @router.get("/streak", response_model=StreakResponse)
 async def get_my_streak(current_user: dict = Depends(get_current_user)):

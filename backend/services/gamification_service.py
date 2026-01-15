@@ -119,6 +119,65 @@ class GamificationService:
         except Exception as e:
             logger.error(f"Error getting longest streak for {username}: {e}")
             return 0
+
+    def get_team_streak(self) -> Dict[str, Any]:
+        """Get the collective team streak (days with at least one active member)"""
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Get all dates where ANYONE had activity
+                cursor.execute("""
+                    SELECT DISTINCT date FROM daily_streaks
+                    WHERE problems_solved > 0 OR daily_challenge_completed = 1
+                    ORDER BY date DESC
+                """)
+                
+                dates = [row["date"] for row in cursor.fetchall()]
+                
+                if not dates:
+                    return {"current_streak": 0, "active_today": False, "history": []}
+                
+                # Calculate streak
+                streak = 0
+                current_date = date.today()
+                active_today = False
+                
+                # Check if there is activity today
+                if dates and dates[0] == current_date.isoformat():
+                    active_today = True
+                
+                # Calculate streak logic
+                # If active today, we start counting from today.
+                # If not active today, we check if active yesterday to continue streak.
+                
+                start_check_date = current_date
+                if not active_today:
+                    # If not active today, check if streak is still alive from yesterday
+                    start_check_date = current_date - timedelta(days=1)
+                
+                for activity_date in dates:
+                    activity_date_obj = date.fromisoformat(activity_date)
+                    
+                    if activity_date_obj == start_check_date:
+                        streak += 1
+                        start_check_date = start_check_date - timedelta(days=1)
+                    elif activity_date_obj > start_check_date:
+                        # Future date (shouldn't happen but safe to ignore)
+                        continue
+                    else:
+                        # Gap found
+                        break
+                        
+                return {
+                    "current_streak": streak,
+                    "active_today": active_today,
+                    "history": dates[:30] # Return last 30 active dates
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting team streak: {e}")
+            return {"current_streak": 0, "active_today": False, "history": []}
     
     def award_points(self, username: str, points: int, reason: str, 
                     problem_title: Optional[str] = None, difficulty: Optional[str] = None) -> bool:
