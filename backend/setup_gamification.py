@@ -3,6 +3,10 @@ Database schema for gamification features
 Run this to add new tables for streaks, points, achievements, and team challenges
 """
 
+import sys
+import os
+sys.path.insert(0, '/app')
+
 import sqlite3
 import logging
 from backend.core.database import get_db_connection
