@@ -10,7 +10,7 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 
-from backend.api import auth, team, leetcode, analytics, notifications, settings, weekly_progress, notifications_log
+from backend.api import auth, team, leetcode, analytics, notifications, settings, weekly_progress, notifications_log, gamification
 from backend.core.config import settings as config_settings
 from backend.core.database import init_db
 
@@ -53,6 +53,7 @@ app.include_router(weekly_progress.router, prefix="/analytics", tags=["Analytics
 print("Loading notifications router...")
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 app.include_router(notifications_log.router, prefix="/notifications-log", tags=["Notifications Log"])
+app.include_router(gamification.router, prefix="/gamification", tags=["Gamification"])
 
 @app.get("/")
 async def root():
